@@ -1,0 +1,11 @@
+.vscode
+.vs
+
+server/bin/**
+client/bin/**
+
+server/obj/**
+client/obj/**
+
+server/publish/**
+client/publish/**
