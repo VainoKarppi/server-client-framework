@@ -8,9 +8,9 @@ using System.Text;
 using System.Threading;
 
 
-namespace EdenOnlineExtensionServer {
+namespace ServerFramework {
     public class Log {
-        public static void Write(object text = null) {
+        public static void Write(object text = default!) {
             string time = DateTime.Now.ToString("ss:FF");
             if (time.Length < 11) {
                 string last = time.Substring(time.Length - 1,1);
@@ -24,14 +24,14 @@ namespace EdenOnlineExtensionServer {
         public const int Version = 1000;
 
         static void Main(string[] args) {
-            Log.Write();
+            Console.WriteLine();
             Console.Clear();
-            Console.Title = "EDEN Online Extension Server";
-            Log.Write("Type 'help' for commands!");
+            Console.Title = "EDEN Online Extension SERVER";
+            Console.WriteLine("Type 'help' for commands!");
             //Network.StartServer();
             while (true) {
-                Log.Write();
-                Console.Write(">> ");
+                Console.WriteLine();
+                Console.WriteLine(">> ");
                 string command = Console.ReadLine();
                 command = command.ToLower();
 
@@ -59,12 +59,12 @@ namespace EdenOnlineExtensionServer {
                         Commands.SendCommand();
 
                     else if (command == "status")
-                        Log.Write(Network.ServerRunning ? "Server is running!" : "Server is not running!");
+                        Console.WriteLine(Network.ServerRunning ? "Server is running!" : "Server is not running!");
                     else
-                        Log.Write("Unknown command!" + "\n" + "Type 'help' for commands!");
+                        Console.WriteLine("Unknown command!" + "\n" + "Type 'help' for commands!");
 
                 } catch (Exception e) {
-                    Log.Write(e.Message);
+                    Console.WriteLine(e.Message);
                 }
             }
         }

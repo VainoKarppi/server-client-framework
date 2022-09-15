@@ -8,16 +8,16 @@ using System.IO;
 
 public class Request {
     public static string Serialize(object[] parameters) {
-        ArmaArray arr = new ArmaArray();
+        DataArray arr = new DataArray();
 
         foreach (object x in parameters) {
             arr.Add(x);
         }
 
-        return ArmaArray.Serialize(arr);
+        return DataArray.Serialize(arr);
     }
     public static object[] Deserialize(string message) {
-        ArmaArray arr = ArmaArray.Unserialize(message);
+        DataArray arr = DataArray.Unserialize(message);
 
         return arr.ToArray();
     }
@@ -34,18 +34,18 @@ public class Request {
 
             message.Append(String.Format("{0}{1}",(char)0x01,indexString));
             if (index == 11) {
-                ArmaArray newArr = new ArmaArray();
+                DataArray newArr = new DataArray();
                 foreach (object x in new object[]{param}) {
-                    Log.Write(param);
+                    Console.WriteLine(param);
                     newArr.Add(x);
                 } 
-                string toArma = ArmaArray.Serialize(newArr);
+                string toArma = DataArray.Serialize(newArr);
                 message.Append(toArma);
                 continue;
             }
             message.Append(param);
         }
-        Log.Write(message);
+        Console.WriteLine(message);
         return message.ToString();
     }
     public static object[] Deserialize(string message) {
@@ -67,7 +67,7 @@ public class Request {
             
             string dataNew = data.Remove(0,2);
             
-            Log.Write("\t<REQUEST DATA>: " + dataType.ToString() + " | " + dataNew.ToString());
+            Console.WriteLine("\t<REQUEST DATA>: " + dataType.ToString() + " | " + dataNew.ToString());
             
             dynamic value;
             switch (Type.GetTypeCode(dataType)) {
@@ -91,7 +91,7 @@ public class Request {
                     value = dataNew; break;
                 default:
                     if (dataType.ToString() == "System.Object[]") {
-                        value = ArmaArray.UnserializeArray(new string[] {dataNew});
+                        value = DataArray.UnserializeArray(new string[] {dataNew});
                         break;
                     }
                     throw new Exception("Data type not supported!");

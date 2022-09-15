@@ -67,6 +67,7 @@ public class DataArray : List<object> {
                         break;
                     }
                 }
+                Console.WriteLine("TYPE:" + str.ToString());
                 List<object> innerArray = Unserialize(str.ToString());
                 array.Add(innerArray);
             } else if (args[i] == '"') {
@@ -132,7 +133,7 @@ public class DataArray : List<object> {
                 data.Append("\"");
             } else if (d is int || d is double || d is bool || d is short || d is byte) {
                 data.Append(d.ToString());
-            } else if (d is DataArray || d is object[]) {
+            } else if (d is DataArray) {
                 DataArray a = d as DataArray;
                 data.Append(Serialize(a));
             }

@@ -9,16 +9,14 @@ using System.Reflection;
 using System.Text;
 using System.Threading;
 
-namespace EdenOnlineExtensionServer {
+namespace ServerFramework {
 
     public class Network {
-        public static TcpListener ServerListener;
+        public static TcpListener ServerListener = default!;
         public static readonly object _lock = new object();
         public static readonly Dictionary<short,TcpClient> ClientList = new Dictionary<short,TcpClient>();
         public static int ServerPort { get; set; } = 2302;
         public static bool ServerRunning { get; set; } = false;
-        public static string WorldName { get; set; } = "vr";
-        public static string[] Mods { get; set; } = new string[] {};
         public static Dictionary<ushort,object[]> Results = new Dictionary<ushort,object[]>();
 
         public static void StartServer() {
@@ -32,8 +30,8 @@ namespace EdenOnlineExtensionServer {
                 ServerListener.Start();
                 ServerRunning = true;
 
-                Log.Write("Running server at: (" + ServerListener.LocalEndpoint + ")");
-                Log.Write();
+                Console.WriteLine("Running server at: (" + ServerListener.LocalEndpoint + ")");
+                Console.WriteLine();
 
                 short _clientID = 2; // (0 = All clients, 1 = server, 2 and above for specific clients)
                 while (ServerRunning) {
@@ -43,15 +41,13 @@ namespace EdenOnlineExtensionServer {
                         
                         _client.Client.SendTimeout = 5;
                         // Make sure the connection is already not created
-                        // TODO not working....
                         if(ClientList.FirstOrDefault(key => key.Value.Client.RemoteEndPoint == _client.Client.RemoteEndPoint).Value != null){
                             _client.Close();
                             throw new Exception("Client already connected!");
                         }
-                        _client.ID = _clientID;
                         lock (_lock) ClientList.Add(_clientID,_client);
                         
-                        Log.Write("*NEW* Client (" + _client.Client.RemoteEndPoint  + ") trying to connect...");
+                        Console.WriteLine("*NEW* Client (" + _client.Client.RemoteEndPoint  + ") trying to connect...");
 
                         if (_clientID >= 32000) throw new Exception("Max user count reached! (32000)");
 
@@ -59,7 +55,7 @@ namespace EdenOnlineExtensionServer {
                         new Thread(() => HandleClient(_client)).Start();
                         _clientID++;;
                     } catch (Exception ex) {
-                        Log.Write(ex.Message);
+                        Console.WriteLine(ex.Message);
                     }
                 }
                 
@@ -69,15 +65,14 @@ namespace EdenOnlineExtensionServer {
             if (!ServerRunning)
                 throw new Exception("Server not running!");
                 
-            Log.Write("Stopping server...");
+            Console.WriteLine("Stopping server...");
             ServerRunning = false;
             ServerListener.Stop();
-            ServerListener = null;
+            ServerListener = default!;
             ClientList.Clear();
 
             // TODO Send msg to all clients for succesfull server shutdown?
-            // TODO Force mission save for all clients
-            Log.Write("Server stopped!");
+            Console.WriteLine("Server stopped!");
         }
 
         // TODO Add Async method aswell
@@ -170,6 +165,7 @@ namespace EdenOnlineExtensionServer {
 			return Encoding.ASCII.GetString(newBytes);
 		}
 
+        // One thread for one user
         // Start listening data coming from this client
         public static void HandleClient(NetworkClient client) {
 
@@ -194,24 +190,24 @@ namespace EdenOnlineExtensionServer {
                     object[] parameters = Request.Deserialize(rawData);
 
                     // Make sure client function exists
-                    // TODO Handle better than object[] if returns array (use ArmaArray instead)
+                    // TODO Handle better than object[] if returns array (use DataArray instead)
                     MethodInfo methodInfo = typeof(ClientFunctions).GetMethod(function);
                     if (methodInfo == null)
                         throw new Exception("Function: " + function + " was not found");
 
-                    Log.Write($"Invoking function: ({function}) for client: {client.ID}");
+                    Console.WriteLine($"Invoking function: ({function}) for client: {client.ID}");
                     
                     object returnData = methodInfo.Invoke(function,new object[]{client,parameters,requestType});
                     if (returnData != null && requestType == 1) {
-                        Log.Write($"Returning Data: ({returnData.GetType()}): [{returnData.ToString()}] to client: {client.ID}, from function: {function}");
+                        Console.WriteLine($"Returning Data: ({returnData.GetType()}): [{returnData.ToString()}] to client: {client.ID}, from function: {function}");
                         Network.SendData(function, new object[] {returnData}, client.ID, 0, (byte)Request.MessageTypes.ResponseData, key);
                     }
-                    Log.Write("\n");
+                    Console.WriteLine("\n");
                 } catch (Exception ex) {
                     if (ex is IOException || ex is SocketException)
-                        Log.Write("Client " + client.ID.ToString() + " disconnected!");
+                        Console.WriteLine("Client " + client.ID.ToString() + " disconnected!");
                     else
-                        Log.Write(ex.Message);
+                        Console.WriteLine(ex.Message);
                     break;
                 }
             }
@@ -221,18 +217,31 @@ namespace EdenOnlineExtensionServer {
             client.Close();
         }
 
+        public static short Handshake(NetworkClient client, object[] parameters, byte RequestType) {
+
+            // RETURNS client id if success (minus number if error (each value is one type of error))
+            int _clientVersion = Int32.Parse((string)parameters[0]);
+            string _userName = (string)parameters[1];
 
 
-        public static object CallMethod(string function, ArmaArray parameters) {
-            MethodInfo methodInfo = typeof(ClientFunctions).GetMethod(function);
-            if (methodInfo == null)
-                throw new Exception("Function " + function + " was not found");
+            client.UserName = _userName;
 
-            return methodInfo.Invoke(function,parameters.ToArray()); 
+
+            //TODO add major and minor checking
+            if (_clientVersion != Program.Version) {
+                Console.WriteLine($"User {_userName} has wrong version! Should be: {Program.Version} has: {_clientVersion}");
+                return -1;
+            }
+
+
+            Console.WriteLine($"*SUCCESS* {client.ID} Handshake completed!");
+
+            return client.ID;
         }
 
 
         // TODO implement
+        // Used to forward data: client X -> server -> client Y
         public static void ForwardData(short function, object[] parameters, short target = 0, byte sender = 0) {
             if (target <= 1)
                 throw new Exception("Invalid target to forward data to!");
@@ -240,10 +249,11 @@ namespace EdenOnlineExtensionServer {
             if (!Network.ClientList.ContainsKey(target))
                     throw new Exception("Selected target not in client list!");
 
-            Log.Write(($"Forwarding data... FUNCTION: {0} PARAMS: {1} TARGET: {2} FROM: {3}",Request.Functions[function],String.Join(", ",parameters),target,sender));
+            Console.WriteLine(($"Forwarding data... FUNCTION: {0} PARAMS: {1} TARGET: {2} FROM: {3}",Request.Functions[function],String.Join(", ",parameters),target,sender));
             Network.SendData(function, parameters, target);
         }
 
+        // Used to read 
         public static short GetFunctionIndex(object function) {
 
 			short functionNum = -1;
@@ -264,7 +274,7 @@ namespace EdenOnlineExtensionServer {
         public StreamReader Reader { get; set; }
         public StreamWriter Writer { get; set; }
         public short ID { get; set; }
-        public string UserName { get; set; }
+        public string? UserName { get; set; }
 
 
         public NetworkClient(TcpListener listener)

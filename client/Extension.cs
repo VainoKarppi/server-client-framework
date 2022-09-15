@@ -1,63 +1,19 @@
-﻿
+﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
 using System.Reflection;
-
-
-
-
+using System.Runtime.InteropServices;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace ClientFramework {
-    public class Program {
+
+    public class Extension {
+        public static bool Debug = true;
         public const int Version = 1000;
 
-        static void Main(string[] args) {
-            Console.WriteLine();
-            Console.Clear();
-            Console.Title = "EDEN Online Extension CLIENT";
-            Console.WriteLine("Type 'help' for commands!");
-            //Network.StartServer();
-            while (true) {
-                Console.WriteLine();
-                Console.WriteLine(">> ");
-                string? command = Console.ReadLine();
-                command = command.ToLower();
-
-
-                try {
-                    if (command == "help")
-                        Commands.Help();
-
-                    else if (command == "clear")
-                        Console.Clear();
-
-                    else if (command == "exit")
-                        break;
-
-                    else if (command == "connect")
-                        Network.Connect();
-
-                    else if (command == "disconnect")
-                        Network.Disconnect();
-
-                    else if (command == "users")
-                        Commands.UserList();
-
-                    else if (command == "senddata")
-                        Commands.SendCommand();
-
-                    else if (command == "status")
-                        Console.WriteLine(Network.IsConnected ? "Connected to server!" : "NOT connected to server!");
-                    else
-                        Console.WriteLine("Unknown command!" + "\n" + "Type 'help' for commands!");
-
-                } catch (Exception e) {
-                    Console.WriteLine(e.Message);
-                }
-            }
-        }
-
-
-
-        // MAIN REQUEST
         public static int TestData(string function, string[] args, out string output) {
 
             
@@ -109,8 +65,6 @@ namespace ClientFramework {
 
             return returnCode;
         }
-
-
 
 
 
@@ -174,17 +128,5 @@ namespace ClientFramework {
             errorReturn = @"[""" + ex.Message + @"""]";
             return errorReturn;
         }
-    }
-        // Used to store metadata from request
-    public class DataRequest {
-        public string Function { get; set; } = default!;
-        public int Id { get; set; } = -1;
-        public bool Async { get; set; } = false;
-    }
-
-
-    static class ReturnTypes {
-        public const string callback = "0";
-        public const string callfunction = "1";
     }
 }
