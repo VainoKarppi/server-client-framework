@@ -1,4 +1,5 @@
 ﻿
+using System.Net.Mime;
 using System.Reflection;
 
 
@@ -23,42 +24,53 @@ namespace ClientFramework {
 
 
                 try {
-                    if (command == "help")
-                        Commands.Help();
-
-                    else if (command == "clear")
-                        Console.Clear();
-
-                    else if (command == "exit")
-                        break;
-
-                    else if (command == "connect")
-                        Network.Connect();
-
-                    else if (command == "disconnect")
-                        Network.Disconnect();
-
-                    else if (command == "users")
-                        Commands.UserList();
-
-                    else if (command == "senddata")
-                        Commands.SendCommand();
-
-                    else if (command == "status")
-                        Console.WriteLine(Network.IsConnected ? "Connected to server!" : "NOT connected to server!");
-                    else
-                        Console.WriteLine("Unknown command!" + "\n" + "Type 'help' for commands!");
-
+                    switch (command)
+                    {
+                        case "help":
+                            Commands.Help();
+                            break;
+                        case "clear":
+                            Console.Clear();
+                            break;
+                        case "exit":
+                            Environment.Exit(0);
+                            break;
+                        case "connect":
+                        /*
+                            Console.WriteLine("Ip Adress");
+                            string ip = Console.ReadLine();
+                            Console.WriteLine("Username");
+                            string userName = Console.ReadLine();
+                            Console.WriteLine("Port");
+                            int port = Int32.Parse (Console.ReadLine());*/
+                            Network.Connect("127.0.0.1",2302,"vaino");
+                            break;
+                        case "disconnect":
+                            Network.Disconnect();
+                            break;
+                        case "users":
+                            Commands.UserList();
+                            break;
+                        case "senddata":
+                            Commands.SendCommand();
+                            break;
+                        case "status":
+                            Console.WriteLine(Network.IsConnected ? "Connected to server!" : "NOT connected to server!");
+                            break;
+                        default:
+                            Console.WriteLine("Unknown command!" + "\n" + "Type 'help' for commands!");
+                            break;
+                    }  
                 } catch (Exception e) {
                     Console.WriteLine(e.Message);
                 }
             }
         }
 
-
+/*
 
         // MAIN REQUEST
-        public static int TestData(string function, string[] args, out string output) {
+        public static int TestData(string method, string[] args, out string output) {
 
             
             DataRequest request = new DataRequest();
@@ -67,19 +79,19 @@ namespace ClientFramework {
             DataArray parameters = DataArray.UnserializeArray(args);
             
             Console.WriteLine("\n===========[START OF REQUEST]===========");
-            Console.WriteLine(@"CLIENT ==> [""" + function + @"""," + parameters + @"]""");
+            Console.WriteLine(@"CLIENT ==> [""" + method + @"""," + parameters + @"]""");
 
             // Get ASYNC Info
-            //string[] splitted = function.Split(new char[] {'\u003f'});
-            string[] splitted = function.Split('|');
+            //string[] splitted = method.Split(new char[] {'\u003f'});
+            string[] splitted = method.Split('|');
             if (splitted.Count() > 1) {
-                request.Function = splitted[0];
+                request.method = splitted[0];
                 request.Id = Int32.Parse(splitted[1]);
                 request.Async = (request.Id >= 0);
 
-                Console.WriteLine("ASYNC: Function: " + request.Function + "\t" + "AsyncID: " + request.Id.ToString() + "\t" + "Async: " + request.Async.ToString());
+                Console.WriteLine("ASYNC: method: " + request.method + "\t" + "AsyncID: " + request.Id.ToString() + "\t" + "Async: " + request.Async.ToString());
             } else {
-                request.Function = function;
+                request.method = method;
             }
 
 
@@ -87,15 +99,15 @@ namespace ClientFramework {
             int returnCode = 0;
             output = "error";
             try {
-                Console.WriteLine("---------------|FUNCTION|---------------");
+                Console.WriteLine("---------------|method|---------------");
                 if (request.Async) {
                     Thread t = new Thread(() => CallMethodAsync(request, parameters)) { IsBackground = true };
                     t.Start();
                     output = (@"[""ASYNC""]");
                 } else {
-                    DataArray functionReturn = new DataArray { CallMethod(request, parameters) };
-                    if (functionReturn.Count() > 0) {
-                        output = DataArray.Serialize(functionReturn);
+                    DataArray methodReturn = new DataArray { CallMethod(request, parameters) };
+                    if (methodReturn.Count() > 0) {
+                        output = DataArray.Serialize(methodReturn);
                     }
                 }
             } catch (Exception ex) {
@@ -120,11 +132,11 @@ namespace ClientFramework {
         //! METHODS
         //!======================================================
         public static object CallMethod(DataRequest request, DataArray parameters) {
-            MethodInfo methodInfo = typeof(ClientFunctions).GetMethod(request.Function);
+            MethodInfo methodInfo = typeof(ClientMethods).GetMethod(request.method);
             if (methodInfo == null)
-                throw new Exception("Function " + request.Function + " was not found");
+                throw new Exception("method " + request.method + " was not found");
 
-            return methodInfo.Invoke(request.Function,new object[] {parameters.ToArray()}); 
+            return methodInfo.Invoke(request.method,new object[] {parameters.ToArray()}); 
         }
 
 
@@ -138,9 +150,9 @@ namespace ClientFramework {
             bool success = false;
             string output = "";
             try {
-                DataArray functionReturn = new DataArray { CallMethod(request, parameters) };
-                if (functionReturn.Count() > 0) {
-                    output = DataArray.Serialize(functionReturn);    
+                DataArray methodReturn = new DataArray { CallMethod(request, parameters) };
+                if (methodReturn.Count() > 0) {
+                    output = DataArray.Serialize(methodReturn);    
                 }
                 success = true;
             } catch (Exception ex) {
@@ -149,14 +161,15 @@ namespace ClientFramework {
             Console.WriteLine(@"EXTENSION CALLBACK ==> [""ClientFramework""," + ReturnTypes.callback + "," + request.Id + "," + success + "," + output + @"""]");
             //callback.Invoke("ClientFramework", ReturnTypes.callback + "," + request.Id + "," + success.ToString(), output);
         }
+        */
 
 
-        public static void CallFunction(string function, string output = "") {
+        public static void Callmethod(string method, string output = "") {
             if (!output.StartsWith("[") && output != "")
                 output = "[" + output + "]";
 
-            Console.WriteLine(@"EXTENSION CALLFUNCTION ==> [""ClientFramework"","+ ReturnTypes.callfunction + @",""" + function + @""",""" + output + @"""]");
-            //callback.Invoke("ClientFramework", ReturnTypes.callfunction + @",""" + function, output);
+            Console.WriteLine(@"EXTENSION CALLmethod ==> [""ClientFramework"","+ ReturnTypes.callmethod + @",""" + method + @""",""" + output + @"""]");
+            //callback.Invoke("ClientFramework", ReturnTypes.callmethod + @",""" + method, output);
         }
 
 
@@ -177,7 +190,7 @@ namespace ClientFramework {
     }
         // Used to store metadata from request
     public class DataRequest {
-        public string Function { get; set; } = default!;
+        public string method { get; set; } = default!;
         public int Id { get; set; } = -1;
         public bool Async { get; set; } = false;
     }
@@ -185,6 +198,6 @@ namespace ClientFramework {
 
     static class ReturnTypes {
         public const string callback = "0";
-        public const string callfunction = "1";
+        public const string callmethod = "1";
     }
 }

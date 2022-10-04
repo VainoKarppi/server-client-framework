@@ -24,9 +24,9 @@ namespace ServerFramework {
                 throw new Exception("No users connected!");
 
             Console.WriteLine("Connected clients count: " + Network.ClientList.Count());
-            foreach (KeyValuePair<short,TcpClient> client in Network.ClientList) {
-                string remoteIP = ((IPEndPoint)client.Value.Client.RemoteEndPoint).Address.ToString();
-                Console.WriteLine("    User: " + client.Key + " - (" + remoteIP + ")");
+            foreach (NetworkClient client in Network.ClientList) {
+                string remoteIP = ((IPEndPoint)client.Client.RemoteEndPoint).Address.ToString();
+                Console.WriteLine("    User: " + client + " - (" + remoteIP + ")");
             }
         }
         public static void SendCommand() {
@@ -37,15 +37,19 @@ namespace ServerFramework {
                 throw new Exception("No clients online!");
 
             Console.WriteLine();
-            Console.WriteLine("Function to be sent to client: ");
-            string function = Console.ReadLine();
+            Console.WriteLine("method to be sent to client: ");
+            string method = Console.ReadLine();
             Console.WriteLine();
             Console.WriteLine("Target ID: (Blank or 0 for all clients)");
             string target = Console.ReadLine();
             if (string.IsNullOrEmpty(target))
                 target = "0";
- 
-            Network.SendData(function, null, short.Parse(target));
+
+            Network.NetworkMessage message = new Network.NetworkMessage {
+                TargetId = Int32.Parse(target),
+                MethodId = Network.GetMethodIndex(method)
+            };
+            Network.SendData(message);
         }
 
     }

@@ -28,13 +28,13 @@ namespace ServerFramework {
             Console.Clear();
             Console.Title = "EDEN Online Extension SERVER";
             Console.WriteLine("Type 'help' for commands!");
-            //Network.StartServer();
+            Network.StartServer();
             while (true) {
                 Console.WriteLine();
                 Console.WriteLine(">> ");
                 string command = Console.ReadLine();
                 command = command.ToLower();
-
+                
 
                 try {
                     if (command == "help")

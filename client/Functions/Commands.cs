@@ -30,8 +30,8 @@ namespace ClientFramework {
                 throw new Exception("Connect to server first!");
 
             Console.WriteLine();
-            Console.WriteLine("Function to be sent to client/server: ");
-            string function = Console.ReadLine();
+            Console.WriteLine("method to be sent to client/server: ");
+            string method = Console.ReadLine();
             Console.WriteLine();
             Console.WriteLine("Target ID: (Blank or 0 for all clients)");
             string target = Console.ReadLine();
@@ -39,10 +39,10 @@ namespace ClientFramework {
                 target = "0";
 
             string output;
-            Program.TestData(function,new string []{},out output);
+            //Program.TestData(method,new string []{},out output);
 
             
-            //Network.SendData(function, null, short.Parse(target));
+            //Network.SendData(method, null, short.Parse(target));
         }
 
     }

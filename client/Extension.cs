@@ -1,4 +1,6 @@
-﻿using System;
+﻿
+/*
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -8,13 +10,14 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
+
 namespace ClientFramework {
 
     public class Extension {
         public static bool Debug = true;
         public const int Version = 1000;
 
-        public static int TestData(string function, string[] args, out string output) {
+        public static int TestData(string method, string[] args, out string output) {
 
             
             DataRequest request = new DataRequest();
@@ -23,19 +26,19 @@ namespace ClientFramework {
             DataArray parameters = DataArray.UnserializeArray(args);
             
             Console.WriteLine("\n===========[START OF REQUEST]===========");
-            Console.WriteLine(@"CLIENT ==> [""" + function + @"""," + parameters + @"]""");
+            Console.WriteLine(@"CLIENT ==> [""" + method + @"""," + parameters + @"]""");
 
             // Get ASYNC Info
-            //string[] splitted = function.Split(new char[] {'\u003f'});
-            string[] splitted = function.Split('|');
+            //string[] splitted = method.Split(new char[] {'\u003f'});
+            string[] splitted = method.Split('|');
             if (splitted.Count() > 1) {
-                request.Function = splitted[0];
+                request.method = splitted[0];
                 request.Id = Int32.Parse(splitted[1]);
                 request.Async = (request.Id >= 0);
 
-                Console.WriteLine("ASYNC: Function: " + request.Function + "\t" + "AsyncID: " + request.Id.ToString() + "\t" + "Async: " + request.Async.ToString());
+                Console.WriteLine("ASYNC: method: " + request.method + "\t" + "AsyncID: " + request.Id.ToString() + "\t" + "Async: " + request.Async.ToString());
             } else {
-                request.Function = function;
+                request.method = method;
             }
 
 
@@ -43,15 +46,15 @@ namespace ClientFramework {
             int returnCode = 0;
             output = "error";
             try {
-                Console.WriteLine("---------------|FUNCTION|---------------");
+                Console.WriteLine("---------------|method|---------------");
                 if (request.Async) {
                     Thread t = new Thread(() => CallMethodAsync(request, parameters)) { IsBackground = true };
                     t.Start();
                     output = (@"[""ASYNC""]");
                 } else {
-                    DataArray functionReturn = new DataArray { CallMethod(request, parameters) };
-                    if (functionReturn.Count() > 0) {
-                        output = DataArray.Serialize(functionReturn);
+                    DataArray methodReturn = new DataArray { CallMethod(request, parameters) };
+                    if (methodReturn.Count() > 0) {
+                        output = DataArray.Serialize(methodReturn);
                     }
                 }
             } catch (Exception ex) {
@@ -74,11 +77,11 @@ namespace ClientFramework {
         //! METHODS
         //!======================================================
         public static object CallMethod(DataRequest request, DataArray parameters) {
-            MethodInfo methodInfo = typeof(ClientFunctions).GetMethod(request.Function);
+            MethodInfo methodInfo = typeof(ClientMethods).GetMethod(request.method);
             if (methodInfo == null)
-                throw new Exception("Function " + request.Function + " was not found");
+                throw new Exception("method " + request.method + " was not found");
 
-            return methodInfo.Invoke(request.Function,new object[] {parameters.ToArray()}); 
+            return methodInfo.Invoke(request.method,new object[] {parameters.ToArray()}); 
         }
 
 
@@ -92,9 +95,9 @@ namespace ClientFramework {
             bool success = false;
             string output = "";
             try {
-                DataArray functionReturn = new DataArray { CallMethod(request, parameters) };
-                if (functionReturn.Count() > 0) {
-                    output = DataArray.Serialize(functionReturn);    
+                DataArray methodReturn = new DataArray { CallMethod(request, parameters) };
+                if (methodReturn.Count() > 0) {
+                    output = DataArray.Serialize(methodReturn);    
                 }
                 success = true;
             } catch (Exception ex) {
@@ -105,12 +108,12 @@ namespace ClientFramework {
         }
 
 
-        public static void CallFunction(string function, string output = "") {
+        public static void Callmethod(string method, string output = "") {
             if (!output.StartsWith("[") && output != "")
                 output = "[" + output + "]";
 
-            Console.WriteLine(@"EXTENSION CALLFUNCTION ==> [""ClientFramework"","+ ReturnTypes.callfunction + @",""" + function + @""",""" + output + @"""]");
-            //callback.Invoke("ClientFramework", ReturnTypes.callfunction + @",""" + function, output);
+            Console.WriteLine(@"EXTENSION CALLmethod ==> [""ClientFramework"","+ ReturnTypes.callmethod + @",""" + method + @""",""" + output + @"""]");
+            //callback.Invoke("ClientFramework", ReturnTypes.callmethod + @",""" + method, output);
         }
 
 
@@ -130,3 +133,4 @@ namespace ClientFramework {
         }
     }
 }
+*/

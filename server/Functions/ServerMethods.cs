@@ -5,7 +5,7 @@ using System.Net.Sockets;
 using System.Text;
 
 namespace ServerFramework {
-    class ClientFunctions {
+    class ServerMethods {
         public static string Test(NetworkClient client, object[] parameters, byte RequestType) {
             return "te22st from server!";
         }
@@ -20,9 +20,11 @@ namespace ServerFramework {
         
 
 
-        public static Dictionary<short,TcpClient> ConnectedClients(NetworkClient client, object[] parameters, byte RequestType) {
+        public static object[] ConnectedClients(NetworkClient client, object[] parameters, byte RequestType) {
+
+            
             // TODO send as list or array (ADD IN FRAMEWORK)
-            return Network.ClientList;
+            return Network.ClientList.ToArray();
         }
     }
 }

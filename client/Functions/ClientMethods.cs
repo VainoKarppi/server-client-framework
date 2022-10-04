@@ -4,8 +4,8 @@ using System.Linq;
 using System.Net.Sockets;
 using System.Text;
 
-namespace ClientFrameworkServer {
-    class ClientFunctions {
+namespace ClientFramework {
+    class ClientMethods {
         public static string Test(TcpClient server, object[] parameters, byte RequestType) {
             Console.WriteLine($"RequestType:{RequestType} IP:{server.Client.RemoteEndPoint}");
             Console.WriteLine($"PARAMS COUNT:{parameters.Count()}");

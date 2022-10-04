@@ -7,6 +7,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Reflection;
 using System.Text;
+using System.Text.Json;
 using System.Threading;
 
 namespace ServerFramework {
@@ -14,10 +15,26 @@ namespace ServerFramework {
     public class Network {
         public static TcpListener ServerListener = default!;
         public static readonly object _lock = new object();
-        public static readonly Dictionary<short,TcpClient> ClientList = new Dictionary<short,TcpClient>();
+        public static readonly List<NetworkClient> ClientList = new List<NetworkClient>();
         public static int ServerPort { get; set; } = 2302;
-        public static bool ServerRunning { get; set; } = false;
-        public static Dictionary<ushort,object[]> Results = new Dictionary<ushort,object[]>();
+        public static bool ServerRunning { get; set; }
+        public enum MessageTypes : int {SendData, RequestData, ResponseData}
+		public class NetworkMessage
+		{
+			public int? MessageType { get; set; }
+			// One of the tpes in "MessageTypes"
+			public int? TargetId { get; set; }
+			// 0 = everyone, 1 = server, 2 = client 1...
+			public int MethodId { get; set; }
+			// Minus numbers are for internal use!
+			public object[]? Parameters { get; set; }
+			public int Key { get; set; }
+			public int? Sender { get; set; }
+			public bool isHandshake { get; set;}
+			// Used to detect for handshake. Else send error for not connected to server!
+		}
+		public static List<string> Methods = new List<string>() {"Disconnect","ConnectedClients","Test","TestArray"};
+		public static Dictionary<int,object[]> Results = new Dictionary<int,object[]>();
 
         public static void StartServer() {
             if (ServerRunning)
@@ -33,19 +50,19 @@ namespace ServerFramework {
                 Console.WriteLine("Running server at: (" + ServerListener.LocalEndpoint + ")");
                 Console.WriteLine();
 
-                short _clientID = 2; // (0 = All clients, 1 = server, 2 and above for specific clients)
+                int _clientID = 2; // (0 = All clients, 1 = server, 2 and above for specific clients)
                 while (ServerRunning) {
                     try {
                         // Start accepting clients
                         NetworkClient _client = new NetworkClient(ServerListener);
-                        
+                        _client.ID = _clientID;
                         _client.Client.SendTimeout = 5;
                         // Make sure the connection is already not created
-                        if(ClientList.FirstOrDefault(key => key.Value.Client.RemoteEndPoint == _client.Client.RemoteEndPoint).Value != null){
+                        if(ClientList.Contains(_client)) {
                             _client.Close();
                             throw new Exception("Client already connected!");
                         }
-                        lock (_lock) ClientList.Add(_clientID,_client);
+                        lock (_lock) ClientList.Add(_client);
                         
                         Console.WriteLine("*NEW* Client (" + _client.Client.RemoteEndPoint  + ") trying to connect...");
 
@@ -58,7 +75,7 @@ namespace ServerFramework {
                         Console.WriteLine(ex.Message);
                     }
                 }
-                
+                Console.WriteLine("EXITING WHILE LOOP FATAL ERROR");
             }).Start();
         }
         public static void StopServer() {
@@ -79,157 +96,165 @@ namespace ServerFramework {
         // TODO Add data type as header + allow any data type using encode/decode
         // Request ID is used to answer to specific message
 
-        public static byte[] PrepareMessage(byte messageType, short target , object function, object[] parameters, ushort key = 0) {
-            
-            short functionNum = (function.GetType() == typeof(string)) ? GetFunctionIndex(function) : (short)function;
-
-            byte[] msg = {messageType,(byte)(functionNum & 255),(byte)(functionNum >> 8),(byte)(target & 255),(byte)(target >> 8),(byte)(key & 255),(byte)(key >> 8)};
-            if (parameters != null || parameters.Count() >= 0) {
-                string paramsString = Request.Serialize(parameters);
-                msg = msg.Concat(Encoding.ASCII.GetBytes(paramsString)).ToArray();
-            }
-            return msg;
-        }
         
-        public static void SendData(object function, object[] parameters, short target = 0, short excludedTarget = 0, byte messageType = (byte)Request.MessageTypes.SendData, ushort key = 0) {
-            if (target == 1)
-                throw new Exception("Cannot send data to from server to server!");
+        public static void SendData(NetworkMessage message) {
+            if (!ServerRunning) throw new Exception("Server not running");
+			if (message.TargetId == 1) throw new Exception("Cannot send data to self (server)!");
+			
+			if (message.MessageType == null) message.MessageType = (int?)MessageTypes.SendData;
+            DebugMessage(message);
+            byte[] msg = JsonSerializer.SerializeToUtf8Bytes(message);
             
-            byte[] msg = PrepareMessage(messageType,target,function,parameters,key);
-
-            if (target <= 0) {
-                lock (_lock) {
-                    foreach (KeyValuePair<short,TcpClient> connection in ClientList) {
-                        if (connection.Key == excludedTarget) // Everyone else expect this user
-                            continue;
-                        NetworkStream stream = connection.Value.GetStream();
-                        stream.Write(msg, 0, msg.Length);
-                    }
-                }
+            // Send to single ro multiple users
+            if (message.TargetId > 0) {
+                NetworkClient client = (NetworkClient)ClientList.Select(client => client.ID == message.TargetId);
+                if (client == null) throw new Exception("Invalid target!");
+                client.GetStream().Write(msg, 0, msg.Length);
             } else {
-                // Dont use lock
-                if (!ClientList.ContainsKey(target))
-                    throw new Exception("Selected target not in client list!");
-                
-                ClientList[target].GetStream().Write(msg, 0, msg.Length);
+                IEnumerable<NetworkClient> clients = ClientList.Where(client => client.ID == message.TargetId);
+                foreach (NetworkClient client in clients) {
+                    NetworkStream stream = client.GetStream();
+                    stream.Write(msg, 0, msg.Length);
+                }
             }
         }
         
-        public static object[] RequestData(object function, object[] parameters, short target = 0) {
-			try {
-                if (target <= 1)
-                    throw new Exception("Invalid target!");
 
-                short functionNum = GetFunctionIndex(function);
+        public static object[] RequestData(NetworkMessage message) {
+			if (!ServerRunning) throw new Exception("Not connected to server");
+			
+			message.MessageType = (int?)MessageTypes.RequestData;
+			message.Key = new Random().Next(1,int.MaxValue);
+			message.Sender = 1;
 
-				// send request (use semi random key to indentify messages)
-                Random r = new Random();
-                ushort key = (ushort)r.Next(1,65500);
+			// Send request
+			byte[] msg = JsonSerializer.SerializeToUtf8Bytes(message);
+            NetworkClient client = (NetworkClient)ClientList.Select(client => client.ID == message.TargetId);
+            if (client == null) throw new Exception("Invalid target!");
+			client.GetStream().Write(msg, 0, msg.Length);
 
-                byte[] msg = PrepareMessage(((byte)Request.MessageTypes.RequestData),target,function,parameters,key);
-				(ClientList[target].GetStream()).Write(msg, 0, msg.Length);
-
-
-                // Wait for response
-                object[] returns;
-                short timer = 0;
-                while (true) {
-                    Thread.Sleep(1);
-                    if (Results.ContainsKey(key)) {
-                        returns = Results[key];
-                        Results.Remove(key);
-                        break;
-                    }
-                    if (timer > 100) throw new Exception($"Request {key} ({function}) timed out!");
-                    timer++;
-                }
-                return returns;
-
-			} catch (Exception e) {
-				throw new Exception(e.Message);
+			
+			// Wait for response
+			object[] returnData;
+			short timer = 0;
+			while (true) {
+				Thread.Sleep(1);
+				if (Results.ContainsKey(message.Key)) {
+					returnData = (Results.First(n => n.Key == message.Key)).Value; // Just in case if the index changes in between
+					Results.Remove(message.Key);
+					break;
+				}
+				if (timer > 100) throw new Exception($"Request {message.Key} ({Methods[message.MethodId]}) timed out!");
+				timer++;
 			}
+			return returnData;
 		}
 
-        public static string ReadDataBytes(TcpClient client, out byte requestType, out string function, out short target, out ushort key) {
-            NetworkStream Stream = client.GetStream();
-			byte[] bytes = new byte[client.ReceiveBufferSize];
-			int byte_count = Stream.Read(bytes, 0, (int)client.ReceiveBufferSize);
-
-			requestType = bytes[0];
-			function = Request.Functions[(bytes[2] << 8) + bytes[1]];
-			target = (short)((bytes[4] << 8) + bytes[3]);
-			key = (ushort)((bytes[6] << 8) + bytes[5]);
-
-			byte[] newBytes = new byte[byte_count - 7];
-			Array.Copy(bytes, 7, newBytes, 0, newBytes.Length);
-			return Encoding.ASCII.GetString(newBytes);
-		}
 
         // One thread for one user
         // Start listening data coming from this client
-        public static void HandleClient(NetworkClient client) {
-
+        public static void HandleClient(NetworkClient _client) {
             while (true) {
                 try {
-                    byte requestType;
-					string function;
-					short target;
-					ushort key;
-                    string rawData = ReadDataBytes(client as TcpClient,out requestType,out function, out target, out key);
-                    
-                    if (target > 1) { // TODO
-                        // FORWARD DATA TO CLIENT X 
-                        if (requestType.Equals(Request.MessageTypes.RequestData)) {
-                            Network.SendData(function, new object[] {}, target);
-                            // TODO
-                        }
-                        return;
+                    NetworkStream stream = _client.GetStream();
+                    byte[] bytes = new byte[1024];
+					stream.Read(bytes, 0, 1024);
+
+                    var utf8Reader = new Utf8JsonReader(bytes);
+                    NetworkMessage? message = JsonSerializer.Deserialize<NetworkMessage>(ref utf8Reader)!;
+    
+
+                    Console.WriteLine(message);
+                    foreach(object aa in message.Parameters) {
+                        Console.WriteLine($"{aa.GetType()},{aa.ToString()}");
                     }
 
-                    // Parse rawdata to parameters and to function
-                    object[] parameters = Request.Deserialize(rawData);
+                    Console.WriteLine($"*RECEIVED* type:{message.MessageType} method:{message.MethodId} key:{message.Key} target:{message.TargetId} params:{message.Parameters}");
 
-                    // Make sure client function exists
-                    // TODO Handle better than object[] if returns array (use DataArray instead)
-                    MethodInfo methodInfo = typeof(ClientFunctions).GetMethod(function);
-                    if (methodInfo == null)
-                        throw new Exception("Function: " + function + " was not found");
+                    // ADD CLIENT OBJECT AS FIRST PARAMETER
+                    //message.Parameters = message.Parameters.Concat(new object[] {_client}).ToArray();
 
-                    Console.WriteLine($"Invoking function: ({function}) for client: {client.ID}");
-                    
-                    object returnData = methodInfo.Invoke(function,new object[]{client,parameters,requestType});
-                    if (returnData != null && requestType == 1) {
-                        Console.WriteLine($"Returning Data: ({returnData.GetType()}): [{returnData.ToString()}] to client: {client.ID}, from function: {function}");
-                        Network.SendData(function, new object[] {returnData}, client.ID, 0, (byte)Request.MessageTypes.ResponseData, key);
+                    // FORWARD DATA IF NOT MENT FOR SERVER (forget)
+                    if (message.TargetId != 1) {
+                        Network.SendData(message);
+                        continue;
                     }
+                    
+                    
+                    // Dump result to array and continue
+					if (message.MessageType == (byte)MessageTypes.ResponseData) {
+                        Results.Add(message.Key,message.Parameters);
+                        continue;
+                    }
+
+                    string method = Methods[message.MethodId];
+					MethodInfo methodInfo = typeof(ServerMethods).GetMethod(method);
+					if (methodInfo == null) throw new Exception($"Method {message.MethodId} was not found ({method})");
+
+					switch (message.MessageType)
+					{
+						// SEND A RESPONSE FOR CLIENT/SERVER
+						case (byte)MessageTypes.RequestData:
+                            if (message.TargetId > 1) {
+                                // FORWARD TO CLIENT
+                                Network.SendData(message);
+                            } else {
+
+                                NetworkMessage responseMessage = new NetworkMessage
+                                {
+                                    MessageType = ((byte)MessageTypes.ResponseData),
+                                    MethodId = message.MethodId,
+                                    TargetId = message.Sender,
+                                    Key = message.Key
+                                };
+
+                                // HANDLE ON SERVER
+                                object data = new object();
+                                if (message.isHandshake) { // HANDSHAKE!
+                                    //data = typeof(Network).GetMethod("Handshake").Invoke("Handshake",message.Parameters);
+                                    responseMessage.Parameters = new object[] {2};
+                                    byte[] msg = JsonSerializer.SerializeToUtf8Bytes(responseMessage);
+                                    _client.GetStream().Write(msg, 0, msg.Length);
+                                } else {
+                                    data = methodInfo.Invoke(method,message.Parameters);
+                                }
+
+                                if (data == null) responseMessage.Parameters = new object[] {data};
+                                Network.SendData(responseMessage);
+                            }
+							break;
+						
+						// FIRE AND FORGET (Dont return method return data)
+						case (byte)MessageTypes.SendData:
+							methodInfo.Invoke(method,message.Parameters);
+							break;
+						default:
+							throw new NotImplementedException();
+					}
                     Console.WriteLine("\n");
                 } catch (Exception ex) {
                     if (ex is IOException || ex is SocketException)
-                        Console.WriteLine("Client " + client.ID.ToString() + " disconnected!");
+                        Console.WriteLine("Client " + _client.ID.ToString() + " disconnected!");
                     else
                         Console.WriteLine(ex.Message);
                     break;
                 }
             }
 
-            lock (_lock) ClientList.Remove(client.ID);
-            client.Client.Shutdown(SocketShutdown.Both);
-            client.Close();
+            ClientList.Remove(_client);
+            _client.Client.Shutdown(SocketShutdown.Both);
+            _client.Close();
         }
 
-        public static short Handshake(NetworkClient client, object[] parameters, byte RequestType) {
+        public static int Handshake(NetworkClient client, int version, string userName) {
 
             // RETURNS client id if success (minus number if error (each value is one type of error))
-            int _clientVersion = Int32.Parse((string)parameters[0]);
-            string _userName = (string)parameters[1];
 
-
-            client.UserName = _userName;
-
+            client.UserName = userName;
 
             //TODO add major and minor checking
-            if (_clientVersion != Program.Version) {
-                Console.WriteLine($"User {_userName} has wrong version! Should be: {Program.Version} has: {_clientVersion}");
+            if (version != Program.Version) {
+                Console.WriteLine($"User {userName} has wrong version! Should be: {Program.Version} has: {version}");
                 return -1;
             }
 
@@ -240,32 +265,28 @@ namespace ServerFramework {
         }
 
 
-        // TODO implement
-        // Used to forward data: client X -> server -> client Y
-        public static void ForwardData(short function, object[] parameters, short target = 0, byte sender = 0) {
-            if (target <= 1)
-                throw new Exception("Invalid target to forward data to!");
-            
-            if (!Network.ClientList.ContainsKey(target))
-                    throw new Exception("Selected target not in client list!");
 
-            Console.WriteLine(($"Forwarding data... FUNCTION: {0} PARAMS: {1} TARGET: {2} FROM: {3}",Request.Functions[function],String.Join(", ",parameters),target,sender));
-            Network.SendData(function, parameters, target);
-        }
 
         // Used to read 
-        public static short GetFunctionIndex(object function) {
-
-			short functionNum = -1;
-			if (function.GetType() == typeof(string))
-				functionNum = (short)Array.FindIndex(Request.Functions.ToArray(), t => t.Equals(function.ToString(), StringComparison.InvariantCultureIgnoreCase));
-			else if(short.TryParse(function.ToString(),out functionNum))
-				functionNum = short.Parse(function.ToString());
-			else 
-				throw new Exception($"Invalid function type: {function} ({function.GetType()})");
-
-			return functionNum;
+        public static int GetMethodIndex(string method) {
+			return Array.FindIndex(Methods.ToArray(), t => t.Equals(method, StringComparison.InvariantCultureIgnoreCase));
 		}
+
+        public static void DebugMessage(NetworkMessage message) {
+            Console.WriteLine();
+            Console.WriteLine($"MessageType:{message.MessageType}");
+            Console.WriteLine($"TargetId:{message.TargetId}");
+            Console.WriteLine($"MethodId:{message.MethodId}");
+            if (message.Parameters != null) {
+                foreach (object pr in message.Parameters) {
+                    Console.WriteLine($"PARAMETER: {pr.GetType()} > {pr.ToString()}");
+                }
+            }
+            Console.WriteLine($"Key:{message.Key}");
+            Console.WriteLine($"Sender:{message.Sender}");
+            Console.WriteLine($"isHandshake:{message.isHandshake}");
+            Console.WriteLine();
+        }
     }
 
 
@@ -273,7 +294,7 @@ namespace ServerFramework {
     public class NetworkClient : TcpClient {
         public StreamReader Reader { get; set; }
         public StreamWriter Writer { get; set; }
-        public short ID { get; set; }
+        public int ID { get; set; }
         public string? UserName { get; set; }
 
 
