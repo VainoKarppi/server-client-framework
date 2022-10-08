@@ -275,7 +275,7 @@ namespace ServerFramework {
 
         // Used to read 
 		public static int GetMethodIndex(string method) {
-			return Methods.FindIndex(t => (t == method));
+			return Methods.FindIndex(m => m.ToLower() == method.ToLower());
 		}
 
         public static List<object> SerializeParameters(params object[] parameters) {

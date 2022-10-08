@@ -122,7 +122,7 @@ namespace ClientFramework {
 					{
 						// SEND A REQUEST FOR CLIENT/SERVER
 						case (byte)MessageTypes.RequestData:
-							object data = methodInfo.Invoke(method,message.Parameters);
+							object data = methodInfo.Invoke(method,parameters);
 
 							NetworkMessage responseMessage = new NetworkMessage
 							{
@@ -136,7 +136,7 @@ namespace ClientFramework {
 						
 						// FIRE AND FORGET (Dont return method return data)
 						case (byte)MessageTypes.SendData:
-							methodInfo.Invoke(method,message.Parameters);
+							methodInfo.Invoke(method,parameters);
 							break;
 						default:
 							throw new NotImplementedException();
@@ -237,6 +237,8 @@ namespace ClientFramework {
 		}
 
 		public static int GetMethodIndex(string method) {
+			return Methods.FindIndex(m => m.ToLower() == method.ToLower());
+		}
 		public static List<object> SerializeParameters(params object[] parameters) {
 			List<object> newParams = new List<object>();
 			foreach (object parameter in parameters) {
@@ -259,11 +261,6 @@ namespace ClientFramework {
 			}
 			return final.ToArray();
 		}
-		}
-
-
-
-
 
 
 
