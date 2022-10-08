@@ -6,19 +6,16 @@ using System.Text;
 
 namespace ClientFramework {
     class ClientMethods {
-        public static string Test(TcpClient server, object[] parameters, byte RequestType) {
-            Console.WriteLine($"RequestType:{RequestType} IP:{server.Client.RemoteEndPoint}");
-            Console.WriteLine($"PARAMS COUNT:{parameters.Count()}");
-            foreach (var x in parameters) {
-                Console.WriteLine("\t" + $">> {x}");
-            }
-            return "testAAAA";
+        public static string Test(TcpClient server, string testMessage) {
+
+            Console.WriteLine($"testMessage:{testMessage} IP:{server.Client.RemoteEndPoint}");
+            return "TestFromClient";
         }
-        public static void Disconnect(TcpClient server, object[] parameters, byte RequestType) {
+        public static void Disconnect(TcpClient server) {
             throw new NotImplementedException();
         }
 
-        public static object[] TestArray(TcpClient server, object[] parameters, byte RequestType) {
+        public static object[] TestArray(TcpClient server) {
             return new object[] {"asd",121};
         }
     }

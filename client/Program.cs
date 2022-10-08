@@ -52,10 +52,13 @@ namespace ClientFramework {
                             Commands.UserList();
                             break;
                         case "senddata":
-                            Commands.SendCommand();
+                            Commands.SendData();
+                            break;
+                        case "requestdata":
+                            Commands.RequestData();
                             break;
                         case "status":
-                            Console.WriteLine(Network.IsConnected ? "Connected to server!" : "NOT connected to server!");
+                            Console.WriteLine(Network.IsConnected ? "Connected to server! ID:" + Network.ClientID.ToString() : "NOT connected to server!");
                             break;
                         default:
                             Console.WriteLine("Unknown command!" + "\n" + "Type 'help' for commands!");

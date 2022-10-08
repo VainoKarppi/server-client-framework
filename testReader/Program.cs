@@ -1,4 +1,5 @@
 ﻿using System;
+using System.ComponentModel;
 using System.IO;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.Text;
@@ -13,7 +14,7 @@ class ConsoleApplication
         public float Test { get; set; }
         public string? Summary { get; set; }
         public object? Message {get; set; }
-        public object[]? Parameters { get; set; }
+        public List<object>? Parameters { get; set; }
     }
     static void Main()
     {
@@ -27,14 +28,19 @@ class ConsoleApplication
             TemperatureCelsius = 25,
             Test = 100f,
             Summary = "Hot",
-            Parameters = new object[] {10,10000f,"test",false,new object[] {"asd"}}
+            Parameters = new List<object> {10,true}
         };
 
-        uint num;
-        string nam = "-1";
-        bool succ = uint.TryParse(nam,out num);
-        Console.WriteLine(num);
-        Console.WriteLine(succ);
+        
+
+        List<object> newParams = new List<object>();
+        foreach (object parameter in networkMessage.Parameters) {
+            newParams.Add(parameter.GetType().ToString());
+            newParams.Add(parameter);
+        }
+
+        networkMessage.Parameters = newParams;
+
         string jsonString = JsonSerializer.Serialize(networkMessage);
 
         Console.WriteLine(jsonString);
@@ -48,16 +54,38 @@ class ConsoleApplication
         Console.WriteLine($"Test: {networkMessage1?.Test} {networkMessage1?.Test.GetType()}");
         Console.WriteLine($"Summary: {networkMessage1?.Summary}");
         Console.WriteLine();
-        object []? paramArray = networkMessage1?.Parameters;
+        List<object>? paramArray = networkMessage1?.Parameters;
         
+        int ab;
+        Type? type = default;
         if (paramArray != null) {
-            object[] asd = ParseParameters(paramArray);
+            int i = 0;
+            List<object> final = new List<object>();
+            for (i = 0; (paramArray.Count() / 2 + 1) >= i; i++) {
+                object value = paramArray[i];
+                if (i%2 == 0) {
+                    type = Type.GetType(value.ToString());
+                    Console.WriteLine(type);
+                    continue;
+                } else {
+                    Console.WriteLine($"{value.ToString()}");
+                    object AA = Parse(type,value.ToString());
+                    final.Add(AA);
+                }
+            }
+            //object[] finale = final.ToArray();
+            foreach(object a in final){
+                Console.WriteLine($"{a.GetType()} | {a.ToString()}");
+            }
         }
 
         
 
     }
-
+    
+    public static object Parse(Type t, string s)
+      => TypeDescriptor.GetConverter(t).ConvertFromInvariantString(s);
+      
     public static object[] ParseParameters(object[] parameters) {
         object[] newParameters = new object[]{};
 
@@ -71,7 +99,7 @@ class ConsoleApplication
             bool boolValue;
             
             // Check if number
-            char[] nums = new char[] { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '.', '-' };
+            char[] nums = new char[] {'0','1','2','3','4','5','6','7','8','9','0','.','-'};
             if (nums.Contains(parameter.ToString().ElementAt(0))) {
                 if (parameter.ToString().Contains('.')) {
                     if(double.TryParse(parameter.ToString(),out doubleValue)) {

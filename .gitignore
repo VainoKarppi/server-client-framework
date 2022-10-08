@@ -1,11 +1,15 @@
 .vscode
 .vs
 
+
 server/bin/**
 client/bin/**
+testReader/bin/**
 
 server/obj/**
 client/obj/**
+testReader/obj/**
 
 server/publish/**
 client/publish/**
+testReader/publish/**

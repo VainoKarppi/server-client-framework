@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -11,11 +11,12 @@ using System.Threading.Tasks;
 using System.Reflection;
 using System.IO;
 using System.Text.Json;
+using System.ComponentModel;
 
 namespace ClientFramework {
-	// SendData = Fire And forget
-	// RequestData = Send using a ID and read from ResponseData
-	// ResponseData = Used to receive the data for ID that was sent using RequestData
+	// 0 SendData = Fire And forget
+	// 1 RequestData = Send using a ID and read from ResponseData
+	// 2 ResponseData = Used to receive the data for ID that was sent using RequestData
 	
 	
 	
@@ -26,13 +27,16 @@ namespace ClientFramework {
 		{
 			public int? MessageType { get; set; }
 			// One of the tpes in "MessageTypes"
-			public int? TargetId { get; set; }
+			public int TargetId { get; set; }
 			// 0 = everyone, 1 = server, 2 = client 1...
 			public int MethodId { get; set; }
 			// Minus numbers are for internal use!
-			public object[]? Parameters { get; set; }
+			public List<object>? Parameters { get; set; }
+			// Array of parameters passed to method that is going to be executed
 			public int Key { get; set; }
-			public int? Sender { get; set; }
+			// Key for getting the response for specific request
+			public int Sender { get; set; }
+			// Id of the sender. Can be null in case handshake is not completed
 			public bool isHandshake { get; set;}
 			// Used to detect for handshake. Else send error for not connected to server!
 		}
@@ -41,7 +45,7 @@ namespace ClientFramework {
 
 
 
-		public static int? ClientID;
+		public static int ClientID;
 		public static bool IsConnected { get; set; }
 		public static bool HandshakeDone { get; set; }
 		public static TcpClient Client = default!;
@@ -92,17 +96,21 @@ namespace ClientFramework {
 					byte[] bytes = new byte[1024];
 					Stream.Read(bytes, 0, 1024);
 
-					Console.WriteLine("ASD");
 					var utf8Reader = new Utf8JsonReader(bytes);
                     NetworkMessage? message = JsonSerializer.Deserialize<NetworkMessage>(ref utf8Reader)!;
 
-					Console.WriteLine($"*RECEIVED* type:{message.MessageType} method:{message.MethodId} key:{message.Key} target:{message.TargetId} params:{message.Parameters}");
-					
-					message.Parameters = message.Parameters.Concat(new object[] {Client}).ToArray();
+					DebugMessage(message);
+	
+					List<object> paramList = new List<object>();
+                    paramList.Add(Client);
+                    foreach (object p in DeserializeParameters(message.Parameters)) {
+                        paramList.Add(p);
+                    }
+                    object[] parameters = paramList.ToArray();
 
 					// Dump result to array and continue
 					if (message.MessageType == (byte)MessageTypes.ResponseData) {
-						Results.Add(message.Key,message.Parameters);
+						Results.Add(message.Key,parameters);
 						continue;
 					}
 
@@ -122,7 +130,7 @@ namespace ClientFramework {
 								MethodId = message.MethodId,
 								TargetId = message.Sender
 							};
-							if (data != null) responseMessage.Parameters = new object[] {data};
+							if (data != null) responseMessage.Parameters = SerializeParameters(data);
 							Network.SendData(responseMessage);
 							break;
 						
@@ -162,12 +170,12 @@ namespace ClientFramework {
 
 		public static object[] RequestData(NetworkMessage message) {
 			if (!IsConnected) throw new Exception("Not connected to server");
-			
-			
 
 			message.MessageType = (int?)MessageTypes.RequestData;
 			message.Key = new Random().Next(1,int.MaxValue);
 			message.Sender = ClientID;
+
+			DebugMessage(message);
 
 			// Send request
 			byte[] msg = JsonSerializer.SerializeToUtf8Bytes(message);
@@ -199,16 +207,13 @@ namespace ClientFramework {
 			{
 				TargetId = 1,
 				isHandshake = true,
-				Parameters = new object[] {version,userName},
+				Parameters = SerializeParameters(version,userName),
 				MessageType = (int?)MessageTypes.RequestData,
-				Key = new Random().Next(1,int.MaxValue),
 				Sender = -1
 			};
 
 			byte[] msg = JsonSerializer.SerializeToUtf8Bytes(handshakeMessage);
 			Client.GetStream().Write(msg, 0, msg.Length);
-			
-			Console.WriteLine("2");
 
 			NetworkStream Stream = Client.GetStream();
 			byte[] bytes = new byte[1024];
@@ -218,9 +223,9 @@ namespace ClientFramework {
 			NetworkMessage? returnMessage = JsonSerializer.Deserialize<NetworkMessage>(ref utf8Reader)!;
 
 			DebugMessage(returnMessage);
+			object[] returnedParams = DeserializeParameters(returnMessage.Parameters);
 
-
-			int _clientID = Int32.Parse(returnMessage.Parameters[0].ToString());
+			int _clientID = (int)returnedParams[0];
 			if (_clientID < 0) {
 				if (_clientID == -1) throw new Exception("Version mismatch!");
 				if (_clientID == -2) throw new Exception("Username already in use!");
@@ -232,26 +237,62 @@ namespace ClientFramework {
 		}
 
 		public static int GetMethodIndex(string method) {
-			return Array.FindIndex(Methods.ToArray(), t => t.Equals(method, StringComparison.InvariantCultureIgnoreCase));
+		public static List<object> SerializeParameters(params object[] parameters) {
+			List<object> newParams = new List<object>();
+			foreach (object parameter in parameters) {
+				newParams.Add(parameter.GetType().ToString());
+				newParams.Add(parameter);
+			}
+			return newParams;
+		}
+		public static object[] DeserializeParameters(List<object> parameters) {
+			Type type = default;
+			List<object> final = new List<object>();
+			for (int i = 0; i < parameters.Count(); i++) {
+				object value = parameters[i];
+				if (i%2 == 0) {
+					type = Type.GetType(value.ToString());
+					continue;
+				}
+				object data = TypeDescriptor.GetConverter(type).ConvertFromInvariantString(value.ToString());
+				final.Add(data);
+			}
+			return final.ToArray();
+		}
 		}
 
 
+
+
+
+
+
 		public static void DebugMessage(NetworkMessage message) {
-            Console.WriteLine();
+            Console.WriteLine("--------------DEBUG MESSGAE--------------");
             Console.WriteLine($"MessageType:{message.MessageType}");
             Console.WriteLine($"TargetId:{message.TargetId}");
             Console.WriteLine($"MethodId:{message.MethodId}");
             if (message.Parameters != null) {
-				int i = 1;
+				int i = 0;
+				int ii = 1;
+				Console.WriteLine($"Parameters:");
+                Type LastType = default;
                 foreach (object pr in message.Parameters) {
-                    Console.WriteLine($"   ({i}) PARAM: {pr.GetType()} > {pr.ToString()}");
-					i++;
+                    if (i%2 == 0) {
+                        i++;
+                        LastType = Type.GetType(pr.ToString());
+                        continue;
+                    }
+                    i++;
+                    object data = TypeDescriptor.GetConverter(LastType).ConvertFromInvariantString(pr.ToString());
+                    Console.WriteLine($"  ({ii}) PARAM: ({data.GetType()}): {data.ToString()}");
+                    ii++;
                 }
             }
             Console.WriteLine($"Key:{message.Key}");
             Console.WriteLine($"Sender:{message.Sender}");
             Console.WriteLine($"isHandshake:{message.isHandshake}");
-            Console.WriteLine();
+            Console.WriteLine("--------------DEBUG MESSGAE--------------");
         }
 	}
 	
