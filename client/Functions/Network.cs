@@ -23,7 +23,7 @@ namespace ClientFramework {
 	
 	
     public class Network {
-		public static event EventHandler<Events.ServerEventMessage> ClientConnected;
+		public static event EventHandler<Events.ServerEventMessage> ?ClientConnected;
 		public class EventMessage {
             public int? MessageType { get; set; } = (int)MessageTypes.ServerEvent;
             public int[]? Targets { get; set; }
