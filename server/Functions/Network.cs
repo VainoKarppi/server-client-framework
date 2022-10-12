@@ -30,10 +30,10 @@ namespace ServerFramework {
 			// 0 = everyone, 1 = server, 2 = client 1...
 			public int MethodId { get; set; }
 			// Minus numbers are for internal use!
-			public List<object>? Parameters { get; set; }
+			public List<object>? Parameters { get; set; } = new List<object>() {};
 			// Array of parameters passed to method that is going to be executed
-			public int Key { get; set; } = new Random().Next(1,int.MaxValue);
-			// Key for getting the response for specific request
+			public int Key { get; set; } = new Random().Next(100,int.MaxValue);
+			// Key for getting the response for specific request (0-100) = event id
 			public int? Sender { get; set; } = ClientID;
 			// Id of the sender. Can be null in case handshake is not completed
 			public bool isHandshake { get; set; } = false;
@@ -105,7 +105,7 @@ namespace ServerFramework {
 
         
         public static void SendData(NetworkMessage message) {
-            if (!ServerRunning) throw new Exception("Server not running");
+            if (!ServerRunning) throw new Exception("Server not running!");
 			if (message.TargetId == 1) throw new Exception("Cannot send data to self (server)!");
 			
 			if (message.MessageType == null) message.MessageType = (int?)MessageTypes.SendData;
@@ -247,21 +247,17 @@ namespace ServerFramework {
                                     Sender = 1,
                                     Key = message.Key
                                 };
-                                Console.WriteLine(method);
-                                Console.WriteLine(parameters.Count());
                                 // HANDLE ON SERVER
                                 object? data = default;
-                                data = methodInfo.Invoke(method,parameters);
-                                Console.WriteLine("1424142");
+                                data = methodInfo?.Invoke(method,parameters);
                                 if (data != null) responseMessage.Parameters = SerializeParameters(data);
-                                Console.WriteLine(data);
                                 Network.SendData(responseMessage);
                             }
 							break;
 						
 						// FIRE AND FORGET (Dont return method return data)
 						case (byte)MessageTypes.SendData:
-							methodInfo.Invoke(method,parameters);
+							methodInfo?.Invoke(method,parameters);
 							break;
 						default:
 							throw new NotImplementedException();

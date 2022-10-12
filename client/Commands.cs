@@ -21,6 +21,10 @@ namespace ClientFramework {
             Console.WriteLine("Exit         | Closes application");
         }
         public static void UserList() {
+            if (Network.OtherClients.Count() == 0) {
+                Console.WriteLine("No other clients connected");
+                return;
+            }
             Console.WriteLine("Connected clients: ");
 
             int i = 1;

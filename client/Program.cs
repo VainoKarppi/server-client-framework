@@ -1,4 +1,4 @@
-﻿
+
 using System.Net.Mime;
 using System.Reflection;
 
@@ -16,10 +16,7 @@ namespace ClientFramework {
             Console.Title = "EDEN Online Extension CLIENT";
             Console.WriteLine("Type 'help' for commands!");
 
-            object[] asd = new object[] {"test"};
-            Type LastType = Type.GetType(asd.ToString());
-
-            Console.WriteLine(LastType);
+            Network.Connect("127.0.0.1",2302,"vaino");
 
             while (true) {
                 Console.WriteLine();

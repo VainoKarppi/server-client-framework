@@ -1,4 +1,5 @@
-﻿using System;
+﻿using System.Reflection.Metadata;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -12,6 +13,7 @@ using System.Reflection;
 using System.IO;
 using System.Text.Json;
 using System.ComponentModel;
+using System.Text.Json.Nodes;
 
 namespace ClientFramework {
 	// 0 SendData = Fire And forget
@@ -21,9 +23,16 @@ namespace ClientFramework {
 	
 	
     public class Network {
-		public class ServerEvent : EventArgs {
+		public static event EventHandler<Events.ServerEventMessage> ClientConnected;
+		public class EventMessage {
+            public int? MessageType { get; set; } = (int)MessageTypes.ServerEvent;
+            public int[]? Targets { get; set; }
+            // Who to sent the event to
+            public string? EventName { get; set; }
+            // OnPlayerConnected etc
+            public List<object>? Parameters { get; set; } = new List<object>() {};
 
-		}
+        }
 		
 		public enum MessageTypes : int {SendData, RequestData, ResponseData, ServerEvent, ClientEvent}
 		public class NetworkMessage
@@ -34,9 +43,9 @@ namespace ClientFramework {
 			// 0 = everyone, 1 = server, 2 = client 1...
 			public int MethodId { get; set; }
 			// Minus numbers are for internal use!
-			public List<object>? Parameters { get; set; }
+			public List<object>? Parameters { get; set; } = new List<object>() {};
 			// Array of parameters passed to method that is going to be executed
-			public int Key { get; set; } = new Random().Next(1,int.MaxValue);
+			public int Key { get; set; } = new Random().Next(100,int.MaxValue);
 			// Key for getting the response for specific request
 			public int? Sender { get; set; } = ClientID;
 			// Id of the sender. Can be null in case handshake is not completed
@@ -113,15 +122,31 @@ namespace ClientFramework {
 					Stream.Read(bytes, 0, 1024);
 
 					var utf8Reader = new Utf8JsonReader(bytes);
-                    NetworkMessage? message = JsonSerializer.Deserialize<NetworkMessage>(ref utf8Reader)!;
+                    dynamic messageTemp = JsonSerializer.Deserialize<dynamic>(ref utf8Reader)!;
+		
+					string property = ((JsonElement)messageTemp).GetProperty("MessageType").ToString();
+
+					int type = -1;
+					if (!Int32.TryParse(property, out type)) continue;
+					if (type < 0) continue;
 
 					//TODO start in new thread?
-					DebugMessage(message);
+					
 
+					if (type == (int)MessageTypes.ServerEvent) {
+						EventMessage? eventMessage = (EventMessage)messageTemp;
+						HandleEvent(eventMessage);
+						continue;
+					}
+
+					DebugMessage(messageTemp);
+
+					NetworkMessage? message = (NetworkMessage)messageTemp;
+					Console.WriteLine(message);
 					object[] deserialisedParams = DeserializeParameters(message.Parameters);
 
 					// Dump result to array and continue
-					if (message.MessageType == (byte)MessageTypes.ResponseData) {
+					if (message.MessageType == (int)MessageTypes.ResponseData) {
 						Results.Add(message.Key,deserialisedParams);
 						continue;
 					}
@@ -150,12 +175,12 @@ namespace ClientFramework {
 					switch (message.MessageType)
 					{
 						// SEND A REQUEST FOR CLIENT/SERVER
-						case (byte)MessageTypes.RequestData:
+						case (int)MessageTypes.RequestData:
 							object data = methodInfo?.Invoke(method,parameters);
 
 							NetworkMessage responseMessage = new NetworkMessage
 							{
-								MessageType = ((byte)MessageTypes.ResponseData),
+								MessageType = ((int)MessageTypes.ResponseData),
 								MethodId = message.MethodId,
 								TargetId = (int?)message.Sender
 							};
@@ -164,13 +189,12 @@ namespace ClientFramework {
 							break;
 						
 						// FIRE AND FORGET (Dont return method return data)
-						case (byte)MessageTypes.SendData:
+						case (int)MessageTypes.SendData:
 							methodInfo?.Invoke(method,parameters);
 							break;
-						case (byte)MessageTypes.ServerEvent:
-							//HandleEvent(message);
+						case (int)MessageTypes.ClientEvent:
 							throw new NotImplementedException();
-						case (byte)MessageTypes.ClientEvent:
+							
 						default:
 							throw new NotImplementedException();
 					}
@@ -185,10 +209,42 @@ namespace ClientFramework {
 				}
 				Client.Client.Close();
 				IsConnected = false;
-				Console.WriteLine(ex.Message);
+				Console.WriteLine(ex);
 			}
 		}
-		public static void HandleEvent() {
+		public static void HandleEvent(EventMessage message) {
+			Console.WriteLine(message.ToString());
+			Console.WriteLine("HEEELP");
+			string eventName = message?.EventName;
+			Console.WriteLine(eventName);
+			Console.WriteLine(message?.Parameters);
+			object[] parameters = DeserializeParameters(message?.Parameters);
+			Console.WriteLine("HEEELP2");
+
+			var da = new Events.ServerEventMessage();
+			da.ClientID = 2;
+			da.Code = 5;
+			da.IsSuccessful = true;
+			da.CompletionTime = DateTime.Now;
+			switch (eventName.ToLower()) {
+				case "onclientconnected":
+					ClientConnected?.Invoke(Network.ClientConnected,da);
+					break;
+				case "onclientdisconnected":
+					break;
+				case "onservershutdown":
+					break;
+				case "onmessagesent":
+					break;
+				case "onmessagereceived":
+					break;
+				case "onhandshakestart":
+					break;
+				case "onhandshakeend":
+					break;
+				default:
+					throw new NotImplementedException();
+			}
 			//OnUserConnected(int ID, string name);
 			//OnUserDisconnected(int ID, int reason);
 			//OnServerShutdown();
@@ -215,8 +271,6 @@ namespace ClientFramework {
 			if (!IsConnected) throw new Exception("Not connected to server");
 
 			message.MessageType = (int?)MessageTypes.RequestData;
-			message.Key = new Random().Next(1,int.MaxValue);
-			message.Sender = ClientID;
 
 			DebugMessage(message);
 
@@ -265,7 +319,6 @@ namespace ClientFramework {
 			var utf8Reader = new Utf8JsonReader(bytes);
 			NetworkMessage? returnMessage = JsonSerializer.Deserialize<NetworkMessage>(ref utf8Reader)!;
 
-			//DebugMessage(returnMessage);
 			object[] returnedParams = DeserializeParameters(returnMessage.Parameters);
 
 			int _clientID = (int)returnedParams[0];
