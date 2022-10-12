@@ -21,26 +21,31 @@ namespace ClientFramework {
 	
 	
     public class Network {
+		public class ServerEvent : EventArgs {
+
+		}
 		
-		public enum MessageTypes : int {SendData, RequestData, ResponseData}
+		public enum MessageTypes : int {SendData, RequestData, ResponseData, ServerEvent, ClientEvent}
 		public class NetworkMessage
 		{
 			public int? MessageType { get; set; }
 			// One of the tpes in "MessageTypes"
-			public int TargetId { get; set; }
+			public int? TargetId { get; set; } = 1;
 			// 0 = everyone, 1 = server, 2 = client 1...
 			public int MethodId { get; set; }
 			// Minus numbers are for internal use!
 			public List<object>? Parameters { get; set; }
 			// Array of parameters passed to method that is going to be executed
-			public int Key { get; set; }
+			public int Key { get; set; } = new Random().Next(1,int.MaxValue);
 			// Key for getting the response for specific request
-			public int Sender { get; set; }
+			public int? Sender { get; set; } = ClientID;
 			// Id of the sender. Can be null in case handshake is not completed
-			public bool isHandshake { get; set;}
+			public bool isHandshake { get; set; } = false;
 			// Used to detect for handshake. Else send error for not connected to server!
 		}
-		public static List<string> Methods = new List<string>() {"Disconnect","ConnectedClients","Test","TestArray"};
+		public static List<string> ClientMethods = new List<string>() {};
+		private static List<string> PrivateMethods = new List<string>() {"GetMethods","ConnectedClients","HandleEvent"};
+		// To be read from handshake (register on server)
 		public static Dictionary<int,object[]> Results = new Dictionary<int,object[]>();
 
 
@@ -49,7 +54,18 @@ namespace ClientFramework {
 		public static bool IsConnected { get; set; }
 		public static bool HandshakeDone { get; set; }
 		public static TcpClient Client = default!;
-	
+		public static List<OtherClient> OtherClients = new List<OtherClient>() {};
+		// {ID,USERNAME,CONNECTED}
+		public class OtherClient {
+			public int? Id { get; set;}
+			public string UserName { get; set; } = "error (NoName)";
+			public bool Connected { get; set; } = true;
+			public OtherClient(int id, string name, bool connected = true) {
+				this.Id = id;
+				this.UserName = name;
+				this.Connected = connected;
+			}
+		}
 
 		
 		//!! METHODS !!//
@@ -99,36 +115,49 @@ namespace ClientFramework {
 					var utf8Reader = new Utf8JsonReader(bytes);
                     NetworkMessage? message = JsonSerializer.Deserialize<NetworkMessage>(ref utf8Reader)!;
 
+					//TODO start in new thread?
 					DebugMessage(message);
+
+					object[] deserialisedParams = DeserializeParameters(message.Parameters);
+
+					// Dump result to array and continue
+					if (message.MessageType == (byte)MessageTypes.ResponseData) {
+						Results.Add(message.Key,deserialisedParams);
+						continue;
+					}
 	
 					List<object> paramList = new List<object>();
                     paramList.Add(Client);
-                    foreach (object p in DeserializeParameters(message.Parameters)) {
+                    foreach (object p in deserialisedParams) {
                         paramList.Add(p);
                     }
                     object[] parameters = paramList.ToArray();
 
-					// Dump result to array and continue
-					if (message.MessageType == (byte)MessageTypes.ResponseData) {
-						Results.Add(message.Key,parameters);
-						continue;
-					}
+					
 
-					string method = Methods[message.MethodId];
-					MethodInfo methodInfo = typeof(ClientMethods).GetMethod(method);
-					if (methodInfo == null) throw new Exception($"Method {message.MethodId} was not found ({method})");
+					// GET METHOD INFO
+                    string method;
+                    MethodInfo methodInfo;
+                    if (message.MethodId < 0) {
+                        method = PrivateMethods[Math.Abs(message.MethodId) - 1];
+                        methodInfo = typeof(Network).GetMethod(method);
+                    } else {
+                        method = ClientMethods[message.MethodId];
+                        methodInfo = typeof(ClientMethods).GetMethod(method);
+                        if (methodInfo == null) throw new Exception($"Method {message.MethodId} was not found ({method})");
+                    }
 
 					switch (message.MessageType)
 					{
 						// SEND A REQUEST FOR CLIENT/SERVER
 						case (byte)MessageTypes.RequestData:
-							object data = methodInfo.Invoke(method,parameters);
+							object data = methodInfo?.Invoke(method,parameters);
 
 							NetworkMessage responseMessage = new NetworkMessage
 							{
 								MessageType = ((byte)MessageTypes.ResponseData),
 								MethodId = message.MethodId,
-								TargetId = message.Sender
+								TargetId = (int?)message.Sender
 							};
 							if (data != null) responseMessage.Parameters = SerializeParameters(data);
 							Network.SendData(responseMessage);
@@ -136,8 +165,12 @@ namespace ClientFramework {
 						
 						// FIRE AND FORGET (Dont return method return data)
 						case (byte)MessageTypes.SendData:
-							methodInfo.Invoke(method,parameters);
+							methodInfo?.Invoke(method,parameters);
 							break;
+						case (byte)MessageTypes.ServerEvent:
+							//HandleEvent(message);
+							throw new NotImplementedException();
+						case (byte)MessageTypes.ClientEvent:
 						default:
 							throw new NotImplementedException();
 					}
@@ -155,7 +188,15 @@ namespace ClientFramework {
 				Console.WriteLine(ex.Message);
 			}
 		}
+		public static void HandleEvent() {
+			//OnUserConnected(int ID, string name);
+			//OnUserDisconnected(int ID, int reason);
+			//OnServerShutdown();
+			//OnMessageSent();
+			//OnMessageReceived();
 
+
+		}
 		// Fire and forget
 		public static void SendData(NetworkMessage message) {
             if (!IsConnected) throw new Exception("Not connected to server");
@@ -163,8 +204,10 @@ namespace ClientFramework {
 			
 			if (message.MessageType == null) message.MessageType = (int?)MessageTypes.SendData;
 
+			DebugMessage(message);
+
 			byte[] msg = JsonSerializer.SerializeToUtf8Bytes(message);
-			Client.GetStream().Write(msg, 0, msg.Length);
+			Client.GetStream().WriteAsync(msg, 0, msg.Length);
         }
 
 
@@ -179,7 +222,7 @@ namespace ClientFramework {
 
 			// Send request
 			byte[] msg = JsonSerializer.SerializeToUtf8Bytes(message);
-			Client.GetStream().Write(msg, 0, msg.Length);
+			Client.GetStream().WriteAsync(msg, 0, msg.Length);
 
 			
 			// Wait for response
@@ -193,7 +236,7 @@ namespace ClientFramework {
 					break;
 				}
 				
-				if (timer > 100) throw new Exception($"Request {message.Key} ({Methods[message.MethodId]}) timed out!");
+				if (timer > 100) throw new Exception($"Request {message.Key} ({ClientMethods[message.MethodId]}) timed out!");
 				timer++;
 			}
 			return returnData;
@@ -213,7 +256,7 @@ namespace ClientFramework {
 			};
 
 			byte[] msg = JsonSerializer.SerializeToUtf8Bytes(handshakeMessage);
-			Client.GetStream().Write(msg, 0, msg.Length);
+			Client.GetStream().WriteAsync(msg, 0, msg.Length);
 
 			NetworkStream Stream = Client.GetStream();
 			byte[] bytes = new byte[1024];
@@ -222,7 +265,7 @@ namespace ClientFramework {
 			var utf8Reader = new Utf8JsonReader(bytes);
 			NetworkMessage? returnMessage = JsonSerializer.Deserialize<NetworkMessage>(ref utf8Reader)!;
 
-			DebugMessage(returnMessage);
+			//DebugMessage(returnMessage);
 			object[] returnedParams = DeserializeParameters(returnMessage.Parameters);
 
 			int _clientID = (int)returnedParams[0];
@@ -233,11 +276,23 @@ namespace ClientFramework {
 			}
 
 			ClientID = _clientID;
-			return _clientID;
+			object[] methods = (object[])returnedParams[1];
+			foreach (string method in methods) {
+				ClientMethods.Add(method);
+			}
+			Console.WriteLine($"DEBUG: Added ({ClientMethods.Count()}) methods to list!");
+
+			object[] clients = (object[])returnedParams[2];
+			foreach (object[] clientData in clients) {
+				OtherClients.Add(new OtherClient((int)clientData[0], (string)clientData[1]));
+			}
+			Console.WriteLine($"DEBUG: Added ({OtherClients.Count()}) other clients to list!");
+
+			return _clientID;	
 		}
 
 		public static int GetMethodIndex(string method) {
-			return Methods.FindIndex(m => m.ToLower() == method.ToLower());
+			return ClientMethods.FindIndex(m => m.ToLower() == method.ToLower());
 		}
 		public static List<object> SerializeParameters(params object[] parameters) {
 			List<object> newParams = new List<object>();
@@ -256,8 +311,13 @@ namespace ClientFramework {
 					type = Type.GetType(value.ToString());
 					continue;
 				}
-				object data = TypeDescriptor.GetConverter(type).ConvertFromInvariantString(value.ToString());
-				final.Add(data);
+				if (type.IsArray) {
+					object[] data = ParseParamArray(value.ToString());
+					final.Add(data);
+				} else {
+					object data = TypeDescriptor.GetConverter(type).ConvertFromInvariantString(value.ToString());
+					final.Add(data);
+				}
 			}
 			return final.ToArray();
 		}
@@ -266,13 +326,15 @@ namespace ClientFramework {
 
 		public static void DebugMessage(NetworkMessage message) {
             Console.WriteLine("--------------DEBUG MESSGAE--------------");
+			string jsonString = JsonSerializer.Serialize(message);
+            Console.WriteLine(message);
             Console.WriteLine($"MessageType:{message.MessageType}");
             Console.WriteLine($"TargetId:{message.TargetId}");
             Console.WriteLine($"MethodId:{message.MethodId}");
             if (message.Parameters != null) {
 				int i = 0;
 				int ii = 1;
-				Console.WriteLine($"Parameters:");
+				Console.WriteLine($"Parameters ({message.Parameters.Count()}):");
                 Type LastType = default;
                 foreach (object pr in message.Parameters) {
                     if (i%2 == 0) {
@@ -281,7 +343,13 @@ namespace ClientFramework {
                         continue;
                     }
                     i++;
-                    object data = TypeDescriptor.GetConverter(LastType).ConvertFromInvariantString(pr.ToString());
+                    object data = default;
+                    if (LastType.IsArray) {
+                        data = pr;
+                    } else {
+                        data = TypeDescriptor.GetConverter(LastType).ConvertFromInvariantString(pr.ToString());
+                    }
+                    
                     Console.WriteLine($"  ({ii}) PARAM: ({data.GetType()}): {data.ToString()}");
                     ii++;
                 }
@@ -291,6 +359,81 @@ namespace ClientFramework {
             Console.WriteLine($"isHandshake:{message.isHandshake}");
             Console.WriteLine("--------------DEBUG MESSGAE--------------");
         }
+	
+		public static object[] ParseParamArray(string args) {
+			if (args.ElementAt(0) != '[') 
+				args = "[" + args + "]";
+				
+			args = args.Substring(1);
+
+			List<object> array = new List<object>();
+			char[] nums = new char[] {'0','1','2','3','4','5','6','7','8','9','0','.','-'};
+			for (int i = 0; i < args.Length; i++) {
+				if (args[i] == '[') {
+					StringBuilder str = new StringBuilder();
+					int inArr = 0;
+					while (true) {
+						if (args[i] == '[') inArr++;
+						if (args[i] == ']') inArr--;
+						str.Append(args[i]);
+						i++;
+						if (inArr == 0) break;
+					}
+					object[] innerArray = ParseParamArray(str.ToString());
+					array.Add(innerArray);
+				} else if (args[i] == '"') {
+					StringBuilder str = new StringBuilder();
+					bool isEnd = false;
+					i++;
+					while (true) {
+						try {
+							if (args[i] == '"') {
+								isEnd = !isEnd;
+							}
+						} catch {
+							break;
+						}
+						if (isEnd && (args[i] == ',' || args[i] == ']')) {
+							break;
+						}
+						str.Append(args[i]);
+						i++;
+					}
+					array.Add(str.ToString().TrimEnd('"'));
+				} else if (nums.Contains(args[i])) {
+					StringBuilder str = new StringBuilder();
+					bool isFloat = false;
+					while (nums.Contains(args[i])) {
+						if (args[i] == '.')
+							isFloat = true;
+						str.Append(args[i]);
+						i++;
+					}
+					if (isFloat) {
+						double num = Convert.ToDouble(str.ToString());
+						array.Add(num);
+					} else {
+						int num = Convert.ToInt32(str.ToString());
+						array.Add(num);
+					}
+				} else if (
+					Substring(args, i, 4).ToLower() == "true") {
+					array.Add(true);
+					i = i + 4;
+				} else if (Substring(args, i, 5).ToLower() == "false") {
+					array.Add(false);
+					i = i + 5;
+				}
+			}
+			return array.ToArray();
+		}
+		private static string Substring(string input, int start, int length) {
+			int inputLength = input.Length;
+			if (start + length >= inputLength) {
+				return input.Substring(start);
+			}
+			return input.Substring(start, length);
+		}
 	}
 	
 }

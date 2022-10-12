@@ -22,10 +22,12 @@ namespace ServerFramework {
 
 
         public static object[] ConnectedClients(NetworkClient client) {
-
-            
-            // TODO send as list or array (ADD IN FRAMEWORK)
-            return Network.ClientList.ToArray();
+            List<object[]> list = new List<object[]>();
+            foreach (NetworkClient toAdd in Network.ClientList) {
+                if (!toAdd.Connected) continue;
+                list.Add(new object[] {toAdd.ID,toAdd.UserName});
+            }
+            return list.ToArray();
         }
     }
 }

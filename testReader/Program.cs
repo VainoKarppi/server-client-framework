@@ -14,9 +14,9 @@ class ConsoleApplication
         public float Test { get; set; }
         public string? Summary { get; set; }
         public object? Message {get; set; }
-        public List<object>? Parameters { get; set; }
+        public object[] Parameters { get; set; }
     }
-    static void Main()
+    static int Main()
     {
         //WriteDefaultValues();
         //DisplayValues();
@@ -28,18 +28,29 @@ class ConsoleApplication
             TemperatureCelsius = 25,
             Test = 100f,
             Summary = "Hot",
-            Parameters = new List<object> {10,true}
+            Parameters = new object[] {10,true,new object[]{"asd"}}
         };
 
         
 
-        List<object> newParams = new List<object>();
+        List<dynamic> newParams = new List<dynamic>();
         foreach (object parameter in networkMessage.Parameters) {
             newParams.Add(parameter.GetType().ToString());
             newParams.Add(parameter);
         }
 
-        networkMessage.Parameters = newParams;
+        networkMessage.Parameters = newParams.ToArray();
+
+
+        string test = @"[[29,""vaino""],10]";
+        object[] p = Unserialize(test);
+        Console.WriteLine(p.Count());
+        foreach (var aa in p) {
+            Console.WriteLine($"{aa.GetType()} | {aa.ToString()}");
+        }
+
+        return 0;
+        Console.WriteLine(newParams.Count());
 
         string jsonString = JsonSerializer.Serialize(networkMessage);
 
@@ -54,7 +65,7 @@ class ConsoleApplication
         Console.WriteLine($"Test: {networkMessage1?.Test} {networkMessage1?.Test.GetType()}");
         Console.WriteLine($"Summary: {networkMessage1?.Summary}");
         Console.WriteLine();
-        List<object>? paramArray = networkMessage1?.Parameters;
+        object[]? paramArray = networkMessage1?.Parameters;
         
         int ab;
         Type? type = default;
@@ -82,77 +93,83 @@ class ConsoleApplication
         
 
     }
+
+    public static object[] Unserialize(string args) {
+        if (args.ElementAt(0) != '[') 
+            args = "[" + args + "]";
+            
+        args = args.Substring(1);
+
+        DataArray array = new DataArray();
+        char[] nums = new char[] {'0','1','2','3','4','5','6','7','8','9','0','.','-'};
+        for (int i = 0; i < args.Length; i++) {
+            if (args[i] == '[') {
+                StringBuilder str = new StringBuilder();
+                int inArr = 0;
+                while (true) {
+                    if (args[i] == '[') inArr++;
+                    if (args[i] == ']') inArr--;
+                    str.Append(args[i]);
+                    i++;
+                    if (inArr == 0) break;
+                }
+                object[] innerArray = Unserialize(str.ToString());
+                array.Add(innerArray);
+            } else if (args[i] == '"') {
+                StringBuilder str = new StringBuilder();
+                bool isEnd = false;
+                i++;
+                while (true) {
+                    try {
+                        if (args[i] == '"') {
+                            isEnd = !isEnd;
+                        }
+                    } catch {
+                        break;
+                    }
+                    if (isEnd && (args[i] == ',' || args[i] == ']')) {
+                        break;
+                    }
+                    str.Append(args[i]);
+                    i++;
+                }
+                array.Add(str.ToString().TrimEnd('"'));
+            } else if (nums.Contains(args[i])) {
+                StringBuilder str = new StringBuilder();
+                bool isFloat = false;
+                while (nums.Contains(args[i])) {
+                    if (args[i] == '.')
+                        isFloat = true;
+                    str.Append(args[i]);
+                    i++;
+                }
+                if (isFloat) {
+                    double num = Convert.ToDouble(str.ToString());
+                    array.Add(num);
+                } else {
+                    int num = Convert.ToInt32(str.ToString());
+                    array.Add(num);
+                }
+            } else if (Substring(args, i, 4).ToLower() == "true") {
+                array.Add(true);
+                i = i + 4;
+            } else if (Substring(args, i, 5).ToLower() == "false") {
+                array.Add(false);
+                i = i + 5;
+            }
+        }
+        return array.ToArray();
+    }
+    private static string Substring(string input, int start, int length) {
+        int inputLength = input.Length;
+        if (start + length >= inputLength) {
+            return input.Substring(start);
+        }
+        return input.Substring(start, length);
+    }
     
     public static object Parse(Type t, string s)
       => TypeDescriptor.GetConverter(t).ConvertFromInvariantString(s);
       
-    public static object[] ParseParameters(object[] parameters) {
-        object[] newParameters = new object[]{};
-
-        foreach (object? parameter in parameters) {
-            if (parameter == null) continue;
-            Console.WriteLine(parameter);
-            int intValue;
-            double doubleValue;
-            long longValue;
-            string? stringValue;
-            bool boolValue;
-            
-            // Check if number
-            char[] nums = new char[] {'0','1','2','3','4','5','6','7','8','9','0','.','-'};
-            if (nums.Contains(parameter.ToString().ElementAt(0))) {
-                if (parameter.ToString().Contains('.')) {
-                    if(double.TryParse(parameter.ToString(),out doubleValue)) {
-                        newParameters.Append(doubleValue);
-                        Console.WriteLine($"DOUBLE: {doubleValue}");
-                    } else {
-                        newParameters.Append(parameter); // Should not happen?
-                    }
-                } else {
-                    if(int.TryParse(parameter.ToString(),out intValue)) {
-                        newParameters.Append(intValue);
-                        Console.WriteLine($"INT: {intValue}");
-                    } else {
-                        // Unable to parse as 32-bit so use 64-bit instead
-                        if(long.TryParse(parameter.ToString(),out longValue)) {
-                            newParameters.Append(longValue);
-                            Console.WriteLine($"LONG: {longValue}");
-                        } else {
-                            newParameters.Append(parameter);
-                        }
-                        
-                    }
-                }
-                continue;
-            }
-
-            
-            
-           
-
-            if (Boolean.TryParse(parameter.ToString(),out boolValue)) {
-                newParameters.Append(parameter.ToString());
-                Console.WriteLine($"BOOL: {parameter}");
-                continue;
-            }
-
-            stringValue = parameter.ToString();
-            if(stringValue != null && stringValue.Length > 0 && stringValue.ElementAt(0) == '[') {
-                // TODO inner arrays
-                newParameters.Append(parameter.ToString());
-                Console.WriteLine($"ARRAY: {parameter}");
-                continue;
-            }
-
-            if(stringValue != null && stringValue.Length > 0) {
-                newParameters.Append(parameter.ToString());
-                Console.WriteLine($"STRING: {parameter}");
-                continue;
-            }
-
-        }
-
-        return newParameters;
-    }
 
 }

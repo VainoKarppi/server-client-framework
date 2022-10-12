@@ -1,3 +1,4 @@
+using System.Data;
 using System.Collections;
 using System;
 using System.Collections.Generic;
@@ -14,27 +15,32 @@ using System.Threading;
 namespace ServerFramework {
 
     public class Network {
+        public static int ClientID = 1;
         public static TcpListener ServerListener = default!;
         public static readonly object _lock = new object();
         public static readonly List<NetworkClient> ClientList = new List<NetworkClient>();
         public static int ServerPort { get; set; } = 2302;
         public static bool ServerRunning { get; set; }
-        public enum MessageTypes : int {SendData, RequestData, ResponseData}
+        public enum MessageTypes : int {SendData, RequestData, ResponseData, EventData}
 		public class NetworkMessage
 		{
-			public int? MessageType { get; set; }
+			public int? MessageType { get; set; } = 0;
 			// One of the tpes in "MessageTypes"
-			public int TargetId { get; set; }
+			public int? TargetId { get; set; } = 1;
 			// 0 = everyone, 1 = server, 2 = client 1...
 			public int MethodId { get; set; }
 			// Minus numbers are for internal use!
 			public List<object>? Parameters { get; set; }
-			public int Key { get; set; }
-			public int Sender { get; set; }
-			public bool isHandshake { get; set;}
+			// Array of parameters passed to method that is going to be executed
+			public int Key { get; set; } = new Random().Next(1,int.MaxValue);
+			// Key for getting the response for specific request
+			public int? Sender { get; set; } = ClientID;
+			// Id of the sender. Can be null in case handshake is not completed
+			public bool isHandshake { get; set; } = false;
 			// Used to detect for handshake. Else send error for not connected to server!
 		}
-		public static List<string> Methods = new List<string>() {"Disconnect","ConnectedClients","Test","TestArray"};
+		public static List<string> ClientMethods = new List<string>() {"Disconnect","ConnectedClients","Test","TestArray"};
+        private static List<string> PrivateMethods = new List<string>() {"GetMethods","ConnectedClients","HandleEvent"};
 		public static Dictionary<int,object[]> Results = new Dictionary<int,object[]>();
 
         public static void StartServer() {
@@ -104,19 +110,22 @@ namespace ServerFramework {
 			
 			if (message.MessageType == null) message.MessageType = (int?)MessageTypes.SendData;
             DebugMessage(message);
+            string jsonString = JsonSerializer.Serialize(message);
+            Console.WriteLine(jsonString);
+
             byte[] msg = JsonSerializer.SerializeToUtf8Bytes(message);
             
             // Send to single ro multiple users
             if (message.TargetId > 0) {
-                NetworkClient client = (NetworkClient)ClientList.Where(client => client.ID == message.TargetId);
-                if (client == null) throw new Exception("Invalid target!");
+                NetworkClient client = ClientList.FirstOrDefault(c => c.ID == message.TargetId);
+                if (client == default) throw new Exception("Invalid target!");
                 
                 client.GetStream().WriteAsync(msg, 0, msg.Length);
             } else {
-                List<NetworkClient> clients = (List<NetworkClient>)ClientList.Where(client => client.ID == message.TargetId);
+                var clients = from s in ClientList where s.ID == message.TargetId select s;
                 foreach (NetworkClient clientTemp in clients) {
                     NetworkStream stream = clientTemp.GetStream();
-                    stream.Write(msg, 0, msg.Length);
+                    stream.WriteAsync(msg, 0, msg.Length);
                 }
             }
         }
@@ -133,7 +142,7 @@ namespace ServerFramework {
 			byte[] msg = JsonSerializer.SerializeToUtf8Bytes(message);
             NetworkClient client = (NetworkClient)ClientList.Select(client => client.ID == message.TargetId);
             if (client == null) throw new Exception("Invalid target!");
-			client.GetStream().Write(msg, 0, msg.Length);
+			client.GetStream().WriteAsync(msg, 0, msg.Length);
 
 			
 			// Wait for response
@@ -146,7 +155,7 @@ namespace ServerFramework {
 					Results.Remove(message.Key);
 					break;
 				}
-				if (timer > 100) throw new Exception($"Request {message.Key} ({Methods[message.MethodId]}) timed out!");
+				if (timer > 100) throw new Exception($"Request {message.Key} ({ClientMethods[message.MethodId]}) timed out!");
 				timer++;
 			}
 			return returnData;
@@ -164,22 +173,38 @@ namespace ServerFramework {
 
                     var utf8Reader = new Utf8JsonReader(bytes);
                     NetworkMessage? message = JsonSerializer.Deserialize<NetworkMessage>(ref utf8Reader)!;
+                    DebugMessage(message);
+                    object[] parsedParameters = DeserializeParameters(message.Parameters);
 
-                    Console.WriteLine("1");
+                    // HANDLE HANDSHAKE
+                    if (message.isHandshake && message.MethodId == default) {
+                        object[] data = Handshake(_client, (int)parsedParameters[0], (string)parsedParameters[1]);
+                        //object data = typeof(Network).GetMethod("Handshake").Invoke("Handshake",parameters);
+                        NetworkMessage handshakeMessage = new NetworkMessage {
+                            MessageType = ((byte)MessageTypes.ResponseData),
+                            MethodId = message.MethodId
+                        };
+                        if (data != null) handshakeMessage.Parameters = SerializeParameters(data);
+                        handshakeMessage.TargetId = Int32.Parse(data[0].ToString());
+                        Network.SendData(handshakeMessage);
+                        Console.WriteLine($"*SUCCESS* Handshake done! ({_client.ID})");
+                        continue;
+                    }
 
+
+
+                    // DESERIALISE PARAMETERS AND ADD CLIENT AS FIRST PARAMETER
                     List<object> paramList = new List<object>();
                     paramList.Add(_client);
-                    object[] AAA = DeserializeParameters(message.Parameters);
-                    foreach (object p in AAA) {
-                        Console.WriteLine("5555");
-                        paramList.Add(p);
+                    if (message.Parameters != null) {
+                        foreach (object p in parsedParameters) {
+                            paramList.Add(p);
+                        }
                     }
                     object[] parameters = paramList.ToArray();
-                    Console.WriteLine("2");
 
-                    DebugMessage(message);
                 
-                    // FORWARD DATA IF NOT MENT FOR SERVER (forget)
+                    // FORWARD DATA IF NOT MENT FOR SERVER (+forget)
                     if (message.TargetId != 1) {
                         Network.SendData(message);
                         continue;
@@ -192,41 +217,45 @@ namespace ServerFramework {
                         continue;
                     }
 
-                    string method = Methods[message.MethodId];
-					MethodInfo methodInfo = typeof(ServerMethods).GetMethod(method);
-					if (methodInfo == null) throw new Exception($"Method {message.MethodId} was not found ({method})");
+                    
+                    
+
+                    // GET METHOD INFO
+                    string method;
+                    MethodInfo methodInfo;
+                    if (message.MethodId < 0) {
+                        method = PrivateMethods[Math.Abs(message.MethodId) - 1];
+                        methodInfo = typeof(Network).GetMethod(method);
+                    } else {
+                        method = ClientMethods[message.MethodId];
+                        methodInfo = typeof(ServerMethods).GetMethod(method);
+                        if (methodInfo == null) throw new Exception($"Method {message.MethodId} was not found ({method})");
+                    }
+                    
 
 					switch (message.MessageType)
 					{
 						// SEND A RESPONSE FOR CLIENT/SERVER
 						case (byte)MessageTypes.RequestData:
                             if (message.TargetId > 1) {
-                                // FORWARD TO CLIENT
-                                Network.SendData(message);
+                                Network.SendData(message); // FORWARD TO CLIENT
                             } else {
-
-                                NetworkMessage responseMessage = new NetworkMessage
-                                {
+                                NetworkMessage responseMessage = new NetworkMessage {
                                     MessageType = ((byte)MessageTypes.ResponseData),
                                     MethodId = message.MethodId,
                                     TargetId = message.Sender,
                                     Sender = 1,
                                     Key = message.Key
                                 };
-
+                                Console.WriteLine(method);
+                                Console.WriteLine(parameters.Count());
                                 // HANDLE ON SERVER
                                 object? data = default;
-                                if (message.isHandshake) { // HANDSHAKE!
-                                    data = typeof(Network).GetMethod("Handshake").Invoke("Handshake",parameters);
-                                    if (data != null) responseMessage.Parameters = SerializeParameters(data);
-                                    responseMessage.TargetId = Int32.Parse(data.ToString());
-                                    byte[] msg = JsonSerializer.SerializeToUtf8Bytes(responseMessage);
-                                    _client.GetStream().WriteAsync(msg, 0, msg.Length);
-                                } else {
-                                    data = methodInfo.Invoke(method,parameters);
-                                    if (data != null) responseMessage.Parameters = SerializeParameters(data);
-                                    Network.SendData(responseMessage);
-                                }
+                                data = methodInfo.Invoke(method,parameters);
+                                Console.WriteLine("1424142");
+                                if (data != null) responseMessage.Parameters = SerializeParameters(data);
+                                Console.WriteLine(data);
+                                Network.SendData(responseMessage);
                             }
 							break;
 						
@@ -252,22 +281,28 @@ namespace ServerFramework {
             _client.Close();
         }
 
-        public static int Handshake(NetworkClient client, int version, string userName) {
+        public static object[] Handshake(NetworkClient client, int version, string userName) {
             
             // RETURNS client id if success (minus number if error (each value is one type of error))
-            Console.WriteLine($"version:{version} name:{userName}");
+            Console.WriteLine($"*HANDSHAKE START* Version:{version} Name:{userName}");
             client.UserName = userName;
+
+            object[] returnData = new object[] {client.ID};
 
             //TODO add major and minor checking
             if (version != Program.Version) {
                 Console.WriteLine($"User {userName} has wrong version! Should be: {Program.Version} has: {version}");
-                return -1;
+                return returnData;
             }
 
+            List<object[]> clientlist = new List<object[]>(){};
+            foreach (NetworkClient toAdd in Network.ClientList) {
+                if (!toAdd.Connected || toAdd.ID == client.ID) continue;
+                clientlist.Add(new object[] {toAdd.ID,toAdd.UserName});
+            }
 
-            Console.WriteLine($"*SUCCESS* {client.ID} Handshake completed!");
-
-            return client.ID;
+            returnData = new object[] {client.ID,ClientMethods.ToArray(),clientlist.ToArray()};
+            return returnData;
         }
 
 
@@ -275,7 +310,7 @@ namespace ServerFramework {
 
         // Used to read 
 		public static int GetMethodIndex(string method) {
-			return Methods.FindIndex(m => m.ToLower() == method.ToLower());
+			return ClientMethods.FindIndex(m => m.ToLower() == method.ToLower());
 		}
 
         public static List<object> SerializeParameters(params object[] parameters) {
@@ -289,28 +324,34 @@ namespace ServerFramework {
 		public static object[] DeserializeParameters(List<object> parameters) {
 			Type type = default;
 			List<object> final = new List<object>();
-            Console.WriteLine("DASDDS");
 			for (int i = 0; i < parameters.Count(); i++) {
 				object value = parameters[i];
 				if (i%2 == 0) {
 					type = Type.GetType(value.ToString());
 					continue;
 				}
-				object data = TypeDescriptor.GetConverter(type).ConvertFromInvariantString(value.ToString());
-				final.Add(data);
+				if (type.IsArray) {
+					object[] data = ParseParamArray(value.ToString());
+					final.Add(data);
+				} else {
+					object data = TypeDescriptor.GetConverter(type).ConvertFromInvariantString(value.ToString());
+					final.Add(data);
+				}
 			}
 			return final.ToArray();
 		}
 
         public static void DebugMessage(NetworkMessage message) {
             Console.WriteLine("--------------DEBUG MESSGAE--------------");
+            string jsonString = JsonSerializer.Serialize(message);
+            Console.WriteLine(message);
             Console.WriteLine($"MessageType:{message.MessageType}");
             Console.WriteLine($"TargetId:{message.TargetId}");
             Console.WriteLine($"MethodId:{message.MethodId}");
             if (message.Parameters != null) {
 				int i = 0;
 				int ii = 1;
-				Console.WriteLine($"Parameters:");
+				Console.WriteLine($"Parameters ({message.Parameters.Count()}):");
                 Type LastType = default;
                 foreach (object pr in message.Parameters) {
                     if (i%2 == 0) {
@@ -319,7 +360,13 @@ namespace ServerFramework {
                         continue;
                     }
                     i++;
-                    object data = TypeDescriptor.GetConverter(LastType).ConvertFromInvariantString(pr.ToString());
+                    object data = default;
+                    if (LastType.IsArray) {
+                        data = pr;
+                    } else {
+                        data = TypeDescriptor.GetConverter(LastType).ConvertFromInvariantString(pr.ToString());
+                    }
+                    
                     Console.WriteLine($"  ({ii}) PARAM: ({data.GetType()}): {data.ToString()}");
                     ii++;
                 }
@@ -329,15 +376,37 @@ namespace ServerFramework {
             Console.WriteLine($"isHandshake:{message.isHandshake}");
             Console.WriteLine("--------------DEBUG MESSGAE--------------");
         }
+        public static object[] ParseParamArray(string input) {
+			List<object> returned = new List<object>(){};
+			if (input.ElementAt(0) == '[') {
+				if (input == "[]") return returned.ToArray();
+				input = input.Remove(0,1);
+				input = input.Remove(input.Length - 1,1);
+				string[] separated = input.Split(',');
+				foreach (string value in separated) {
+					int i;
+					if (int.TryParse(value, out i)) returned.Add(i);
+
+					double d;
+					if (double.TryParse(value, out d)) returned.Add(d);
+
+					bool b;
+					if (bool.TryParse(value, out b)) returned.Add(b);
+
+					if (value.ElementAt(0) == '[') returned.Add(ParseParamArray(value));
+
+					if (value.StartsWith(@"""")) returned.Add(value);
+				}
+			}
+			return returned.ToArray();
+		}
     }
-
-
 
     public class NetworkClient : TcpClient {
         public StreamReader Reader { get; set; }
         public StreamWriter Writer { get; set; }
         public int ID { get; set; }
-        public string? UserName { get; set; }
+        public string UserName { get; set; } = "error (NoName)";
 
 
         public NetworkClient(TcpListener listener)

@@ -23,7 +23,11 @@ namespace ClientFramework {
         public static void UserList() {
             Console.WriteLine("Connected clients: ");
 
-            throw new NotImplementedException();
+            int i = 1;
+            foreach (Network.OtherClient client in Network.OtherClients) {
+                Console.WriteLine($"    ({i}) ID={client.Id} Name={client.UserName}");
+                i++;
+            }
         }
         public static void SendData() {
             if (!Network.IsConnected)
@@ -65,6 +69,7 @@ namespace ClientFramework {
             }
 
             Network.NetworkMessage message = new Network.NetworkMessage {
+                Parameters = Network.SerializeParameters("MOI"),
                 MethodId = Network.GetMethodIndex(method),
                 TargetId = Int32.Parse(target)
             };
