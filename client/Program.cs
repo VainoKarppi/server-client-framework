@@ -1,4 +1,4 @@
-
+﻿
 using System.Net.Mime;
 using System.Reflection;
 
@@ -9,8 +9,15 @@ using System.Reflection;
 namespace ClientFramework {
     public class Program {
         public const int Version = 1000;
+        public static void OnClientConnected(object sender, Events.ServerEventMessage message) {
+            Console.WriteLine("Process " + (message.IsSuccessful? "Completed Successfully": "failed"));
+            Console.WriteLine("Completion Time: " + message.CompletionTime.ToLongDateString());
+        }
 
         static void Main(string[] args) {
+            Events.ServerEvents se = new Events.ServerEvents();
+            se.ClientConnected += OnClientConnected; // register with an event
+        
             Console.WriteLine();
             Console.Clear();
             Console.Title = "EDEN Online Extension CLIENT";
