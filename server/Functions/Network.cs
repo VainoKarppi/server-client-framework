@@ -110,8 +110,6 @@ namespace ServerFramework {
 			
 			if (message.MessageType == null) message.MessageType = (int?)MessageTypes.SendData;
             DebugMessage(message);
-            string jsonString = JsonSerializer.Serialize(message);
-            Console.WriteLine(jsonString);
 
             byte[] msg = JsonSerializer.SerializeToUtf8Bytes(message);
             
