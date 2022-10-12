@@ -21,7 +21,16 @@ namespace ServerFramework {
         public static readonly List<NetworkClient> ClientList = new List<NetworkClient>();
         public static int ServerPort { get; set; } = 2302;
         public static bool ServerRunning { get; set; }
-        public enum MessageTypes : int {SendData, RequestData, ResponseData, EventData}
+        public enum MessageTypes : int {SendData, RequestData, ResponseData, ServerEvent, ClientEvent}
+        public class EventMessage {
+            public int? MessageType { get; set; } = (int)MessageTypes.ServerEvent;
+            public int[]? Targets { get; set; }
+            // Who to sent the event to
+            public string? EventName { get; set; }
+            // OnPlayerConnected etc
+            public List<object>? Parameters { get; set; } = new List<object>() {};
+
+        }
 		public class NetworkMessage
 		{
 			public int? MessageType { get; set; } = 0;
@@ -103,6 +112,18 @@ namespace ServerFramework {
         // TODO Add data type as header + allow any data type using encode/decode
         // Request ID is used to answer to specific message
 
+        public static void SendEvent(EventMessage message) {
+            if (!ServerRunning) throw new Exception("Server not running!");
+			
+            byte[] msg = JsonSerializer.SerializeToUtf8Bytes(message);
+            
+            // Send to single ro multiple users
+            foreach (int id in message.Targets) {
+                NetworkClient client = ClientList.FirstOrDefault(c => c.ID == id);
+                if (client == default) continue;
+                client.GetStream().Write(msg, 0, msg.Length);
+            }
+        }
         
         public static void SendData(NetworkMessage message) {
             if (!ServerRunning) throw new Exception("Server not running!");
@@ -179,7 +200,7 @@ namespace ServerFramework {
                         object[] data = Handshake(_client, (int)parsedParameters[0], (string)parsedParameters[1]);
                         //object data = typeof(Network).GetMethod("Handshake").Invoke("Handshake",parameters);
                         NetworkMessage handshakeMessage = new NetworkMessage {
-                            MessageType = ((byte)MessageTypes.ResponseData),
+                            MessageType = (int)MessageTypes.ResponseData,
                             MethodId = message.MethodId
                         };
                         if (data != null) handshakeMessage.Parameters = SerializeParameters(data);
@@ -210,7 +231,7 @@ namespace ServerFramework {
                     
                     
                     // Dump result to array and continue
-					if (message.MessageType == (byte)MessageTypes.ResponseData) {
+					if (message.MessageType == (int)MessageTypes.ResponseData) {
                         Results.Add(message.Key,parameters);
                         continue;
                     }
@@ -234,12 +255,12 @@ namespace ServerFramework {
 					switch (message.MessageType)
 					{
 						// SEND A RESPONSE FOR CLIENT/SERVER
-						case (byte)MessageTypes.RequestData:
+						case (int)MessageTypes.RequestData:
                             if (message.TargetId > 1) {
                                 Network.SendData(message); // FORWARD TO CLIENT
                             } else {
                                 NetworkMessage responseMessage = new NetworkMessage {
-                                    MessageType = ((byte)MessageTypes.ResponseData),
+                                    MessageType = (int)MessageTypes.ResponseData,
                                     MethodId = message.MethodId,
                                     TargetId = message.Sender,
                                     Sender = 1,
@@ -254,7 +275,7 @@ namespace ServerFramework {
 							break;
 						
 						// FIRE AND FORGET (Dont return method return data)
-						case (byte)MessageTypes.SendData:
+						case (int)MessageTypes.SendData:
 							methodInfo?.Invoke(method,parameters);
 							break;
 						default:
@@ -294,6 +315,20 @@ namespace ServerFramework {
                 if (!toAdd.Connected || toAdd.ID == client.ID) continue;
                 clientlist.Add(new object[] {toAdd.ID,toAdd.UserName});
             }
+
+            // TODO move elsewhere
+            List<int> targetList = new List<int>() {};
+            foreach (NetworkClient toAdd in Network.ClientList) {
+                if (!toAdd.Connected || toAdd.ID == client.ID) continue;
+                targetList.Add(toAdd.ID);
+            }
+            EventMessage message = new EventMessage {
+                MessageType = (int)MessageTypes.ServerEvent,
+                Targets = targetList.ToArray(), // TODO REMOVE SELF!!!
+                EventName = "OnClientConnected",
+                Parameters = SerializeParameters(client.ID,client.UserName)
+            };
+            Network.SendEvent(message);
 
             returnData = new object[] {client.ID,ClientMethods.ToArray(),clientlist.ToArray()};
             return returnData;
