@@ -121,14 +121,18 @@ namespace ClientFramework {
 					byte[] bytes = new byte[1024];
 					Stream.Read(bytes, 0, 1024);
 
+					Console.WriteLine(bytes.Count());
+
 					var utf8Reader = new Utf8JsonReader(bytes);
                     dynamic messageTemp = JsonSerializer.Deserialize<dynamic>(ref utf8Reader)!;
-		
+					Console.WriteLine((JsonElement)messageTemp);
 					string property = ((JsonElement)messageTemp).GetProperty("MessageType").ToString();
 
 					int type = -1;
 					if (!Int32.TryParse(property, out type)) continue;
 					if (type < 0) continue;
+
+					Console.WriteLine(type);
 
 					//TODO start in new thread?
 					
@@ -139,10 +143,8 @@ namespace ClientFramework {
 						continue;
 					}
 
-					DebugMessage(messageTemp);
-
 					NetworkMessage? message = (NetworkMessage)messageTemp;
-					Console.WriteLine(message);
+					DebugMessage(messageTemp);
 					object[] deserialisedParams = DeserializeParameters(message.Parameters);
 
 					// Dump result to array and continue
@@ -379,6 +381,7 @@ namespace ClientFramework {
 
 		public static void DebugMessage(NetworkMessage message) {
             Console.WriteLine("--------------DEBUG MESSGAE--------------");
+			Console.WriteLine(DateTime.Now.Millisecond);
 			string jsonString = JsonSerializer.Serialize(message);
             Console.WriteLine(message);
             Console.WriteLine($"MessageType:{message.MessageType}");

@@ -3,13 +3,37 @@
 
 
 server/bin/**
+server/bin/*
+server/bin
+
 client/bin/**
+client/obj/*
+client/obj
+
 testReader/bin/**
+testReader/bin/*
+testReader/bin
 
 server/obj/**
+server/obj/*
+server/obj
+
 client/obj/**
+client/obj/*
+client/obj
+
 testReader/obj/**
+testReader/obj/*
+testReader/obj
 
 server/publish/**
+server/publish/*
+server/publish
+
 client/publish/**
+client/publish/*
+client/publish
+
 testReader/publish/**
+testReader/publish/*
+testReader/publish

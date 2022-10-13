@@ -121,7 +121,7 @@ namespace ServerFramework {
             foreach (int id in message.Targets) {
                 NetworkClient client = ClientList.FirstOrDefault(c => c.ID == id);
                 if (client == default) continue;
-                client.GetStream().Write(msg, 0, msg.Length);
+                client.GetStream().WriteAsync(msg, 0, msg.Length);
             }
         }
         
@@ -154,8 +154,6 @@ namespace ServerFramework {
 			if (!ServerRunning) throw new Exception("Not connected to server");
 			
 			message.MessageType = (int?)MessageTypes.RequestData;
-			message.Key = new Random().Next(1,int.MaxValue);
-			message.Sender = 1;
 
 			// Send request
 			byte[] msg = JsonSerializer.SerializeToUtf8Bytes(message);
@@ -189,6 +187,11 @@ namespace ServerFramework {
                     NetworkStream stream = _client.GetStream();
                     byte[] bytes = new byte[1024];
 					stream.Read(bytes, 0, 1024);
+
+
+                    if (bytes[0] == 0) continue; // TODO WHY IS THIS GETTING EXECUTED AFTER REQUESTDATA MSG
+                    //foreach(byte bb in bytes) {Console.WriteLine(bb.ToString());}
+                    
 
                     var utf8Reader = new Utf8JsonReader(bytes);
                     NetworkMessage? message = JsonSerializer.Deserialize<NetworkMessage>(ref utf8Reader)!;
@@ -324,7 +327,7 @@ namespace ServerFramework {
             }
             EventMessage message = new EventMessage {
                 MessageType = (int)MessageTypes.ServerEvent,
-                Targets = targetList.ToArray(), // TODO REMOVE SELF!!!
+                Targets = targetList.ToArray(),
                 EventName = "OnClientConnected",
                 Parameters = SerializeParameters(client.ID,client.UserName)
             };
@@ -372,6 +375,7 @@ namespace ServerFramework {
 
         public static void DebugMessage(NetworkMessage message) {
             Console.WriteLine("--------------DEBUG MESSGAE--------------");
+            Console.WriteLine(DateTime.Now.Millisecond);
             string jsonString = JsonSerializer.Serialize(message);
             Console.WriteLine(message);
             Console.WriteLine($"MessageType:{message.MessageType}");
