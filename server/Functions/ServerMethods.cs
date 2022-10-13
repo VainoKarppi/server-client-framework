@@ -10,8 +10,8 @@ namespace ServerFramework {
             Console.WriteLine($"MSG:{testMessage} CLIENT: {client.Client.RemoteEndPoint} ID:{client.ID}");
             return "moi sinulle :)";
         }
-        public static void Disconnect(NetworkClient client) {
-            throw new NotImplementedException();
+        public static void Disconnect(NetworkClient client, string testMessage) {
+            Console.WriteLine("CLIENT DISCONNECTED (TEST)");
         }
 
         public static object[] TestArray(NetworkClient client, object[] parameters) {

@@ -50,7 +50,7 @@ namespace ClientFramework {
             }
 
             Network.NetworkMessage message = new Network.NetworkMessage {
-                Parameters = Network.SerializeParameters("MOI"),
+                Parameters = Network.SerializeParameters("PARAM1"),
                 MethodId = Network.GetMethodIndex(method),
                 TargetId = Int32.Parse(target)
             };

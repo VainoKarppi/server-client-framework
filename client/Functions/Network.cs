@@ -110,17 +110,15 @@ namespace ClientFramework {
 			IsConnected = false;
 		}
 
-
+		
 		public static void ReceiveDataThread() {
 			Console.WriteLine("STARTED ReceiveDataThread");
 			try {
 				IsConnected = true;
-				
-				while (IsConnected) {
-					NetworkStream Stream = Client.GetStream();
-					byte[] bytes = new byte[1024];
-					Stream.Read(bytes, 0, 1024);
 
+				while (IsConnected) {
+					byte[] bytes = ReadMessage(Client.GetStream());
+					Console.WriteLine("MSG RECIEVED!");
 					Console.WriteLine(bytes.Count());
 
 					var utf8Reader = new Utf8JsonReader(bytes);
@@ -264,10 +262,26 @@ namespace ClientFramework {
 
 			DebugMessage(message);
 
-			byte[] msg = JsonSerializer.SerializeToUtf8Bytes(message);
-			Client.GetStream().WriteAsync(msg, 0, msg.Length);
+			SendMessage(message,Client.GetStream());
+			
         }
 
+		public static void SendMessage(dynamic message, NetworkStream Stream) {
+			byte[] msg = JsonSerializer.SerializeToUtf8Bytes(message);
+			byte[] lenght = BitConverter.GetBytes((ushort)msg.Length);
+			byte[] bytes = lenght.Concat(msg).ToArray();
+			Console.WriteLine(bytes.Length);
+			Stream.WriteAsync(bytes, 0, bytes.Length);
+		}
+		public static byte[] ReadMessage(NetworkStream Stream) {
+			byte[] lenghtBytes = new byte[2];
+			Stream.Read(lenghtBytes,0,2);
+			ushort msgLenght = BitConverter.ToUInt16(lenghtBytes,0);
+			Console.WriteLine(msgLenght);
+			byte[] bytes = new byte[msgLenght];
+			Stream.Read(bytes,0,msgLenght);
+			return bytes;
+		}
 
 		public static object[] RequestData(NetworkMessage message) {
 			if (!IsConnected) throw new Exception("Not connected to server");
@@ -277,8 +291,7 @@ namespace ClientFramework {
 			DebugMessage(message);
 
 			// Send request
-			byte[] msg = JsonSerializer.SerializeToUtf8Bytes(message);
-			Client.GetStream().WriteAsync(msg, 0, msg.Length);
+			SendMessage(message,Client.GetStream());
 
 			
 			// Wait for response
@@ -311,12 +324,12 @@ namespace ClientFramework {
 				Sender = -1
 			};
 
-			byte[] msg = JsonSerializer.SerializeToUtf8Bytes(handshakeMessage);
-			Client.GetStream().WriteAsync(msg, 0, msg.Length);
+			SendMessage(handshakeMessage,Client.GetStream());
 
 			NetworkStream Stream = Client.GetStream();
-			byte[] bytes = new byte[1024];
-			Stream.Read(bytes, 0, 1024);
+			byte[] bytes = ReadMessage(Client.GetStream());
+			Console.WriteLine("MSG RECIEVED!");
+			Console.WriteLine(bytes.Count());
 
 			var utf8Reader = new Utf8JsonReader(bytes);
 			NetworkMessage? returnMessage = JsonSerializer.Deserialize<NetworkMessage>(ref utf8Reader)!;
@@ -381,7 +394,7 @@ namespace ClientFramework {
 
 		public static void DebugMessage(NetworkMessage message) {
             Console.WriteLine("--------------DEBUG MESSGAE--------------");
-			Console.WriteLine(DateTime.Now.Millisecond);
+			Console.WriteLine($"TIME: {DateTime.Now.Millisecond}");
 			string jsonString = JsonSerializer.Serialize(message);
             Console.WriteLine(message);
             Console.WriteLine($"MessageType:{message.MessageType}");
