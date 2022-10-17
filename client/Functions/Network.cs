@@ -117,7 +117,11 @@ namespace ClientFramework {
 				IsConnected = true;
 
 				while (IsConnected) {
-					byte[] bytes = ReadMessage(Client.GetStream());
+					byte[] bytes = ReadMessageBytes(Client.GetStream());
+					if (bytes.Count() == 0) {
+						Console.WriteLine("ERROR MESSAGE");
+						continue;
+					}
 					Console.WriteLine("MSG RECIEVED!");
 					Console.WriteLine(bytes.Count());
 
@@ -270,14 +274,12 @@ namespace ClientFramework {
 			byte[] msg = JsonSerializer.SerializeToUtf8Bytes(message);
 			byte[] lenght = BitConverter.GetBytes((ushort)msg.Length);
 			byte[] bytes = lenght.Concat(msg).ToArray();
-			Console.WriteLine(bytes.Length);
-			Stream.WriteAsync(bytes, 0, bytes.Length);
+			Stream.WriteAsync(bytes,0,bytes.Length);
 		}
-		public static byte[] ReadMessage(NetworkStream Stream) {
+		public static byte[] ReadMessageBytes(NetworkStream Stream) {
 			byte[] lenghtBytes = new byte[2];
 			Stream.Read(lenghtBytes,0,2);
 			ushort msgLenght = BitConverter.ToUInt16(lenghtBytes,0);
-			Console.WriteLine(msgLenght);
 			byte[] bytes = new byte[msgLenght];
 			Stream.Read(bytes,0,msgLenght);
 			return bytes;
@@ -327,9 +329,13 @@ namespace ClientFramework {
 			SendMessage(handshakeMessage,Client.GetStream());
 
 			NetworkStream Stream = Client.GetStream();
-			byte[] bytes = ReadMessage(Client.GetStream());
+			byte[] bytes = ReadMessageBytes(Client.GetStream());
 			Console.WriteLine("MSG RECIEVED!");
 			Console.WriteLine(bytes.Count());
+			if (bytes.Count() == 0) {
+				Console.WriteLine("ERROR HANDSHAKE");
+				return -1;
+			}
 
 			var utf8Reader = new Utf8JsonReader(bytes);
 			NetworkMessage? returnMessage = JsonSerializer.Deserialize<NetworkMessage>(ref utf8Reader)!;
@@ -338,8 +344,8 @@ namespace ClientFramework {
 
 			int _clientID = (int)returnedParams[0];
 			if (_clientID < 0) {
-				if (_clientID == -1) throw new Exception("Version mismatch!");
-				if (_clientID == -2) throw new Exception("Username already in use!");
+				if (_clientID == -2) throw new Exception("Version mismatch!");
+				if (_clientID == -3) throw new Exception("Username already in use!");
 				throw new Exception($"Handshake failed. Code:{_clientID}");
 			}
 

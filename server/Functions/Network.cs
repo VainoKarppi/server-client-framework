@@ -127,13 +127,12 @@ namespace ServerFramework {
 			byte[] msg = JsonSerializer.SerializeToUtf8Bytes(message);
 			byte[] lenght = BitConverter.GetBytes((ushort)msg.Length);
 			byte[] bytes = lenght.Concat(msg).ToArray();
-			Stream.WriteAsync(bytes, 0, bytes.Length);
+			Stream.WriteAsync(bytes,0,bytes.Length);
 		}
-        public static byte[] ReadMessage(NetworkStream Stream) {
+        public static byte[] ReadMessageBytes(NetworkStream Stream) {
 			byte[] lenghtBytes = new byte[2];
 			Stream.Read(lenghtBytes,0,2);
 			ushort msgLenght = BitConverter.ToUInt16(lenghtBytes,0);
-			Console.WriteLine(msgLenght);
 			byte[] bytes = new byte[msgLenght];
 			Stream.Read(bytes,0,msgLenght);
 			return bytes;
@@ -193,15 +192,13 @@ namespace ServerFramework {
         public static void HandleClient(NetworkClient _client) {
             while (true) {
                 try {
-                    byte[] bytes = ReadMessage(_client.GetStream());
-					Console.WriteLine("MSG RECIEVED!");
-					Console.WriteLine(bytes.Count());
-
-                    if (bytes[0] == 0) {
+                    byte[] bytes = ReadMessageBytes(_client.GetStream());
+					
+                    if (bytes.Count() == 0) {
                         Console.WriteLine("ERROR BYTES");
                         continue;
                     }; // TODO WHY IS THIS GETTING EXECUTED AFTER REQUESTDATA MSG
-                    //foreach(byte bb in bytes) {Console.WriteLine(bb.ToString());}
+                    Console.WriteLine("MSG RECIEVED!");
                     
 
                     var utf8Reader = new Utf8JsonReader(bytes);
