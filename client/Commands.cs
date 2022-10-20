@@ -41,6 +41,9 @@ namespace ClientFramework {
             Console.WriteLine("method to be sent to client/server: ");
             string method = Console.ReadLine();
             Console.WriteLine();
+            Console.WriteLine("DATA string to be sent to client/server: ");
+            string data = Console.ReadLine();
+            Console.WriteLine();
             Console.WriteLine("Target ID: (Blank or 0 for all clients)");
             string target;
             while (true) {
@@ -50,7 +53,7 @@ namespace ClientFramework {
             }
 
             Network.NetworkMessage message = new Network.NetworkMessage {
-                Parameters = Network.SerializeParameters("PARAM1"),
+                Parameters = Network.SerializeParameters(data),
                 MethodId = Network.GetMethodIndex(method),
                 TargetId = Int32.Parse(target)
             };
@@ -78,7 +81,7 @@ namespace ClientFramework {
                 TargetId = Int32.Parse(target)
             };
             object[] a = Network.RequestData(message);
-            Console.WriteLine(a[0]);
+            Console.WriteLine($"RETURNED:{a[0]}");
         }
     }
 }

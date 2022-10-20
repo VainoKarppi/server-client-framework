@@ -1,4 +1,5 @@
-﻿using System.Reflection.Metadata;
+﻿using System.Diagnostics.Tracing;
+using System.Reflection.Metadata;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -23,7 +24,7 @@ namespace ClientFramework {
 	
 	
     public class Network {
-		public static event EventHandler<Events.ServerEventMessage> ?ClientConnected;
+		//public static event EventHandler<Events.ServerEventMessage> ?ClientConnected;
 		public class EventMessage {
             public int? MessageType { get; set; } = (int)MessageTypes.ServerEvent;
             public int[]? Targets { get; set; } = new int[] {1};
@@ -156,8 +157,6 @@ namespace ClientFramework {
 					if (!Int32.TryParse(property, out type)) continue;
 					if (type < 0) continue;
 
-					Console.WriteLine(type);
-
 					//TODO start in new thread?
 					
 
@@ -244,38 +243,9 @@ namespace ClientFramework {
 			Console.WriteLine(eventName);
 			object[] parameters = DeserializeParameters(message?.Parameters);
 
-			var da = new Events.ServerEventMessage();
-			da.ClientID = 2;
-			da.Code = 5;
-			da.IsSuccessful = true;
-			da.CompletionTime = DateTime.Now;
-			switch (eventName.ToLower()) {
-				case "onclientconnect":
-					Console.WriteLine("AAA");
-					ClientConnected?.Invoke(Network.ClientConnected,da);
-					break;
-				case "onclientdisconnect":
-					break;
-				case "onservershutdown":
-					break;
-				case "onmessagesent":
-					break;
-				case "onmessagereceived":
-					break;
-				case "onhandshakestart":
-					break;
-				case "onhandshakeend":
-					break;
-				default:
-					throw new NotImplementedException();
-			}
-			//OnUserConnected(int ID, string name);
-			//OnUserDisconnected(int ID, int reason);
-			//OnServerShutdown();
-			//OnMessageSent();
-			//OnMessageReceived();
-
-
+			
+			ServerEvents listener = ServerEvents.eventsListener;
+			listener.ExecuteEvent(eventName,parameters);
 		}
 		// Fire and forget
 		public static void SendData(NetworkMessage message) {
@@ -533,6 +503,26 @@ namespace ClientFramework {
 			}
 			return input.Substring(start, length);
 		}
+
+
+
+
+
+
+
+		/*
+		public class ServerEventMessage : EventArgs {
+            public int ClientID { get; set; }
+            public int Code { get; set; }
+            public bool IsSuccessful { get; set; }
+            public DateTime CompletionTime { get; set; }
+
+        }
+
+		protected static void OnClientConnected(ServerEventMessage e)
+		{
+			ClientConnected?.Invoke(null, e);
+		}*/
 	}
 	
 }

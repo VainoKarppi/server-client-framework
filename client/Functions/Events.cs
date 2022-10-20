@@ -1,68 +1,53 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Sockets;
 using System.Text;
 
-
-/*
-code = REASON
-
-OnClientConnected(int ID, string name)
-OnClientDisconnected(int, ID, string Name, int code)
-
-OnMessageReceived()
-OnMessageSent()
-
-OnServerShutdown(int code)
-    0 - Error/Crash
-    1 - Success
-
-OnConnected()
-OnDisconnected()
-
-OnHandshakeStart()
-OnHandshakeEnd()
-
-
-
-
-*/
 namespace ClientFramework {
-    public class Events {
-        public class ServerEventMessage : EventArgs {
-            public int ClientID { get; set; }
-            public int Code { get; set; }
-            public bool IsSuccessful { get; set; }
-            public DateTime CompletionTime { get; set; }
+    public class ServerEventMessage : EventArgs {
+        public int ClientID { get; set; }
+        public int Code { get; set; }
+        public DateTime CompletionTime { get; set; }
+        public List<object> Parameters { get; set; }
 
+    }
+    public class ServerEvents
+    {
+        public static ServerEvents? eventsListener { get; set; }
+        public event EventHandler<object[]> ClientConnected;
+        public event EventHandler<object[]> ClientDisconnect; // event
+        public void ExecuteEvent(string eventName, object[] parameters)
+        {
+            var data = new ServerEventMessage();
+            switch (eventName.ToLower()) {
+				case "onclientconnect":
+                    OnClientConnected(parameters);
+					break;
+				case "onclientdisconnect":
+                    OnClientDisconnect(parameters);
+					break;
+				case "onservershutdown":
+					break;
+				case "onmessagesent":
+					break;
+				case "onmessagereceived":
+					break;
+				case "onhandshakestart":
+					break;
+				case "onhandshakeend":
+					break;
+				default:
+					throw new NotImplementedException();
+			}
         }
-        public class ServerEvents {
-            public event EventHandler<ServerEventMessage> ClientConnected; // event
-
-            public void StartProcess() {
-                var data = new ServerEventMessage();
-
-                    Console.WriteLine("Process Started!");
-                    
-                    //uncomment following to see the result
-                    //throw new NullReferenceException();
-                    
-                    // some process code here..
-                    
-                    data.ClientID = 2;
-                    data.Code = 5;
-                    data.IsSuccessful = true;
-                    data.CompletionTime = DateTime.Now;
-                    OnClientConnected(data);
-            }
 
 
-            protected virtual void OnClientConnected(ServerEventMessage e)
-            {
-                ClientConnected?.Invoke(this, e);
-            }
+        protected virtual void OnClientConnected(object[] parameters){
+            ClientConnected?.Invoke(this, parameters);
+        }
+        protected virtual void OnClientDisconnect(object[] parameters){
+            ClientDisconnect?.Invoke(this, parameters);
         }
     }
-    
 }

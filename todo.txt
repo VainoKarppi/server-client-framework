@@ -1,0 +1,3 @@
+update users list on client connect
+
+fix disconnect event

@@ -10,17 +10,26 @@ using System.Reflection;
 namespace ClientFramework {
     public class Program {
         public const int Version = 1000;
-        public static void OnClientConnected(object sender, Events.ServerEventMessage message) {
-            Console.WriteLine("Process " + (message.IsSuccessful? "Completed Successfully": "failed"));
-            Console.WriteLine("Completion Time: " + message.CompletionTime.ToLongDateString());
-        }
-
-        static void Main(string[] args) {
-            Events.ServerEvents se = new Events.ServerEvents();
-            se.ClientConnected += OnClientConnected; // register with an event
         
+        
+        public static void OnClientConnected(object sender, params object[] parameters){
+            int id = (int)parameters[0];
+            string username = (string)parameters[1];
+            Console.WriteLine($"CLIENT CONNECTED! ({username} ID:{id})");
+        }
+        public static void OnClientDisconnect(object sender, params object[] parameters){
+            int id = (int)parameters[0];
+            string username = (string)parameters[1];
+            Console.WriteLine($"CLIENT DISCONNECTED! ({username} ID:{id})");
+        }
+        public static void Main(string[] args) {
+            ServerEvents.eventsListener = new ServerEvents();
+            ServerEvents.eventsListener.ClientConnected += OnClientConnected;
+            ServerEvents.eventsListener.ClientDisconnect += OnClientDisconnect;
+            
+            //bl.StartProcess();
+
             Console.WriteLine();
-            Console.Clear();
             Console.Title = "EDEN Online Extension CLIENT";
             Console.WriteLine("Type 'help' for commands!");
 
@@ -45,14 +54,11 @@ namespace ClientFramework {
                             Environment.Exit(0);
                             break;
                         case "connect":
-                        /*
-                            Console.WriteLine("Ip Adress");
+                            Console.WriteLine("Enter IP adress:");
                             string ip = Console.ReadLine();
-                            Console.WriteLine("Username");
-                            string userName = Console.ReadLine();
-                            Console.WriteLine("Port");
-                            int port = Int32.Parse (Console.ReadLine());*/
-                            Network.Connect("127.0.0.1",2302,"vaino");
+                            Console.WriteLine("Username:");
+                            string name = Console.ReadLine();
+                            Network.Connect(ip,2302,name);
                             break;
                         case "disconnect":
                             Network.Disconnect();
