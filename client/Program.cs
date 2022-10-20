@@ -33,7 +33,7 @@ namespace ClientFramework {
             Console.Title = "EDEN Online Extension CLIENT";
             Console.WriteLine("Type 'help' for commands!");
 
-            Network.Connect("127.0.0.1",2302,"vaino");
+            //Network.Connect("127.0.0.1",2302,"vaino");
 
             while (true) {
                 Console.WriteLine();
