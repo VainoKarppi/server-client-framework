@@ -20,7 +20,8 @@ namespace ClientFramework {
         public static void OnClientDisconnect(object sender, params object[] parameters){
             int id = (int)parameters[0];
             string username = (string)parameters[1];
-            Console.WriteLine($"CLIENT DISCONNECTED! ({username} ID:{id})");
+            bool success = (bool)parameters[2];
+            Console.WriteLine($"CLIENT DISCONNECTED! ({username} ID:{id} SUCCESS:{success})");
         }
         public static void Main(string[] args) {
             ServerEvents.eventsListener = new ServerEvents();

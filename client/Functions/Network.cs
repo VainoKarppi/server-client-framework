@@ -120,13 +120,14 @@ namespace ClientFramework {
 			if (!IsConnected)
 				throw new Exception("Not connected to server!");
 
+
+			/*
 			EventMessage message = new EventMessage {
-                MessageType = (int)MessageTypes.ServerEvent,
                 EventName = "OnClientDisconnect",
                 Parameters = SerializeParameters(Client.Id,Client.UserName)
             };
             Network.SendEvent(message);
-			
+			*/
 			Client.Client.Close();
 			IsConnected = false;
 		}

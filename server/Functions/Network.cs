@@ -215,15 +215,29 @@ namespace ServerFramework {
                     };
                     Console.WriteLine("MSG RECIEVED!");
                     
-
                     var utf8Reader = new Utf8JsonReader(bytes);
-                    NetworkMessage? message = JsonSerializer.Deserialize<NetworkMessage>(ref utf8Reader)!;
-                    DebugMessage(message,2);
-                    object[] parsedParameters = DeserializeParameters(message.Parameters);
+                    dynamic messageTemp = JsonSerializer.Deserialize<dynamic>(ref utf8Reader)!;
+					Console.WriteLine((JsonElement)messageTemp);
+					string property = ((JsonElement)messageTemp).GetProperty("MessageType").ToString();
+
+					int type = -1;
+					if (!Int32.TryParse(property, out type)) continue;
+					if (type < 0) continue;
+
+                    if (type == (int)MessageTypes.ServerEvent) {
+						var eventBytes = new Utf8JsonReader(bytes);
+						EventMessage? eventMessage = JsonSerializer.Deserialize<EventMessage>(ref eventBytes)!;
+						SendEvent(eventMessage);
+						continue;
+					}
+					var msgBytes = new Utf8JsonReader(bytes);
+					NetworkMessage? message = JsonSerializer.Deserialize<NetworkMessage>(ref msgBytes)!;
+					DebugMessage(message,2);
+					object[] deserialisedParams = DeserializeParameters(message.Parameters);
 
                     // HANDLE HANDSHAKE
                     if (message.isHandshake && message.MethodId == default) {
-                        object[] data = Handshake(_client, (int)parsedParameters[0], (string)parsedParameters[1]);
+                        object[] data = Handshake(_client, (int)deserialisedParams[0], (string)deserialisedParams[1]);
                         //object data = typeof(Network).GetMethod("Handshake").Invoke("Handshake",parameters);
                         NetworkMessage handshakeMessage = new NetworkMessage {
                             MessageType = (int)MessageTypes.ResponseData,
@@ -242,7 +256,7 @@ namespace ServerFramework {
                     List<object> paramList = new List<object>();
                     paramList.Add(_client);
                     if (message.Parameters != null) {
-                        foreach (object p in parsedParameters) {
+                        foreach (object p in deserialisedParams) {
                             paramList.Add(p);
                         }
                     }
@@ -308,14 +322,15 @@ namespace ServerFramework {
 					}
                     Console.WriteLine("\n");
                 } catch (Exception ex) {
-                    if (ex is IOException || ex is SocketException)
+                    bool success = (ex is IOException || ex is SocketException);
+                    if (success)
                         Console.WriteLine("Client " + _client.ID.ToString() + " disconnected!");
                     else
                         Console.WriteLine(ex);
                     
                     EventMessage message = new EventMessage {
                         EventName = "OnClientDisconnect",
-                        Parameters = SerializeParameters(_client.ID,_client.UserName)
+                        Parameters = SerializeParameters(_client.ID,_client.UserName,success)
                     };
                     SendEvent(message);
                     break;
