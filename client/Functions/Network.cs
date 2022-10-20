@@ -26,7 +26,7 @@ namespace ClientFramework {
 		public static event EventHandler<Events.ServerEventMessage> ?ClientConnected;
 		public class EventMessage {
             public int? MessageType { get; set; } = (int)MessageTypes.ServerEvent;
-            public int[]? Targets { get; set; }
+            public int[]? Targets { get; set; } = new int[] {1};
             // Who to sent the event to
             public string? EventName { get; set; }
             // OnPlayerConnected etc
@@ -47,7 +47,7 @@ namespace ClientFramework {
 			// Array of parameters passed to method that is going to be executed
 			public int Key { get; set; } = new Random().Next(100,int.MaxValue);
 			// Key for getting the response for specific request
-			public int? Sender { get; set; } = ClientID;
+			public int? Sender { get; set; } = Client.Id;
 			// Id of the sender. Can be null in case handshake is not completed
 			public bool isHandshake { get; set; } = false;
 			// Used to detect for handshake. Else send error for not connected to server!
@@ -55,14 +55,22 @@ namespace ClientFramework {
 		public static List<string> ClientMethods = new List<string>() {};
 		private static List<string> PrivateMethods = new List<string>() {"GetMethods","ConnectedClients","HandleEvent"};
 		// To be read from handshake (register on server)
-		public static Dictionary<int,object[]> Results = new Dictionary<int,object[]>();
+		public static Dictionary<int,dynamic> Results = new Dictionary<int,dynamic>();
 
 
-
-		public static int ClientID;
 		public static bool IsConnected { get; set; }
 		public static bool HandshakeDone { get; set; }
-		public static TcpClient Client = default!;
+		public static ClientBase Client = default!;
+
+
+		public class ClientBase : TcpClient {
+			public NetworkStream? Stream { get; set; }
+			public StreamReader? Reader { get; set; }
+        	public StreamWriter? Writer { get; set; }
+			public int? Id { get; set;}
+			public bool HandshakeDone { get; set; }
+			public string UserName { get; set; } = "error (NoName)";
+		}
 		public static List<OtherClient> OtherClients = new List<OtherClient>() {};
 		// {ID,USERNAME,CONNECTED}
 		public class OtherClient {
@@ -84,11 +92,17 @@ namespace ClientFramework {
 				throw new Exception("Already connected to server!");
 
 			// Reset variables (Just to be sure)
-			Client = new TcpClient();
+
+			Client = new ClientBase();
 
 
 			Console.WriteLine("Trying to connect at: (" + ip + ":" + port.ToString() + "), with name: " + userName);
 			Client.Connect(IPAddress.Parse(ip), port);
+
+
+			Client.Stream = Client.GetStream();
+			Client.Reader = new StreamReader(Client.Stream);
+			Client.Writer = new StreamWriter(Client.Stream);
 			
 			// Request client ID and do handshake
 			int _id = Network.Handshake(userName);
@@ -105,12 +119,22 @@ namespace ClientFramework {
 			if (!IsConnected)
 				throw new Exception("Not connected to server!");
 
+			EventMessage message = new EventMessage {
+                MessageType = (int)MessageTypes.ServerEvent,
+                EventName = "OnClientDisconnect",
+                Parameters = SerializeParameters(Client.Id,Client.UserName)
+            };
+            Network.SendEvent(message);
 			
 			Client.Client.Close();
 			IsConnected = false;
 		}
 
-		
+		public static void SendEvent(EventMessage message) {
+            if (!IsConnected) throw new Exception("Server not running!");
+
+			SendMessage(message,Client.GetStream());
+        }
 		public static void ReceiveDataThread() {
 			Console.WriteLine("STARTED ReceiveDataThread");
 			try {
@@ -122,9 +146,7 @@ namespace ClientFramework {
 						Console.WriteLine("ERROR MESSAGE");
 						continue;
 					}
-					Console.WriteLine("MSG RECIEVED!");
-					Console.WriteLine(bytes.Count());
-
+					
 					var utf8Reader = new Utf8JsonReader(bytes);
                     dynamic messageTemp = JsonSerializer.Deserialize<dynamic>(ref utf8Reader)!;
 					Console.WriteLine((JsonElement)messageTemp);
@@ -140,13 +162,14 @@ namespace ClientFramework {
 					
 
 					if (type == (int)MessageTypes.ServerEvent) {
-						EventMessage? eventMessage = (EventMessage)messageTemp;
+						var eventBytes = new Utf8JsonReader(bytes);
+						EventMessage? eventMessage = JsonSerializer.Deserialize<EventMessage>(ref eventBytes)!;
 						HandleEvent(eventMessage);
 						continue;
 					}
-
-					NetworkMessage? message = (NetworkMessage)messageTemp;
-					DebugMessage(messageTemp);
+					var msgBytes = new Utf8JsonReader(bytes);
+					NetworkMessage? message = JsonSerializer.Deserialize<NetworkMessage>(ref msgBytes)!;
+					DebugMessage(message,2);
 					object[] deserialisedParams = DeserializeParameters(message.Parameters);
 
 					// Dump result to array and continue
@@ -182,11 +205,11 @@ namespace ClientFramework {
 						case (int)MessageTypes.RequestData:
 							object data = methodInfo?.Invoke(method,parameters);
 
-							NetworkMessage responseMessage = new NetworkMessage
-							{
-								MessageType = ((int)MessageTypes.ResponseData),
+							NetworkMessage responseMessage = new NetworkMessage {
+								MessageType = (int)MessageTypes.ResponseData,
 								MethodId = message.MethodId,
-								TargetId = (int?)message.Sender
+								TargetId = message.Sender,
+								Key = message.Key
 							};
 							if (data != null) responseMessage.Parameters = SerializeParameters(data);
 							Network.SendData(responseMessage);
@@ -217,13 +240,9 @@ namespace ClientFramework {
 			}
 		}
 		public static void HandleEvent(EventMessage message) {
-			Console.WriteLine(message.ToString());
-			Console.WriteLine("HEEELP");
 			string eventName = message?.EventName;
 			Console.WriteLine(eventName);
-			Console.WriteLine(message?.Parameters);
 			object[] parameters = DeserializeParameters(message?.Parameters);
-			Console.WriteLine("HEEELP2");
 
 			var da = new Events.ServerEventMessage();
 			da.ClientID = 2;
@@ -231,10 +250,11 @@ namespace ClientFramework {
 			da.IsSuccessful = true;
 			da.CompletionTime = DateTime.Now;
 			switch (eventName.ToLower()) {
-				case "onclientconnected":
+				case "onclientconnect":
+					Console.WriteLine("AAA");
 					ClientConnected?.Invoke(Network.ClientConnected,da);
 					break;
-				case "onclientdisconnected":
+				case "onclientdisconnect":
 					break;
 				case "onservershutdown":
 					break;
@@ -260,11 +280,11 @@ namespace ClientFramework {
 		// Fire and forget
 		public static void SendData(NetworkMessage message) {
             if (!IsConnected) throw new Exception("Not connected to server");
-			if (message.TargetId == ClientID) throw new Exception("Cannot send data to self! (client)");
+			if (message.TargetId == Client.Id) throw new Exception("Cannot send data to self! (client)");
 			
 			if (message.MessageType == null) message.MessageType = (int?)MessageTypes.SendData;
 
-			DebugMessage(message);
+			DebugMessage(message,1);
 
 			SendMessage(message,Client.GetStream());
 			
@@ -278,6 +298,7 @@ namespace ClientFramework {
 		}
 		public static byte[] ReadMessageBytes(NetworkStream Stream) {
 			byte[] lenghtBytes = new byte[2];
+
 			Stream.Read(lenghtBytes,0,2);
 			ushort msgLenght = BitConverter.ToUInt16(lenghtBytes,0);
 			byte[] bytes = new byte[msgLenght];
@@ -285,12 +306,12 @@ namespace ClientFramework {
 			return bytes;
 		}
 
-		public static object[] RequestData(NetworkMessage message) {
+		public static dynamic RequestData(NetworkMessage message) {
 			if (!IsConnected) throw new Exception("Not connected to server");
 
 			message.MessageType = (int?)MessageTypes.RequestData;
 
-			DebugMessage(message);
+			DebugMessage(message,1);
 
 			// Send request
 			SendMessage(message,Client.GetStream());
@@ -328,10 +349,7 @@ namespace ClientFramework {
 
 			SendMessage(handshakeMessage,Client.GetStream());
 
-			NetworkStream Stream = Client.GetStream();
 			byte[] bytes = ReadMessageBytes(Client.GetStream());
-			Console.WriteLine("MSG RECIEVED!");
-			Console.WriteLine(bytes.Count());
 			if (bytes.Count() == 0) {
 				Console.WriteLine("ERROR HANDSHAKE");
 				return -1;
@@ -349,7 +367,8 @@ namespace ClientFramework {
 				throw new Exception($"Handshake failed. Code:{_clientID}");
 			}
 
-			ClientID = _clientID;
+			Client.Id = _clientID;
+			Client.UserName = userName;
 			object[] methods = (object[])returnedParams[1];
 			foreach (string method in methods) {
 				ClientMethods.Add(method);
@@ -398,11 +417,16 @@ namespace ClientFramework {
 
 
 
-		public static void DebugMessage(NetworkMessage message) {
+		public static void DebugMessage(NetworkMessage message, int mode = 0) {
             Console.WriteLine("--------------DEBUG MESSGAE--------------");
+			string type = "UNKNOWN";
+            if (mode == 1) {
+                type = "OUTBOUND";
+            } else if (mode == 2) {
+                type = "INBOUND";
+            }
+            Console.WriteLine($"TYPE: {type}");
 			Console.WriteLine($"TIME: {DateTime.Now.Millisecond}");
-			string jsonString = JsonSerializer.Serialize(message);
-            Console.WriteLine(message);
             Console.WriteLine($"MessageType:{message.MessageType}");
             Console.WriteLine($"TargetId:{message.TargetId}");
             Console.WriteLine($"MethodId:{message.MethodId}");

@@ -28,8 +28,8 @@ namespace ClientFramework {
             Console.WriteLine("Connected clients: ");
 
             int i = 1;
-            foreach (Network.OtherClient client in Network.OtherClients) {
-                Console.WriteLine($"    ({i}) ID={client.Id} Name={client.UserName}");
+            foreach (Network.OtherClient _client in Network.OtherClients) {
+                Console.WriteLine($"    ({i}) ID={_client.Id} Name={_client.UserName}");
                 i++;
             }
         }

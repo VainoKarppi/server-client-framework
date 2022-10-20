@@ -58,6 +58,9 @@ namespace ServerFramework {
                     else if (command == "senddata")
                         Commands.SendCommand();
 
+                    else if (command == "requestdata")
+                        Commands.RequestData();
+
                     else if (command == "status")
                         Console.WriteLine(Network.ServerRunning ? "Server is running!" : "Server is not running!");
                     else

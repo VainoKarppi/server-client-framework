@@ -14,7 +14,9 @@ OnClientDisconnected(int, ID, string Name, int code)
 OnMessageReceived()
 OnMessageSent()
 
-OnServerShutdown()
+OnServerShutdown(int code)
+    0 - Error/Crash
+    1 - Success
 
 OnConnected()
 OnDisconnected()

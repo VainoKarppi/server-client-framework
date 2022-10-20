@@ -1,3 +1,4 @@
+using System.Reflection.Metadata;
 using System.Data;
 using System.Collections;
 using System;
@@ -35,7 +36,7 @@ namespace ServerFramework {
 		{
 			public int? MessageType { get; set; } = 0;
 			// One of the tpes in "MessageTypes"
-			public int? TargetId { get; set; } = 1;
+			public int? TargetId { get; set; } = 0;
 			// 0 = everyone, 1 = server, 2 = client 1...
 			public int MethodId { get; set; }
 			// Minus numbers are for internal use!
@@ -50,7 +51,7 @@ namespace ServerFramework {
 		}
 		public static List<string> ClientMethods = new List<string>() {"Disconnect","ConnectedClients","Test","TestArray"};
         private static List<string> PrivateMethods = new List<string>() {"GetMethods","ConnectedClients","HandleEvent"};
-		public static Dictionary<int,object[]> Results = new Dictionary<int,object[]>();
+		public static Dictionary<int,dynamic> Results = new Dictionary<int,dynamic>();
 
         public static void StartServer() {
             if (ServerRunning)
@@ -97,7 +98,12 @@ namespace ServerFramework {
         public static void StopServer() {
             if (!ServerRunning)
                 throw new Exception("Server not running!");
-                
+            
+            EventMessage message = new EventMessage {
+                EventName = "OnServerShutdown",
+                Parameters = SerializeParameters(1)
+            };
+            SendEvent(message);
             Console.WriteLine("Stopping server...");
             ServerRunning = false;
             ServerListener.Stop();
@@ -108,18 +114,26 @@ namespace ServerFramework {
             Console.WriteLine("Server stopped!");
         }
 
-        // TODO Add Async method aswell
-        // TODO Add data type as header + allow any data type using encode/decode
+
         // Request ID is used to answer to specific message
 
         public static void SendEvent(EventMessage message) {
             if (!ServerRunning) throw new Exception("Server not running!");
-			
-            // Send to single ro multiple users
+
+            // Add ALL clients to list if left as blank
+			if (message.Targets == default) {
+                List<int> targets = new List<int>(){};
+                foreach (NetworkClient client in ClientList) {
+                    targets.Add(client.ID);
+                }
+                message.Targets = targets.ToArray();
+            }
+
+            // Send to single or multiple users
             foreach (int id in message.Targets) {
                 NetworkClient client = ClientList.FirstOrDefault(c => c.ID == id);
                 if (client == default) continue;
-                SendMessage(message,client.GetStream());
+                SendMessage(message,client.Stream);
             }
         }
 
@@ -143,32 +157,33 @@ namespace ServerFramework {
 			if (message.TargetId == 1) throw new Exception("Cannot send data to self (server)!");
 			
 			if (message.MessageType == null) message.MessageType = (int?)MessageTypes.SendData;
-            DebugMessage(message);
+            
 
             
             // Send to single ro multiple users
             if (message.TargetId > 0) {
                 NetworkClient client = ClientList.FirstOrDefault(c => c.ID == message.TargetId);
                 if (client == default) throw new Exception("Invalid target!");
-                SendMessage(message,client.GetStream());
+                DebugMessage(message,1);
+                SendMessage(message,client.Stream);
             } else {
-                var clients = from s in ClientList where s.ID == message.TargetId select s;
-                foreach (NetworkClient client in clients) {
-                    SendMessage(message,client.GetStream());
+                foreach (NetworkClient client in ClientList) {
+                    SendMessage(message,client.Stream);
                 }
+                Console.WriteLine($"DATA SENT {ClientList.Count()} to USERS(s)!");
             }
         }
         
 
-        public static object[] RequestData(NetworkMessage message) {
+        public static dynamic RequestData(NetworkMessage message) {
 			if (!ServerRunning) throw new Exception("Not connected to server");
 			
 			message.MessageType = (int?)MessageTypes.RequestData;
 
-            NetworkClient client = (NetworkClient)ClientList.Select(client => client.ID == message.TargetId);
-            if (client == null) throw new Exception("Invalid target!");
+            NetworkClient client = ClientList.FirstOrDefault(client => client.ID == message.TargetId);
+            if (client == default) throw new Exception("Invalid target!");
 
-            SendMessage(message,client.GetStream());
+            SendMessage(message,client.Stream);
 			
 			// Wait for response
 			object[] returnData;
@@ -192,18 +207,18 @@ namespace ServerFramework {
         public static void HandleClient(NetworkClient _client) {
             while (true) {
                 try {
-                    byte[] bytes = ReadMessageBytes(_client.GetStream());
+                    byte[] bytes = ReadMessageBytes(_client.Stream);
 					
                     if (bytes.Count() == 0) {
-                        Console.WriteLine("ERROR BYTES");
+                        Console.Write("ERROR BYTES! ");
                         continue;
-                    }; // TODO WHY IS THIS GETTING EXECUTED AFTER REQUESTDATA MSG
+                    };
                     Console.WriteLine("MSG RECIEVED!");
                     
 
                     var utf8Reader = new Utf8JsonReader(bytes);
                     NetworkMessage? message = JsonSerializer.Deserialize<NetworkMessage>(ref utf8Reader)!;
-                    DebugMessage(message);
+                    DebugMessage(message,2);
                     object[] parsedParameters = DeserializeParameters(message.Parameters);
 
                     // HANDLE HANDSHAKE
@@ -274,7 +289,6 @@ namespace ServerFramework {
                                     MessageType = (int)MessageTypes.ResponseData,
                                     MethodId = message.MethodId,
                                     TargetId = message.Sender,
-                                    Sender = 1,
                                     Key = message.Key
                                 };
                                 // HANDLE ON SERVER
@@ -298,6 +312,12 @@ namespace ServerFramework {
                         Console.WriteLine("Client " + _client.ID.ToString() + " disconnected!");
                     else
                         Console.WriteLine(ex);
+                    
+                    EventMessage message = new EventMessage {
+                        EventName = "OnClientDisconnect",
+                        Parameters = SerializeParameters(_client.ID,_client.UserName)
+                    };
+                    SendEvent(message);
                     break;
                 }
             }
@@ -334,12 +354,11 @@ namespace ServerFramework {
                 targetList.Add(toAdd.ID);
             }
             EventMessage message = new EventMessage {
-                MessageType = (int)MessageTypes.ServerEvent,
                 Targets = targetList.ToArray(),
-                EventName = "OnClientConnected",
+                EventName = "OnClientConnect",
                 Parameters = SerializeParameters(client.ID,client.UserName)
             };
-            Network.SendEvent(message);
+            SendEvent(message);
 
             returnData = new object[] {client.ID,ClientMethods.ToArray(),clientlist.ToArray()};
             return returnData;
@@ -381,11 +400,16 @@ namespace ServerFramework {
 			return final.ToArray();
 		}
 
-        public static void DebugMessage(NetworkMessage message) {
+        public static void DebugMessage(NetworkMessage message,int mode = 0) {
             Console.WriteLine("--------------DEBUG MESSGAE--------------");
+            string type = "UNKNOWN";
+            if (mode == 1) {
+                type = "OUTBOUND";
+            } else if (mode == 2) {
+                type = "INBOUND";
+            }
+            Console.WriteLine($"TYPE: {type}");
             Console.WriteLine($"TIME: {DateTime.Now.Millisecond}");
-            string jsonString = JsonSerializer.Serialize(message);
-            Console.WriteLine(message);
             Console.WriteLine($"MessageType:{message.MessageType}");
             Console.WriteLine($"TargetId:{message.TargetId}");
             Console.WriteLine($"MethodId:{message.MethodId}");
@@ -444,6 +468,7 @@ namespace ServerFramework {
     }
 
     public class NetworkClient : TcpClient {
+        public NetworkStream? Stream { get; set; }
         public StreamReader Reader { get; set; }
         public StreamWriter Writer { get; set; }
         public int ID { get; set; }
@@ -453,13 +478,14 @@ namespace ServerFramework {
         public NetworkClient(TcpListener listener)
         {   
             TcpClient _client = listener.AcceptTcpClient();
-            //this.Client.Dispose();
+            Stream = _client.GetStream();
+
             this.Client = _client.Client;
             
             this.Active = true;
             //TcpClient _client = listener.AcceptTcpClient();
-            Reader = new StreamReader(this.GetStream());
-            Writer = new StreamWriter(this.GetStream());
+            Reader = new StreamReader(Stream);
+            Writer = new StreamWriter(Stream);
         }
     }
 }
