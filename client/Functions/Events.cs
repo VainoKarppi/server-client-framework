@@ -3,29 +3,36 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net.Sockets;
 using System.Text;
+using System.Text.Json;
 
 namespace ClientFramework {
+    public class ClientConnectEvent  {
+        public int Id { get; set; }
+        public string? UserName { get; set; }
+    }
+    public class ClientDisconnectEvent : ClientConnectEvent {
+        public bool Success { get; set; }
+    }
     public class ServerEventMessage : EventArgs {
         public int ClientID { get; set; }
         public int Code { get; set; }
         public DateTime CompletionTime { get; set; }
-        public List<object> Parameters { get; set; }
+        public List<object>? Parameters { get; set; }
 
     }
     public class ServerEvents
     {
         public static ServerEvents? eventsListener { get; set; }
-        public event EventHandler<object[]> ClientConnected;
-        public event EventHandler<object[]> ClientDisconnect; // event
-        public void ExecuteEvent(string eventName, object[] parameters)
+        public event EventHandler<ClientConnectEvent>? ClientConnected;
+        public event EventHandler<ClientDisconnectEvent>? ClientDisconnect;
+        public void ExecuteEvent(string eventName, dynamic classData)
         {
-            var data = new ServerEventMessage();
             switch (eventName.ToLower()) {
 				case "onclientconnect":
-                    OnClientConnected(parameters);
+                    OnClientConnected( ((JsonElement)classData).Deserialize<ClientConnectEvent>() );
 					break;
 				case "onclientdisconnect":
-                    OnClientDisconnect(parameters);
+                    OnClientDisconnect( ((JsonElement)classData).Deserialize<ClientDisconnectEvent>() );
 					break;
 				case "onservershutdown":
 					break;
@@ -43,11 +50,11 @@ namespace ClientFramework {
         }
 
 
-        protected virtual void OnClientConnected(object[] parameters){
-            ClientConnected?.Invoke(this, parameters);
+        protected virtual void OnClientConnected(dynamic classData){
+            ClientConnected?.Invoke(this, classData);
         }
-        protected virtual void OnClientDisconnect(object[] parameters){
-            ClientDisconnect?.Invoke(this, parameters);
+        protected virtual void OnClientDisconnect(dynamic classData){
+            ClientDisconnect?.Invoke(this, classData);
         }
     }
 }

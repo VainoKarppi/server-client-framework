@@ -8,20 +8,21 @@ using System.Reflection;
 
 
 namespace ClientFramework {
+    
+    public class TestClass {
+        public bool Test { get; set; }
+        public string? StringTest { get; set; }
+        public dynamic? Data { get; set; }
+    }
     public class Program {
         public const int Version = 1000;
         
         
-        public static void OnClientConnected(object sender, params object[] parameters){
-            int id = (int)parameters[0];
-            string username = (string)parameters[1];
-            Console.WriteLine($"CLIENT CONNECTED! ({username} ID:{id})");
+        public static void OnClientConnected(object sender, ClientConnectEvent client){
+            Console.WriteLine($"CLIENT CONNECTED! ({client.UserName} ID:{client.Id})");
         }
-        public static void OnClientDisconnect(object sender, params object[] parameters){
-            int id = (int)parameters[0];
-            string username = (string)parameters[1];
-            bool success = (bool)parameters[2];
-            Console.WriteLine($"CLIENT DISCONNECTED! ({username} ID:{id} SUCCESS:{success})");
+        public static void OnClientDisconnect(object sender, ClientDisconnectEvent client){
+            Console.WriteLine($"CLIENT DISCONNECTED! ({client.UserName} ID:{client.Id} SUCCESS:{client.Success})");
         }
         public static void Main(string[] args) {
             ServerEvents.eventsListener = new ServerEvents();
@@ -57,8 +58,13 @@ namespace ClientFramework {
                         case "connect":
                             Console.WriteLine("Enter IP adress:");
                             string ip = Console.ReadLine();
+                            if (string.IsNullOrEmpty(ip)) ip = "127.0.0.1";
                             Console.WriteLine("Username:");
                             string name = Console.ReadLine();
+                            if (string.IsNullOrEmpty(name)) {
+                                Random rd = new Random();
+                                name = ("RANDOMUSER" + rd.Next(1,10).ToString());
+                            }
                             Network.Connect(ip,2302,name);
                             break;
                         case "disconnect":
@@ -73,11 +79,14 @@ namespace ClientFramework {
                         case "requestdata":
                             Commands.RequestData();
                             break;
+                        case "requestdatatype":
+                            Commands.RequestDataType();
+                            break;
                         case "status":
-                            Console.WriteLine(Network.IsConnected ? "Connected to server! ID:" + Network.Client.Id.ToString() : "NOT connected to server!");
+                            Console.WriteLine(Network.Client.HandshakeDone ? "Connected to server! ID:" + Network.Client.Id.ToString() : "NOT connected to server!");
                             break;
                         default:
-                            Console.WriteLine("Unknown command!" + "\n" + "Type 'help' for commands!");
+                            Console.WriteLine("Unknown command!\nType 'help' for commands!");
                             break;
                     }  
                 } catch (Exception e) {

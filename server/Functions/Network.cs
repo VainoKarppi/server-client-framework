@@ -30,6 +30,7 @@ namespace ServerFramework {
             public string? EventName { get; set; }
             // OnPlayerConnected etc
             public List<object>? Parameters { get; set; } = new List<object>() {};
+            public dynamic? EventDataClass { get; set; }
 
         }
 		public class NetworkMessage
@@ -38,9 +39,10 @@ namespace ServerFramework {
 			// One of the tpes in "MessageTypes"
 			public int? TargetId { get; set; } = 0;
 			// 0 = everyone, 1 = server, 2 = client 1...
-			public int MethodId { get; set; }
+            public string? MethodName { get; set; }
 			// Minus numbers are for internal use!
 			public List<object>? Parameters { get; set; } = new List<object>() {};
+            public dynamic? ReturnDataClass { get; set; }
 			// Array of parameters passed to method that is going to be executed
 			public int Key { get; set; } = new Random().Next(100,int.MaxValue);
 			// Key for getting the response for specific request (0-100) = event id
@@ -49,7 +51,7 @@ namespace ServerFramework {
 			public bool isHandshake { get; set; } = false;
 			// Used to detect for handshake. Else send error for not connected to server!
 		}
-		public static List<string> ClientMethods = new List<string>() {"Disconnect","ConnectedClients","Test","TestArray"};
+		public static List<string> ClientMethods = new List<string>() {"Disconnect","ConnectedClients","Test","TestArray","TestType"};
         private static List<string> PrivateMethods = new List<string>() {"GetMethods","ConnectedClients","HandleEvent"};
 		public static Dictionary<int,dynamic> Results = new Dictionary<int,dynamic>();
 
@@ -195,7 +197,7 @@ namespace ServerFramework {
 					Results.Remove(message.Key);
 					break;
 				}
-				if (timer > 100) throw new Exception($"Request {message.Key} ({ClientMethods[message.MethodId]}) timed out!");
+				if (timer > 100) throw new Exception($"Request {message.Key} ({message.MethodName}) timed out!");
 				timer++;
 			}
 			return returnData;
@@ -210,8 +212,8 @@ namespace ServerFramework {
                     byte[] bytes = ReadMessageBytes(_client.Stream);
 					
                     if (bytes.Count() == 0) {
-                        Console.Write("ERROR BYTES! ");
-                        continue;
+                        _client.Close();
+                        throw new Exception("ERROR BYTES!");
                     };
                     Console.WriteLine("MSG RECIEVED!");
                     
@@ -236,12 +238,12 @@ namespace ServerFramework {
 					object[] deserialisedParams = DeserializeParameters(message.Parameters);
 
                     // HANDLE HANDSHAKE
-                    if (message.isHandshake && message.MethodId == default) {
+                    if (message.isHandshake && message.MethodName == default) {
                         object[] data = Handshake(_client, (int)deserialisedParams[0], (string)deserialisedParams[1]);
                         //object data = typeof(Network).GetMethod("Handshake").Invoke("Handshake",parameters);
                         NetworkMessage handshakeMessage = new NetworkMessage {
                             MessageType = (int)MessageTypes.ResponseData,
-                            MethodId = message.MethodId
+                            MethodName = message.MethodName
                         };
                         if (data != null) handshakeMessage.Parameters = SerializeParameters(data);
                         handshakeMessage.TargetId = Int32.Parse(data[0].ToString());
@@ -278,19 +280,26 @@ namespace ServerFramework {
 
                     
                     
-
-                    // GET METHOD INFO
-                    string method;
-                    MethodInfo methodInfo;
-                    if (message.MethodId < 0) {
-                        method = PrivateMethods[Math.Abs(message.MethodId) - 1];
-                        methodInfo = typeof(Network).GetMethod(method);
-                    } else {
-                        method = ClientMethods[message.MethodId];
-                        methodInfo = typeof(ServerMethods).GetMethod(method);
-                        if (methodInfo == null) throw new Exception($"Method {message.MethodId} was not found ({method})");
-                    }
                     
+                    // GET METHOD INFO
+                    string methodName;
+					int methodId;
+                    MethodInfo methodInfo;
+					bool isInt = int.TryParse(message.MethodName, out methodId);
+					if (isInt) {
+						if (methodId < 0) {
+							methodName = PrivateMethods[Math.Abs(methodId) - 1];
+							methodInfo = typeof(Network).GetMethod(methodName);
+						} else {
+							methodName = ClientMethods[methodId];
+							methodInfo = typeof(ServerMethods).GetMethod(methodName);
+							if (methodInfo == null) throw new Exception($"Method {methodId} was not found ({methodName})");
+						}
+					} else {
+                        methodName = ClientMethods.FirstOrDefault(x => x.ToLower() == message.MethodName.ToLower());
+						methodInfo = typeof(ServerMethods).GetMethod(methodName);
+						if (methodInfo == null) throw new Exception($"Method {methodName} was not found");
+					}
 
 					switch (message.MessageType)
 					{
@@ -301,21 +310,25 @@ namespace ServerFramework {
                             } else {
                                 NetworkMessage responseMessage = new NetworkMessage {
                                     MessageType = (int)MessageTypes.ResponseData,
-                                    MethodId = message.MethodId,
+                                    MethodName = message.MethodName,
                                     TargetId = message.Sender,
                                     Key = message.Key
                                 };
                                 // HANDLE ON SERVER
-                                object? data = default;
-                                data = methodInfo?.Invoke(method,parameters);
-                                if (data != null) responseMessage.Parameters = SerializeParameters(data);
+                                object? data = methodInfo?.Invoke(methodName,parameters);
+                                if (data != null && !(data.GetType().IsClass)) {
+                                    responseMessage.Parameters = SerializeParameters(data);
+                                } else {
+                                    responseMessage.ReturnDataClass = data;
+                                }
+                                //responseMessage.ReturnDataType = data.GetType();
                                 Network.SendData(responseMessage);
                             }
 							break;
 						
 						// FIRE AND FORGET (Dont return method return data)
 						case (int)MessageTypes.SendData:
-							methodInfo?.Invoke(method,parameters);
+							methodInfo?.Invoke(methodName,parameters);
 							break;
 						default:
 							throw new NotImplementedException();
@@ -381,12 +394,6 @@ namespace ServerFramework {
 
 
 
-
-        // Used to read 
-		public static int GetMethodIndex(string method) {
-			return ClientMethods.FindIndex(m => m.ToLower() == method.ToLower());
-		}
-
         public static List<object> SerializeParameters(params object[] parameters) {
 			List<object> newParams = new List<object>();
 			foreach (object parameter in parameters) {
@@ -426,8 +433,9 @@ namespace ServerFramework {
             Console.WriteLine($"TYPE: {type}");
             Console.WriteLine($"TIME: {DateTime.Now.Millisecond}");
             Console.WriteLine($"MessageType:{message.MessageType}");
+            Console.WriteLine($"ReturnData: {message.ReturnDataClass}");
             Console.WriteLine($"TargetId:{message.TargetId}");
-            Console.WriteLine($"MethodId:{message.MethodId}");
+            Console.WriteLine($"MethodName:{message.MethodName}");
             if (message.Parameters != null) {
 				int i = 0;
 				int ii = 1;
@@ -453,7 +461,6 @@ namespace ServerFramework {
             }
             Console.WriteLine($"Key:{message.Key}");
             Console.WriteLine($"Sender:{message.Sender}");
-            Console.WriteLine($"isHandshake:{message.isHandshake}");
             Console.WriteLine("--------------DEBUG MESSGAE--------------");
         }
         public static object[] ParseParamArray(string input) {

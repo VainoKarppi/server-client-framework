@@ -49,7 +49,7 @@ namespace ServerFramework {
             Network.NetworkMessage message = new Network.NetworkMessage {
                 Parameters = Network.SerializeParameters("TEST MSG FROM SERVER"),
                 TargetId = Int32.Parse(target),
-                MethodId = Network.GetMethodIndex(method)
+                MethodName = method
             };
             Network.SendData(message);
         }
@@ -72,7 +72,7 @@ namespace ServerFramework {
             Network.NetworkMessage message = new Network.NetworkMessage {
                 Parameters = Network.SerializeParameters("TEST MSG FROM SERVER"),
                 TargetId = Int32.Parse(target),
-                MethodId = Network.GetMethodIndex(method)
+                MethodName = method
             };
             object[] data = Network.RequestData(message);
             Console.WriteLine(data[0]);

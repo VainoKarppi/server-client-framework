@@ -5,10 +5,23 @@ using System.Net.Sockets;
 using System.Text;
 
 namespace ServerFramework {
+    public class TestClass {
+        public bool Test { get; set; }
+        public string? StringTest { get; set; }
+        public dynamic? Data { get; set; }
+    }
     class ServerMethods {
         public static string Test(NetworkClient client, string testMessage) {
             Console.WriteLine($"MSG:{testMessage} CLIENT: {client.Client.RemoteEndPoint} ID:{client.ID}");
-            return "moi sinulle :)";
+            return "Hello MSG RESPONSE From Server!";
+        }
+        public static dynamic TestType(NetworkClient client, string testMessage) {
+            Console.WriteLine($"MSG:{testMessage} CLIENT: {client.Client.RemoteEndPoint} ID:{client.ID}");
+            TestClass test = new TestClass();
+            test.StringTest = "TESTI";
+            test.Test = true;
+            test.Data = new string[] {"asd"};
+            return test;
         }
         public static void Disconnect(NetworkClient client, string testMessage) {
             Console.WriteLine("CLIENT DISCONNECTED (TEST)");

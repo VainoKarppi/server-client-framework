@@ -34,7 +34,7 @@ namespace ClientFramework {
             }
         }
         public static void SendData() {
-            if (!Network.IsConnected)
+            if (!Network.Client.HandshakeDone)
                 throw new Exception("Connect to server first!");
 
             Console.WriteLine();
@@ -54,13 +54,13 @@ namespace ClientFramework {
 
             Network.NetworkMessage message = new Network.NetworkMessage {
                 Parameters = Network.SerializeParameters(data),
-                MethodId = Network.GetMethodIndex(method),
+                MethodName = "test",
                 TargetId = Int32.Parse(target)
             };
             Network.SendData(message);
         }
         public static void RequestData() {
-            if (!Network.IsConnected)
+            if (!Network.HandshakeDone)
                 throw new Exception("Connect to server first!");
 
             Console.WriteLine();
@@ -76,12 +76,25 @@ namespace ClientFramework {
             }
 
             Network.NetworkMessage message = new Network.NetworkMessage {
-                Parameters = Network.SerializeParameters("MOI"),
-                MethodId = Network.GetMethodIndex(method),
+                Parameters = Network.SerializeParameters("Hello From Client"),
+                MethodName = "Test",
                 TargetId = Int32.Parse(target)
             };
-            object[] a = Network.RequestData(message);
-            Console.WriteLine($"RETURNED:{a[0]}");
+            string a = Network.RequestData<string>(message);
+            Console.WriteLine($"RETURNED:{a}");
+        }
+        public static void RequestDataType() {
+            if (!Network.Client.Connected)
+                throw new Exception("Connect to server first!");
+
+            Network.NetworkMessage message = new Network.NetworkMessage {
+                Parameters = Network.SerializeParameters("Hello From Client"),
+                MethodName = "TestType",
+                TargetId = 1
+            };
+            TestClass a = Network.RequestData<TestClass>(message);
+            Console.WriteLine($"RETURNED:{a.StringTest}");
+            Console.WriteLine($"RETURNED:{a.Data[0]}");
         }
     }
 }
