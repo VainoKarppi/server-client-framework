@@ -1,4 +1,4 @@
-﻿using System.Diagnostics.Tracing;
+using System.Diagnostics.Tracing;
 using System.Reflection.Metadata;
 using System;
 using System.Collections.Generic;
@@ -62,7 +62,7 @@ namespace ClientFramework {
 
 
 		public static bool HandshakeDone { get; set; }
-		public static ClientBase Client = default!;
+		public static ClientBase? Client;
 
 
 		public class ClientBase : TcpClient {
@@ -90,13 +90,11 @@ namespace ClientFramework {
 		//!! METHODS !!//
 
 		public static void Connect(string ip = "127.0.0.1", int port = 2302, string userName = "unknown") {
-			if (Client.Connected)
+
+			if (Client != null && Client.Connected)
 				throw new Exception("Already connected to server!");
 
-			// Reset variables (Just to be sure)
-
 			Client = new ClientBase();
-
 
 			Console.WriteLine("Trying to connect at: (" + ip + ":" + port.ToString() + "), with name: " + userName);
 			Client.Connect(IPAddress.Parse(ip), port);
@@ -136,6 +134,7 @@ namespace ClientFramework {
 				while (Client.Connected) {
 					byte[] bytes = ReadMessageBytes(Client.GetStream());
 					if (bytes.Count() == 0) {
+						Client.Close();
 						throw new Exception("ERROR BYTES!");
 					}
 					
@@ -248,12 +247,10 @@ namespace ClientFramework {
 		// Fire and forget
 		public static void SendData(NetworkMessage message) {
             if (!Client.HandshakeDone) throw new Exception("Not connected to server");
-			if (message.TargetId == Client.Id) throw new Exception("Cannot send data to self! (client)");
-			
+			if (message.TargetId == Client.Id) throw new Exception("Cannot send data to self! (client)");	
 			if (message.MessageType == null) message.MessageType = (int?)MessageTypes.SendData;
 
 			DebugMessage(message,1);
-
 			SendMessage(message,Client.GetStream());
         }
 
@@ -272,19 +269,7 @@ namespace ClientFramework {
 			Stream.Read(bytes,0,msgLenght);
 			return bytes;
 		}
-
-		public static dynamic RequestData<T>(NetworkMessage message) {
-			if (!Client.HandshakeDone) throw new Exception("Not connected to server");
-
-			message.MessageType = (int?)MessageTypes.RequestData;
-			//message.ReturnDataType = typeof(T).GetType();
-			DebugMessage(message,1);
-
-			// Send request
-			SendMessage(message,Client.GetStream());
-
-			
-			// Wait for response
+		public static dynamic RequestDataResult(NetworkMessage message) {
 			dynamic returnMessage;
 			short timer = 0;
 			while (true) {
@@ -294,10 +279,25 @@ namespace ClientFramework {
 					Results.Remove(message.Key);
 					break;
 				}
-				
 				if (timer > 100) throw new Exception($"Request {message.Key} ({message.MethodName}) timed out!");
 				timer++;
 			}
+			return returnMessage;
+		}
+		public static dynamic RequestData(NetworkMessage message) {
+			if (!Client.HandshakeDone) throw new Exception("Not connected to server");
+			message.MessageType = (int?)MessageTypes.RequestData;
+			DebugMessage(message,1);
+			SendMessage(message,Client.GetStream());
+			dynamic returnMessage = RequestDataResult(message);
+			return returnMessage;
+		}
+		public static dynamic RequestData<T>(NetworkMessage message) {
+			if (!Client.HandshakeDone) throw new Exception("Not connected to server");
+			message.MessageType = (int?)MessageTypes.RequestData;
+			DebugMessage(message,1);
+			SendMessage(message,Client.GetStream());
+			dynamic returnMessage = RequestDataResult(message);
 			if (returnMessage is JsonElement) {
 				return ((JsonElement)returnMessage).Deserialize<T>();
 			}

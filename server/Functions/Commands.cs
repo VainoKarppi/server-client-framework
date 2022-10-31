@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
@@ -74,8 +74,29 @@ namespace ServerFramework {
                 TargetId = Int32.Parse(target),
                 MethodName = method
             };
-            object[] data = Network.RequestData(message);
-            Console.WriteLine(data[0]);
+            string data = Network.RequestData<string>(message);
+            Console.WriteLine(data);
+        }
+        public static void RequestDataType() {
+            if (!Network.ServerRunning)
+                throw new Exception("Start the server first!");
+
+            if (Network.ClientList.Count() == 0)
+                throw new Exception("No clients online!");
+
+            Console.WriteLine("Target ID: (Blank or 0 for all clients)");
+            string target = Console.ReadLine();
+            if (string.IsNullOrEmpty(target))
+                target = "0";
+
+            Network.NetworkMessage message = new Network.NetworkMessage {
+                Parameters = Network.SerializeParameters("Hello From Client"),
+                MethodName = "TestType",
+                TargetId = Int32.Parse(target)
+            };
+            TestClass a = Network.RequestData<TestClass>(message);
+            Console.WriteLine($"RETURNED:{a.StringTest}");
+            Console.WriteLine($"RETURNED:{a.Data[0]}");
         }
     }
 }

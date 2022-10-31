@@ -33,8 +33,8 @@ namespace ServerFramework {
             public dynamic? EventDataClass { get; set; }
 
         }
-		public class NetworkMessage
-		{
+        
+		public class NetworkMessage {
 			public int? MessageType { get; set; } = 0;
 			// One of the tpes in "MessageTypes"
 			public int? TargetId { get; set; } = 0;
@@ -176,33 +176,50 @@ namespace ServerFramework {
             }
         }
         
-
-        public static dynamic RequestData(NetworkMessage message) {
-			if (!ServerRunning) throw new Exception("Not connected to server");
-			
-			message.MessageType = (int?)MessageTypes.RequestData;
-
-            NetworkClient client = ClientList.FirstOrDefault(client => client.ID == message.TargetId);
-            if (client == default) throw new Exception("Invalid target!");
-
-            SendMessage(message,client.Stream);
-			
-			// Wait for response
-			object[] returnData;
+        public static dynamic RequestDataResult(NetworkMessage message) {
+			dynamic returnMessage;
 			short timer = 0;
 			while (true) {
 				Thread.Sleep(1);
 				if (Results.ContainsKey(message.Key)) {
-					returnData = (Results.First(n => n.Key == message.Key)).Value; // Just in case if the index changes in between
+					returnMessage = (Results.First(n => n.Key == message.Key)).Value; // Just in case if the index changes in between
 					Results.Remove(message.Key);
 					break;
 				}
 				if (timer > 100) throw new Exception($"Request {message.Key} ({message.MethodName}) timed out!");
 				timer++;
 			}
-			return returnData;
+			return returnMessage;
 		}
+		public static dynamic RequestData(NetworkMessage message) {
+			if (!ServerRunning) throw new Exception("Server Not running!");
+			message.MessageType = (int?)MessageTypes.RequestData;
 
+            NetworkClient client = ClientList.FirstOrDefault(client => client.ID == message.TargetId);
+            if (client == default) throw new Exception("Invalid target!");
+
+			DebugMessage(message,1);
+			SendMessage(message,client.Stream);
+
+			dynamic returnMessage = RequestDataResult(message);
+			return returnMessage;
+		}
+		public static dynamic RequestData<T>(NetworkMessage message) {
+			if (!ServerRunning) throw new Exception("Server Not running!");
+			message.MessageType = (int?)MessageTypes.RequestData;
+
+            NetworkClient client = ClientList.FirstOrDefault(client => client.ID == message.TargetId);
+            if (client == default) throw new Exception("Invalid target!");
+            
+			DebugMessage(message,1);
+			SendMessage(message,client.Stream);
+
+			dynamic returnMessage = RequestDataResult(message);
+			if (returnMessage is JsonElement) {
+				return ((JsonElement)returnMessage).Deserialize<T>();
+			}
+			return (T)returnMessage;
+		}
 
         // One thread for one user
         // Start listening data coming from this client
@@ -315,7 +332,7 @@ namespace ServerFramework {
                                     Key = message.Key
                                 };
                                 // HANDLE ON SERVER
-                                object? data = methodInfo?.Invoke(methodName,parameters);
+                                object? data = methodInfo?.Invoke(methodName,new object[] {parameters});
                                 if (data != null && !(data.GetType().IsClass)) {
                                     responseMessage.Parameters = SerializeParameters(data);
                                 } else {
@@ -328,7 +345,8 @@ namespace ServerFramework {
 						
 						// FIRE AND FORGET (Dont return method return data)
 						case (int)MessageTypes.SendData:
-							methodInfo?.Invoke(methodName,parameters);
+                            Console.WriteLine(parameters);
+							methodInfo?.Invoke(methodName,new object[] {parameters});
 							break;
 						default:
 							throw new NotImplementedException();

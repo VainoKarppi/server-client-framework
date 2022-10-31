@@ -60,6 +60,8 @@ namespace ServerFramework {
 
                     else if (command == "requestdata")
                         Commands.RequestData();
+                    else if (command == "requestdatatype")
+                        Commands.RequestDataType();
 
                     else if (command == "status")
                         Console.WriteLine(Network.ServerRunning ? "Server is running!" : "Server is not running!");
