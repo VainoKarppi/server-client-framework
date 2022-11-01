@@ -99,7 +99,7 @@ namespace ServerFramework {
                 throw new Exception("Server not running!");
             
             Console.WriteLine("Stopping server...");
-            
+
             EventMessage message = new EventMessage {
                 EventClass = new OnServerShutdown(true)
             };
@@ -158,7 +158,7 @@ namespace ServerFramework {
 			if (message.TargetId == 1) throw new Exception("Cannot send data to self (server)!");
 			
 			if (message.MessageType == null) message.MessageType = (int?)MessageTypes.SendData;
-            if (message.ReturnData != null && message.ReturnDataType == null) message.ReturnDataType = message.ReturnData.GetType().ToString();
+            if (message.ReturnData != null && message.ReturnDataType == default) message.ReturnDataType = message.ReturnData.GetType().ToString();
             
             // Send to single ro multiple users
             if (message.TargetId > 0) {
