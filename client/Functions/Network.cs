@@ -237,7 +237,7 @@ namespace ClientFramework {
             if (!IsConnected()) throw new Exception("Not connected to server");
 			if (message.TargetId == Client.Id) throw new Exception("Cannot send data to self! (client)");	
 			if (message.MessageType == null) message.MessageType = (int?)MessageTypes.SendData;
-			if (message.ReturnData != null && message.ReturnDataType == default) message.ReturnDataType = message.ReturnData.GetType().ToString();
+			if (message.ReturnData != null && (message.ReturnDataType == null)) message.ReturnDataType = message.ReturnData.GetType().ToString();
 
 
 			DebugMessage(message,1);
