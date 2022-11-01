@@ -83,7 +83,7 @@ namespace ClientFramework {
                             Commands.RequestDataType();
                             break;
                         case "status":
-                            Console.WriteLine(Network.Client.HandshakeDone ? "Connected to server! ID:" + Network.Client.Id.ToString() : "NOT connected to server!");
+                            Console.WriteLine(Network.IsConnected() ? "Connected to server! ID:" + Network.Client.Id.ToString() : "NOT connected to server!");
                             break;
                         default:
                             Console.WriteLine("Unknown command!\nType 'help' for commands!");

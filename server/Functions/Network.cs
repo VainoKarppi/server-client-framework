@@ -354,7 +354,6 @@ namespace ServerFramework {
                     break;
                 }
             }
-            Console.WriteLine("ADADSASD");
             ClientList.Remove(_client);
             _client.Client.Shutdown(SocketShutdown.Both);
             _client.Close();

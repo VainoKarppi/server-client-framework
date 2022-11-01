@@ -81,10 +81,13 @@ namespace ClientFramework {
 
 		
 		//!! METHODS !!//
-
+		public static bool IsConnected() {
+			if (Client == default || (!Client.Connected || !Client.HandshakeDone)) return false;
+			return true;
+		}
 		public static void Connect(string ip = "127.0.0.1", int port = 2302, string userName = "unknown") {
 
-			if (Client != null && Client.Connected)
+			if (IsConnected())
 				throw new Exception("Already connected to server!");
 
 			Client = new ClientBase();
@@ -109,7 +112,7 @@ namespace ClientFramework {
 		}
 
 		public static void Disconnect() {
-			if (!Client.Connected)
+			if (!IsConnected())
 				throw new Exception("Not connected to server!");
 			
 			Console.WriteLine("Disconnected From the server!");
@@ -232,7 +235,7 @@ namespace ClientFramework {
 		}
 		// Fire and forget
 		public static void SendData(NetworkMessage message) {
-            if (!Client.HandshakeDone) throw new Exception("Not connected to server");
+            if (!IsConnected()) throw new Exception("Not connected to server");
 			if (message.TargetId == Client.Id) throw new Exception("Cannot send data to self! (client)");	
 			if (message.MessageType == null) message.MessageType = (int?)MessageTypes.SendData;
 
@@ -271,7 +274,7 @@ namespace ClientFramework {
 			return returnMessage;
 		}
 		public static JsonElement RequestData(NetworkMessage message) {
-			if (!Client.HandshakeDone) throw new Exception("Not connected to server");
+			if (!IsConnected()) throw new Exception("Not connected to server");
 			message.MessageType = (int?)MessageTypes.RequestData;
 			DebugMessage(message,1);
 			SendMessage(message,Client.GetStream());
@@ -279,7 +282,7 @@ namespace ClientFramework {
 			return returnMessage;
 		}
 		public static dynamic RequestData<T>(NetworkMessage message) {
-			if (!Client.HandshakeDone) throw new Exception("Not connected to server");
+			if (!IsConnected()) throw new Exception("Not connected to server");
 			message.MessageType = (int?)MessageTypes.RequestData;
 			DebugMessage(message,1);
 			SendMessage(message,Client.GetStream());

@@ -65,9 +65,6 @@ namespace ClientFramework {
                 throw new Exception("Connect to server first!");
 
             Console.WriteLine();
-            Console.WriteLine("method to be sent to client/server: ");
-            string method = Console.ReadLine();
-            Console.WriteLine();
             Console.WriteLine("Target ID: (Blank or 0 for all clients)");
             string target;
             while (true) {
@@ -82,8 +79,9 @@ namespace ClientFramework {
                 TargetId = Int32.Parse(target)
             };
             JsonElement a = Network.RequestData(message);
+            Console.WriteLine(a.GetType());
             string b = a.GetString();
-            Console.WriteLine($"RETURNED:{(a.GetByte())}");
+            Console.WriteLine($"RETURNED:{b}");
         }
         public static void RequestDataType() {
             if (!Network.Client.Connected)
