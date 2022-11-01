@@ -13,7 +13,7 @@ namespace ServerFramework {
     class ServerMethods {
         public static string Test(NetworkClient client, string testMessage) {
             Console.WriteLine($"MSG:{testMessage} CLIENT: {client.Client.RemoteEndPoint} ID:{client.ID}");
-            return "Hello MSG RESPONSE From Server!";
+            return "Hello MSG RESPONSE From SERVER!";
         }
         public static dynamic TestType(NetworkClient client, string testMessage) {
             Console.WriteLine($"MSG:{testMessage} CLIENT: {client.Client.RemoteEndPoint} ID:{client.ID}");
@@ -29,7 +29,7 @@ namespace ServerFramework {
 
         public static object[] TestArray(NetworkClient client, object[] parameters) {
             foreach (var x in parameters) Console.WriteLine(x);
-            return new object[] {"TestArray",123};
+            return new object[] {"test",true,1213};
         }
         
 

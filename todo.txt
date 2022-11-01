@@ -3,4 +3,4 @@ requestdata using type on server from client
 
 New parameters using dynamic
 
-requestdata not working from client to server
+requestdata not working from client to server/

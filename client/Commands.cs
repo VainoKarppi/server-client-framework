@@ -61,8 +61,12 @@ namespace ClientFramework {
             Network.SendData(message);
         }
         public static void RequestData() {
-            if (!Network.Client.HandshakeDone)
+            if (!Network.IsConnected())
                 throw new Exception("Connect to server first!");
+
+            Console.WriteLine();
+            Console.WriteLine("Enter Method Name:");
+            string method = Console.ReadLine();
 
             Console.WriteLine();
             Console.WriteLine("Target ID: (Blank or 0 for all clients)");
@@ -75,16 +79,15 @@ namespace ClientFramework {
 
             Network.NetworkMessage message = new Network.NetworkMessage {
                 Parameters = Network.SerializeParameters("Hello From Client"),
-                MethodName = "Test",
+                MethodName = method,
                 TargetId = Int32.Parse(target)
             };
             JsonElement a = Network.RequestData(message);
-            Console.WriteLine(a.GetType());
             string b = a.GetString();
             Console.WriteLine($"RETURNED:{b}");
         }
         public static void RequestDataType() {
-            if (!Network.Client.Connected)
+            if (!Network.IsConnected())
                 throw new Exception("Connect to server first!");
 
             Network.NetworkMessage message = new Network.NetworkMessage {

@@ -31,7 +31,6 @@ namespace ServerFramework {
             Network.StartServer();
             while (true) {
                 Console.WriteLine();
-                Console.WriteLine(">> ");
                 string command = Console.ReadLine();
                 command = command.ToLower();
                 

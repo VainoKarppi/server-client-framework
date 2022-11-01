@@ -27,7 +27,6 @@ namespace ClientFramework {
 		public class EventMessage {
             public int? MessageType { get; set; } = (int)MessageTypes.ServerEvent;
             public int[]? Targets { get; set; } = new int[] {1};
-            public string? EventName { get; set; }
 			public dynamic? EventClass { get; set; }
         }
 		
@@ -42,7 +41,8 @@ namespace ClientFramework {
 			public string? MethodName { get; set; }
 			public List<object>? Parameters { get; set; } = new List<object>() {};
 			// Array of parameters passed to method that is going to be executed
-			public dynamic? ReturnDataClass { get; set; }
+			public string? ReturnDataType { get; set; }
+			public dynamic? ReturnData { get; set; }
 			public int Key { get; set; } = new Random().Next(100,int.MaxValue);
 			// Key for getting the response for specific request
 			public int? Sender { get; set; } = Client.Id;
@@ -54,8 +54,8 @@ namespace ClientFramework {
 		private static List<string> PrivateMethods = new List<string>() {"GetMethods","ConnectedClients","HandleEvent"};
 		// To be read from handshake (register on server)
 		public static Dictionary<int,dynamic> Results = new Dictionary<int,dynamic>();
-
 		public static ClientBase? Client;
+
 
 
 		public class ClientBase : TcpClient {
@@ -108,10 +108,10 @@ namespace ClientFramework {
 			// Continue in new thread
 			Thread thread = new Thread(ReceiveDataThread);
 			thread.Start();
-
 		}
 
 		public static void Disconnect() {
+			OtherClients = new List<OtherClient>() {};
 			if (!IsConnected())
 				throw new Exception("Not connected to server!");
 			
@@ -161,7 +161,7 @@ namespace ClientFramework {
 
 					// Dump result to array and continue
 					if (message.MessageType == (int)MessageTypes.ResponseData) {
-						Results.Add(message.Key,message.ReturnDataClass);
+						Results.Add(message.Key,message.ReturnData);
 						//Results.Add(message.Key,deserialisedParams);
 						continue;
 					}
@@ -208,7 +208,8 @@ namespace ClientFramework {
 								TargetId = message.Sender,
 								Key = message.Key
 							};
-							if (data != null) responseMessage.Parameters = SerializeParameters(data);
+
+							responseMessage.ReturnData = data;
 							Network.SendData(responseMessage);
 							break;
 						
@@ -221,16 +222,14 @@ namespace ClientFramework {
 					}
 				}
 			} catch (Exception ex) {
-				if (!Client.Connected) {
-
+				if (!Client.HandshakeDone) {
 					return;
 				}
 
 				if (ex.InnerException is SocketException) {
-					Console.WriteLine("Server was shutdown!");
+					if (Client.Id != null) Console.WriteLine("Server has crashed!");
 				}
 				Client.Client.Close();
-				Console.WriteLine(ex);
 			}
 		}
 		// Fire and forget
@@ -238,6 +237,8 @@ namespace ClientFramework {
             if (!IsConnected()) throw new Exception("Not connected to server");
 			if (message.TargetId == Client.Id) throw new Exception("Cannot send data to self! (client)");	
 			if (message.MessageType == null) message.MessageType = (int?)MessageTypes.SendData;
+			if (message.ReturnData != null && message.ReturnDataType == null) message.ReturnDataType = message.ReturnData.GetType().ToString();
+
 
 			DebugMessage(message,1);
 			SendMessage(message,Client.GetStream());
@@ -377,7 +378,8 @@ namespace ClientFramework {
 
 
         public static void DebugMessage(NetworkMessage message,int mode = 0) {
-            Console.WriteLine("--------------DEBUG MESSGAE--------------");
+			Console.WriteLine();
+            Console.WriteLine("===============DEBUG MESSAGE===============");
             string type = "UNKNOWN";
             if (mode == 1) {
                 type = "OUTBOUND";
@@ -387,7 +389,8 @@ namespace ClientFramework {
             Console.WriteLine($"TYPE: {type}");
             Console.WriteLine($"TIME: {DateTime.Now.Millisecond}");
             Console.WriteLine($"MessageType:{message.MessageType}");
-            Console.WriteLine($"ReturnData: {message.ReturnDataClass}");
+			Console.WriteLine($"ReturnDataType: {message.ReturnDataType}");
+            Console.WriteLine($"ReturnData: {message.ReturnData}");
             Console.WriteLine($"TargetId:{message.TargetId}");
             Console.WriteLine($"MethodName:{message.MethodName}");
             if (message.Parameters != null) {
@@ -418,7 +421,8 @@ namespace ClientFramework {
             }
             Console.WriteLine($"Key:{message.Key}");
             Console.WriteLine($"Sender:{message.Sender}");
-            Console.WriteLine("--------------DEBUG MESSGAE--------------");
+            Console.WriteLine("===============DEBUG MESSAGE===============");
+			Console.WriteLine();
         }
 	
 		public static object[] ParseParamArray(string args) {

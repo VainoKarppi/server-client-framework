@@ -26,7 +26,6 @@ namespace ServerFramework {
         public class EventMessage {
             public int? MessageType { get; set; } = (int)MessageTypes.ServerEvent;
             public int[]? Targets { get; set; }
-            public string? EventName { get; set; }
             public dynamic? EventClass { get; set; }
         }
         
@@ -38,7 +37,8 @@ namespace ServerFramework {
             public string? MethodName { get; set; }
 			// Minus numbers are for internal use!
 			public List<object>? Parameters { get; set; } = new List<object>() {};
-            public dynamic? ReturnDataClass { get; set; }
+            public string? ReturnDataType { get; set; }
+            public dynamic? ReturnData { get; set; }
 			// Array of parameters passed to method that is going to be executed
 			public int Key { get; set; } = new Random().Next(100,int.MaxValue);
 			// Key for getting the response for specific request (0-100) = event id
@@ -87,10 +87,11 @@ namespace ServerFramework {
                         new Thread(() => HandleClient(_client)).Start();
                         _clientID++;;
                     } catch (Exception ex) {
-                        Console.WriteLine(ex.Message);
+                        if (!(ex.InnerException is SocketException)) {
+                            Console.WriteLine(ex.Message);
+                        }
                     }
                 }
-                Console.WriteLine("EXITING WHILE LOOP FATAL ERROR");
             }).Start();
         }
         public static void StopServer() {
@@ -98,8 +99,7 @@ namespace ServerFramework {
                 throw new Exception("Server not running!");
             
             EventMessage message = new EventMessage {
-                EventName = "OnServerShutdown",
-                EventClass = 1
+                EventClass = new OnServerShutdown(true)
             };
             SendEvent(message);
             Console.WriteLine("Stopping server...");
@@ -117,8 +117,6 @@ namespace ServerFramework {
 
         public static void SendEvent(EventMessage message) {
             if (!ServerRunning) throw new Exception("Server not running!");
-
-            message.EventName = message.EventClass.EventName;
 
             // Add ALL clients to list if left as blank
 			if (message.Targets == default) {
@@ -158,13 +156,14 @@ namespace ServerFramework {
 			if (message.TargetId == 1) throw new Exception("Cannot send data to self (server)!");
 			
 			if (message.MessageType == null) message.MessageType = (int?)MessageTypes.SendData;
-            
+            if (message.ReturnData != null && message.ReturnDataType == null) message.ReturnDataType = message.ReturnData.GetType().ToString();
             
             // Send to single ro multiple users
             if (message.TargetId > 0) {
                 NetworkClient client = ClientList.FirstOrDefault(c => c.ID == message.TargetId);
                 if (client == default) throw new Exception("Invalid target!");
-                DebugMessage(message,1);
+                int mode = message.Sender > 1 ? 3 : 1;
+                DebugMessage(message,mode);
                 SendMessage(message,client.Stream);
             } else {
                 foreach (NetworkClient client in ClientList) {
@@ -257,7 +256,11 @@ namespace ServerFramework {
                         continue;
                     }
 
-
+                    // FORWARD DATA IF NOT MENT FOR SERVER (+forget)
+                    if (message.TargetId != 1) {
+                        Network.SendData(message);
+                        continue;
+                    }
 
                     // DESERIALISE PARAMETERS AND ADD CLIENT AS FIRST PARAMETER
                     List<object> paramList = new List<object>();
@@ -267,14 +270,7 @@ namespace ServerFramework {
                             paramList.Add(p);
                         }
                     }
-                    object[] parameters = paramList.ToArray();
-
-                
-                    // FORWARD DATA IF NOT MENT FOR SERVER (+forget)
-                    if (message.TargetId != 1) {
-                        Network.SendData(message);
-                        continue;
-                    }
+                    object[] parameters = paramList.ToArray();  
                     
                     
                     // Dump result to array and continue
@@ -321,12 +317,9 @@ namespace ServerFramework {
                                 };
                                 // HANDLE ON SERVER
                                 object? data = methodInfo?.Invoke(methodName,parameters);
-                                if (data != null && !(data.GetType().IsClass)) {
-                                    responseMessage.Parameters = SerializeParameters(data);
-                                } else {
-                                    responseMessage.ReturnDataClass = data;
-                                }
-                                //responseMessage.ReturnDataType = data.GetType();
+
+                                responseMessage.ReturnData = data;
+
                                 Network.SendData(responseMessage);
                             }
 							break;
@@ -406,6 +399,8 @@ namespace ServerFramework {
             returnData = new object[] {client.ID,ClientMethods.ToArray(),clientlist.ToArray()};
             handshakeMessage.Parameters = SerializeParameters(returnData);
 
+            handshakeMessage.ReturnData = returnData;
+
             Network.SendData(handshakeMessage);
         }
 
@@ -440,17 +435,21 @@ namespace ServerFramework {
 		}
 
         public static void DebugMessage(NetworkMessage message,int mode = 0) {
-            Console.WriteLine("--------------DEBUG MESSGAE--------------");
+            Console.WriteLine();
+            Console.WriteLine("===============DEBUG MESSAGE===============");
             string type = "UNKNOWN";
             if (mode == 1) {
                 type = "OUTBOUND";
             } else if (mode == 2) {
                 type = "INBOUND";
+            } else if (mode == 3) {
+                type = "FORWARD";
             }
-            Console.WriteLine($"TYPE: {type}");
+            Console.WriteLine($"MODE: {type}");
             Console.WriteLine($"TIME: {DateTime.Now.Millisecond}");
             Console.WriteLine($"MessageType:{message.MessageType}");
-            Console.WriteLine($"ReturnData: {message.ReturnDataClass}");
+            Console.WriteLine($"ReturnDataType: {message.ReturnDataType}");
+            Console.WriteLine($"ReturnData: {message.ReturnData}");
             Console.WriteLine($"TargetId:{message.TargetId}");
             Console.WriteLine($"MethodName:{message.MethodName}");
             if (message.Parameters != null) {
@@ -481,7 +480,8 @@ namespace ServerFramework {
             }
             Console.WriteLine($"Key:{message.Key}");
             Console.WriteLine($"Sender:{message.Sender}");
-            Console.WriteLine("--------------DEBUG MESSGAE--------------");
+            Console.WriteLine("===============DEBUG MESSAGE===============");
+            Console.WriteLine();
         }
         public static object[] ParseParamArray(string input) {
 			List<object> returned = new List<object>(){};

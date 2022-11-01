@@ -18,16 +18,20 @@ namespace ClientFramework {
         public const int Version = 1000;
         
         
-        public static void OnClientConnected(object sender, OnClientConnect client){
+        public static void OnClientConnected(object sender, OnClientConnectEvent client){
             Console.WriteLine($"CLIENT CONNECTED! ({client.UserName} ID:{client.Id})");
         }
-        public static void OnClientDisconnect(object sender, OnClientDisconnect client){
+        public static void OnClientDisconnect(object sender, OnClientDisconnectEvent client){
             Console.WriteLine($"CLIENT DISCONNECTED! ({client.UserName} ID:{client.Id} SUCCESS:{client.Success})");
+        }
+        public static void OnServerShutdown(object sender, bool success){
+            Console.WriteLine($"SERVER STOPPED! SUCCESS:{success}");
         }
         public static void Main(string[] args) {
             ServerEvents.eventsListener = new ServerEvents();
             ServerEvents.eventsListener.ClientConnected += OnClientConnected;
             ServerEvents.eventsListener.ClientDisconnect += OnClientDisconnect;
+            ServerEvents.eventsListener.ServerShutdown += OnServerShutdown;
             
             //bl.StartProcess();
 
