@@ -87,7 +87,7 @@ namespace ServerFramework {
                         new Thread(() => HandleClient(_client)).Start();
                         _clientID++;;
                     } catch (Exception ex) {
-                        if (!(ex.InnerException is SocketException)) {
+                        if (!(ex is SocketException)) {
                             Console.WriteLine(ex.Message);
                         }
                     }
@@ -98,11 +98,13 @@ namespace ServerFramework {
             if (!ServerRunning)
                 throw new Exception("Server not running!");
             
+            Console.WriteLine("Stopping server...");
+            
             EventMessage message = new EventMessage {
                 EventClass = new OnServerShutdown(true)
             };
             SendEvent(message);
-            Console.WriteLine("Stopping server...");
+            
             ServerRunning = false;
             ServerListener.Stop();
             ServerListener = default!;
