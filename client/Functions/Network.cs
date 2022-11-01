@@ -24,16 +24,11 @@ namespace ClientFramework {
 	
 	
     public class Network {
-		//public static event EventHandler<Events.ServerEventMessage> ?ClientConnected;
 		public class EventMessage {
             public int? MessageType { get; set; } = (int)MessageTypes.ServerEvent;
             public int[]? Targets { get; set; } = new int[] {1};
-            // Who to sent the event to
             public string? EventName { get; set; }
-            // OnPlayerConnected etc
-            public List<object>? Parameters { get; set; } = new List<object>() {};
-			public dynamic? EventDataClass { get; set; }
-
+			public dynamic? EventClass { get; set; }
         }
 		
 		public enum MessageTypes : int {SendData, RequestData, ResponseData, ServerEvent, ClientEvent}
@@ -60,8 +55,6 @@ namespace ClientFramework {
 		// To be read from handshake (register on server)
 		public static Dictionary<int,dynamic> Results = new Dictionary<int,dynamic>();
 
-
-		public static bool HandshakeDone { get; set; }
 		public static ClientBase? Client;
 
 
@@ -120,6 +113,7 @@ namespace ClientFramework {
 				throw new Exception("Not connected to server!");
 			
 			Console.WriteLine("Disconnected From the server!");
+			Client.HandshakeDone = false;
 			Client.Client.Close();
 		}
 
@@ -129,7 +123,6 @@ namespace ClientFramework {
 			SendMessage(message,Client.GetStream());
         }
 		public static void ReceiveDataThread() {
-			Console.WriteLine("STARTED ReceiveDataThread");
 			try {
 				while (Client.Connected) {
 					byte[] bytes = ReadMessageBytes(Client.GetStream());
@@ -147,14 +140,17 @@ namespace ClientFramework {
 					if (type < 0) continue;
 
 					//TODO start in new thread?
-					
-
 					if (type == (int)MessageTypes.ServerEvent) {
 						var eventBytes = new Utf8JsonReader(bytes);
 						EventMessage? eventMessage = JsonSerializer.Deserialize<EventMessage>(ref eventBytes)!;
-						HandleEvent(eventMessage);
+
+						ServerEvents listener = ServerEvents.eventsListener;
+						new Thread(() => listener.ExecuteEvent(eventMessage?.EventClass)).Start();
+
 						continue;
 					}
+
+					
 					var msgBytes = new Utf8JsonReader(bytes);
 					NetworkMessage? message = JsonSerializer.Deserialize<NetworkMessage>(ref msgBytes)!;
 					DebugMessage(message,2);
@@ -222,27 +218,17 @@ namespace ClientFramework {
 					}
 				}
 			} catch (Exception ex) {
-				if (!Client.Connected)
+				if (!Client.Connected) {
+
 					return;
+				}
 
 				if (ex.InnerException is SocketException) {
 					Console.WriteLine("Server was shutdown!");
-					//Extension.Callmethod("disconnect", "0");
 				}
 				Client.Client.Close();
 				Console.WriteLine(ex);
 			}
-		}
-		public static void HandleEvent(EventMessage message) {
-
-			Console.WriteLine(message?.EventName);
-			Console.WriteLine(message?.EventDataClass);
-			
-			object[] parameters = DeserializeParameters(message?.Parameters);
-
-			
-			ServerEvents listener = ServerEvents.eventsListener;
-			listener.ExecuteEvent(message?.EventName,message?.EventDataClass);
 		}
 		// Fire and forget
 		public static void SendData(NetworkMessage message) {
@@ -284,12 +270,12 @@ namespace ClientFramework {
 			}
 			return returnMessage;
 		}
-		public static dynamic RequestData(NetworkMessage message) {
+		public static JsonElement RequestData(NetworkMessage message) {
 			if (!Client.HandshakeDone) throw new Exception("Not connected to server");
 			message.MessageType = (int?)MessageTypes.RequestData;
 			DebugMessage(message,1);
 			SendMessage(message,Client.GetStream());
-			dynamic returnMessage = RequestDataResult(message);
+			JsonElement returnMessage = RequestDataResult(message);
 			return returnMessage;
 		}
 		public static dynamic RequestData<T>(NetworkMessage message) {
@@ -387,24 +373,24 @@ namespace ClientFramework {
 
 
 
-		public static void DebugMessage(NetworkMessage message, int mode = 0) {
+        public static void DebugMessage(NetworkMessage message,int mode = 0) {
             Console.WriteLine("--------------DEBUG MESSGAE--------------");
-			string type = "UNKNOWN";
+            string type = "UNKNOWN";
             if (mode == 1) {
                 type = "OUTBOUND";
             } else if (mode == 2) {
                 type = "INBOUND";
             }
             Console.WriteLine($"TYPE: {type}");
-			Console.WriteLine($"TIME: {DateTime.Now.Millisecond}");
+            Console.WriteLine($"TIME: {DateTime.Now.Millisecond}");
             Console.WriteLine($"MessageType:{message.MessageType}");
-			Console.WriteLine($"ReturnData: {message.ReturnDataClass}");
+            Console.WriteLine($"ReturnData: {message.ReturnDataClass}");
             Console.WriteLine($"TargetId:{message.TargetId}");
             Console.WriteLine($"MethodName:{message.MethodName}");
             if (message.Parameters != null) {
 				int i = 0;
 				int ii = 1;
-				Console.WriteLine($"Parameters ({message.Parameters.Count() / 2}):");
+				Console.WriteLine($"Parameters ({message.Parameters.Count()}):");
                 Type LastType = default;
                 foreach (object pr in message.Parameters) {
                     if (i%2 == 0) {
@@ -419,8 +405,11 @@ namespace ClientFramework {
                     } else {
                         data = TypeDescriptor.GetConverter(LastType).ConvertFromInvariantString(pr.ToString());
                     }
-                    
-                    Console.WriteLine($"  ({ii}) PARAM: ({data.GetType()}): {data.ToString()}");
+                    if (data.GetType().IsArray) {
+                        Console.WriteLine($"  ({ii}): ({data.GetType()}): {JsonSerializer.Serialize<object>(data)}");
+                    } else {
+                        Console.WriteLine($"  ({ii}): ({data.GetType()}): {data.ToString()}");
+                    } 
                     ii++;
                 }
             }

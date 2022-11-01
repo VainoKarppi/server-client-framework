@@ -6,11 +6,16 @@ using System.Text;
 using System.Text.Json;
 
 namespace ClientFramework {
-    public class ClientConnectEvent  {
+    public class OnClientConnect {
+        public string? EventName { get; set; }
         public int Id { get; set; }
         public string? UserName { get; set; }
+        public bool Success { get; set; } = true;
     }
-    public class ClientDisconnectEvent : ClientConnectEvent {
+    public class OnClientDisconnect {
+        public string? EventName { get; set; }
+        public int Id { get; set; }
+        public string? UserName { get; set; }
         public bool Success { get; set; }
     }
     public class ServerEventMessage : EventArgs {
@@ -20,19 +25,18 @@ namespace ClientFramework {
         public List<object>? Parameters { get; set; }
 
     }
-    public class ServerEvents
-    {
+    public class ServerEvents {
         public static ServerEvents? eventsListener { get; set; }
-        public event EventHandler<ClientConnectEvent>? ClientConnected;
-        public event EventHandler<ClientDisconnectEvent>? ClientDisconnect;
-        public void ExecuteEvent(string eventName, dynamic classData)
-        {
+        public event EventHandler<OnClientConnect>? ClientConnected;
+        public event EventHandler<OnClientDisconnect>? ClientDisconnect;
+        public void ExecuteEvent(dynamic classData) {
+            string eventName = ((JsonElement)classData).GetProperty("EventName").GetString();
             switch (eventName.ToLower()) {
 				case "onclientconnect":
-                    OnClientConnected( ((JsonElement)classData).Deserialize<ClientConnectEvent>() );
+                    OnClientConnected( ((JsonElement)classData).Deserialize<OnClientConnect>() );
 					break;
 				case "onclientdisconnect":
-                    OnClientDisconnect( ((JsonElement)classData).Deserialize<ClientDisconnectEvent>() );
+                    OnClientDisconnect( ((JsonElement)classData).Deserialize<OnClientDisconnect>() );
 					break;
 				case "onservershutdown":
 					break;
@@ -50,10 +54,12 @@ namespace ClientFramework {
         }
 
 
-        protected virtual void OnClientConnected(dynamic classData){
+        protected virtual void OnClientConnected(OnClientConnect classData) {
+            Network.OtherClients.Add(new Network.OtherClient(classData.Id,classData.UserName));
             ClientConnected?.Invoke(this, classData);
         }
-        protected virtual void OnClientDisconnect(dynamic classData){
+        protected virtual void OnClientDisconnect(OnClientDisconnect classData) {
+            Network.OtherClients.RemoveAll(x => x.Id == classData.Id);
             ClientDisconnect?.Invoke(this, classData);
         }
     }

@@ -26,12 +26,8 @@ namespace ServerFramework {
         public class EventMessage {
             public int? MessageType { get; set; } = (int)MessageTypes.ServerEvent;
             public int[]? Targets { get; set; }
-            // Who to sent the event to
             public string? EventName { get; set; }
-            // OnPlayerConnected etc
-            public List<object>? Parameters { get; set; } = new List<object>() {};
-            public dynamic? EventDataClass { get; set; }
-
+            public dynamic? EventClass { get; set; }
         }
         
 		public class NetworkMessage {
@@ -103,7 +99,7 @@ namespace ServerFramework {
             
             EventMessage message = new EventMessage {
                 EventName = "OnServerShutdown",
-                Parameters = SerializeParameters(1)
+                EventClass = 1
             };
             SendEvent(message);
             Console.WriteLine("Stopping server...");
@@ -122,6 +118,8 @@ namespace ServerFramework {
         public static void SendEvent(EventMessage message) {
             if (!ServerRunning) throw new Exception("Server not running!");
 
+            message.EventName = message.EventClass.EventName;
+
             // Add ALL clients to list if left as blank
 			if (message.Targets == default) {
                 List<int> targets = new List<int>(){};
@@ -135,6 +133,7 @@ namespace ServerFramework {
             foreach (int id in message.Targets) {
                 NetworkClient client = ClientList.FirstOrDefault(c => c.ID == id);
                 if (client == default) continue;
+                message.Targets = null; // Dont send targets over net
                 SendMessage(message,client.Stream);
             }
         }
@@ -160,7 +159,6 @@ namespace ServerFramework {
 			
 			if (message.MessageType == null) message.MessageType = (int?)MessageTypes.SendData;
             
-
             
             // Send to single ro multiple users
             if (message.TargetId > 0) {
@@ -229,8 +227,7 @@ namespace ServerFramework {
                     byte[] bytes = ReadMessageBytes(_client.Stream);
 					
                     if (bytes.Count() == 0) {
-                        _client.Close();
-                        throw new Exception("ERROR BYTES!");
+                        throw new Exception($"ERROR BYTES IN CLIENT: {_client.ID} RECEIVE DATA THREAD!");
                     };
                     Console.WriteLine("MSG RECIEVED!");
                     
@@ -255,17 +252,8 @@ namespace ServerFramework {
 					object[] deserialisedParams = DeserializeParameters(message.Parameters);
 
                     // HANDLE HANDSHAKE
-                    if (message.isHandshake && message.MethodName == default) {
-                        object[] data = Handshake(_client, (int)deserialisedParams[0], (string)deserialisedParams[1]);
-                        //object data = typeof(Network).GetMethod("Handshake").Invoke("Handshake",parameters);
-                        NetworkMessage handshakeMessage = new NetworkMessage {
-                            MessageType = (int)MessageTypes.ResponseData,
-                            MethodName = message.MethodName
-                        };
-                        if (data != null) handshakeMessage.Parameters = SerializeParameters(data);
-                        handshakeMessage.TargetId = Int32.Parse(data[0].ToString());
-                        Network.SendData(handshakeMessage);
-                        Console.WriteLine($"*SUCCESS* Handshake done! ({_client.ID})");
+                    if (message.isHandshake) {
+                        HandshakeClient(_client, (int)deserialisedParams[0], (string)deserialisedParams[1]);
                         continue;
                     }
 
@@ -332,7 +320,7 @@ namespace ServerFramework {
                                     Key = message.Key
                                 };
                                 // HANDLE ON SERVER
-                                object? data = methodInfo?.Invoke(methodName,new object[] {parameters});
+                                object? data = methodInfo?.Invoke(methodName,parameters);
                                 if (data != null && !(data.GetType().IsClass)) {
                                     responseMessage.Parameters = SerializeParameters(data);
                                 } else {
@@ -345,14 +333,14 @@ namespace ServerFramework {
 						
 						// FIRE AND FORGET (Dont return method return data)
 						case (int)MessageTypes.SendData:
-                            Console.WriteLine(parameters);
-							methodInfo?.Invoke(methodName,new object[] {parameters});
+							methodInfo?.Invoke(methodName,parameters);
 							break;
 						default:
 							throw new NotImplementedException();
 					}
                     Console.WriteLine("\n");
                 } catch (Exception ex) {
+                    
                     bool success = (ex is IOException || ex is SocketException);
                     if (success)
                         Console.WriteLine("Client " + _client.ID.ToString() + " disconnected!");
@@ -360,20 +348,19 @@ namespace ServerFramework {
                         Console.WriteLine(ex);
                     
                     EventMessage message = new EventMessage {
-                        EventName = "OnClientDisconnect",
-                        Parameters = SerializeParameters(_client.ID,_client.UserName,success)
+                        EventClass = new OnClientDisconnect(_client.ID,_client.UserName,success)
                     };
                     SendEvent(message);
                     break;
                 }
             }
-
+            Console.WriteLine("ADADSASD");
             ClientList.Remove(_client);
             _client.Client.Shutdown(SocketShutdown.Both);
             _client.Close();
         }
 
-        public static object[] Handshake(NetworkClient client, int version, string userName) {
+        public static void HandshakeClient(NetworkClient client, int version, string userName) {
             
             // RETURNS client id if success (minus number if error (each value is one type of error))
             Console.WriteLine($"*HANDSHAKE START* Version:{version} Name:{userName}");
@@ -381,10 +368,20 @@ namespace ServerFramework {
 
             object[] returnData = new object[] {client.ID};
 
+            NetworkMessage handshakeMessage = new NetworkMessage {
+                MessageType = (int)MessageTypes.ResponseData,
+                isHandshake = true,
+                TargetId = client.ID
+            };
+
+
             //TODO add major and minor checking
             if (version != Program.Version) {
                 Console.WriteLine($"User {userName} has wrong version! Should be: {Program.Version} has: {version}");
-                return returnData;
+                handshakeMessage.Parameters = SerializeParameters(returnData);
+                Network.SendData(handshakeMessage);
+                
+                return;
             }
 
             List<object[]> clientlist = new List<object[]>(){};
@@ -401,13 +398,16 @@ namespace ServerFramework {
             }
             EventMessage message = new EventMessage {
                 Targets = targetList.ToArray(),
-                EventName = "OnClientConnect",
-                Parameters = SerializeParameters(client.ID,client.UserName)
+                EventClass = new OnClientConnect(client.ID,client.UserName)
             };
             SendEvent(message);
+            
+            Console.WriteLine($"*SUCCESS* Handshake done! ({client.ID})");
 
             returnData = new object[] {client.ID,ClientMethods.ToArray(),clientlist.ToArray()};
-            return returnData;
+            handshakeMessage.Parameters = SerializeParameters(returnData);
+
+            Network.SendData(handshakeMessage);
         }
 
 
@@ -472,8 +472,11 @@ namespace ServerFramework {
                     } else {
                         data = TypeDescriptor.GetConverter(LastType).ConvertFromInvariantString(pr.ToString());
                     }
-                    
-                    Console.WriteLine($"  ({ii}) PARAM: ({data.GetType()}): {data.ToString()}");
+                    if (data.GetType().IsArray) {
+                        Console.WriteLine($"  ({ii}): ({data.GetType()}): {JsonSerializer.Serialize<object>(data)}");
+                    } else {
+                        Console.WriteLine($"  ({ii}): ({data.GetType()}): {data.ToString()}");
+                    } 
                     ii++;
                 }
             }

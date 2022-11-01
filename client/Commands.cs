@@ -4,6 +4,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Text.Json;
 using System.Threading;
 
 namespace ClientFramework {
@@ -60,7 +61,7 @@ namespace ClientFramework {
             Network.SendData(message);
         }
         public static void RequestData() {
-            if (!Network.HandshakeDone)
+            if (!Network.Client.HandshakeDone)
                 throw new Exception("Connect to server first!");
 
             Console.WriteLine();
@@ -80,8 +81,9 @@ namespace ClientFramework {
                 MethodName = "Test",
                 TargetId = Int32.Parse(target)
             };
-            string a = Network.RequestData<string>(message);
-            Console.WriteLine($"RETURNED:{a}");
+            JsonElement a = Network.RequestData(message);
+            string b = a.GetString();
+            Console.WriteLine($"RETURNED:{(a.GetByte())}");
         }
         public static void RequestDataType() {
             if (!Network.Client.Connected)

@@ -18,10 +18,10 @@ namespace ClientFramework {
         public const int Version = 1000;
         
         
-        public static void OnClientConnected(object sender, ClientConnectEvent client){
+        public static void OnClientConnected(object sender, OnClientConnect client){
             Console.WriteLine($"CLIENT CONNECTED! ({client.UserName} ID:{client.Id})");
         }
-        public static void OnClientDisconnect(object sender, ClientDisconnectEvent client){
+        public static void OnClientDisconnect(object sender, OnClientDisconnect client){
             Console.WriteLine($"CLIENT DISCONNECTED! ({client.UserName} ID:{client.Id} SUCCESS:{client.Success})");
         }
         public static void Main(string[] args) {

@@ -8,7 +8,7 @@ namespace ClientFramework {
     class ClientMethods {
         public static string Test(TcpClient server, string testMessage) {
             Console.WriteLine($"RECEIVED:{testMessage} IP:{server.Client.RemoteEndPoint}");
-            return "Hello MSG RESPONSE From Client";
+            return ("Hello MSG RESPONSE From Client: " + Network.Client.UserName);
         }
         public static dynamic TestType(TcpClient server, string testMessage) {
 
