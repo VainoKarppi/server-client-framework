@@ -65,7 +65,7 @@ namespace ClientFramework {
                             if (string.IsNullOrEmpty(ip)) ip = "127.0.0.1";
                             Console.WriteLine("Enter Port");
                             string port = Console.ReadLine();
-                            if (string.IsNullOrEmpty(port)) ip = "5001";
+                            if (string.IsNullOrEmpty(port)) port = "5001";
                             Console.WriteLine("Username:");
                             string name = Console.ReadLine();
                             if (string.IsNullOrEmpty(name)) {

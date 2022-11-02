@@ -6,8 +6,8 @@ using System.Text;
 
 namespace ClientFramework {
     class ClientMethods {
-        public static string Test(TcpClient server, string testMessage) {
-            Console.WriteLine($"RECEIVED:{testMessage} IP:{server.Client.RemoteEndPoint}");
+        public static string Test(TcpClient server, dynamic testMessage) {
+            Console.WriteLine($"MSG:{testMessage} ({testMessage.GetType()}) IP:{server.Client.RemoteEndPoint}");
             return ($"Hello MSG RESPONSE From Client: {Network.Client.UserName} ({Network.Client.Id})");
         }
         public static int TestInt(TcpClient server, string testMessage) {

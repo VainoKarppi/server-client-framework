@@ -173,12 +173,6 @@ namespace ServerFramework {
             if (message.MessageType != (int)MessageTypes.ResponseData) {
 				if (!ClientMethods.Contains(message.MethodName,StringComparer.OrdinalIgnoreCase)) throw new Exception($"Method {message.MethodName} not listed in CLIENT's methods list");
             }
-
-            if (message.ReturnData != null) {
-                if (message.ReturnDataType == null) {
-                    message.ReturnDataType = message.ReturnData.GetType().ToString();
-                }
-            }
             
             // Send to single ro multiple users
             if (message.TargetId > 0) {
@@ -285,7 +279,7 @@ namespace ServerFramework {
 					DebugMessage(message,2);
 
                     bool hasArrays;
-					object[] deserialisedParams = DeserializeParameters(message.Parameters,out hasArrays);
+					dynamic deserialisedParams = DeserializeParameters(message.Parameters,out hasArrays);
                     
                     // HANDLE HANDSHAKE
                     if (message.isHandshake) {
@@ -297,19 +291,13 @@ namespace ServerFramework {
                     List<object> paramList = new List<object>();
                     paramList.Add(_client);
                     if (!(message.Parameters is null)) {
-                        foreach (dynamic p in deserialisedParams) {
-                            paramList.Add(p);
-                        }
+                        paramList.Add(deserialisedParams);
                     }
                     object[] parameters = paramList.ToArray();  
                     
                     // Dump result to array and continue
 					if (message.MessageType == (int)MessageTypes.ResponseData) {
-                        if (hasArrays) {
-							Results.Add(message.Key,deserialisedParams);
-						} else {
-							Results.Add(message.Key,deserialisedParams[0]);
-						}
+                        Results.Add(message.Key,deserialisedParams);
 						continue;
 					}
 
@@ -446,17 +434,30 @@ namespace ServerFramework {
 
 
 
-       public static object[] SerializeParameters(params object[] parameters) {
+        public static object[] SerializeParameters(dynamic parameters) {	
 			List<object> newParams = new List<object>();
-			foreach (object parameter in parameters) {
-				newParams.Add(parameter.GetType().ToString());
-				newParams.Add(parameter);
+			if (!(parameters is Array)) {
+				newParams.Add(parameters.GetType().ToString());
+				newParams.Add(parameters);
+			} else {
+				newParams.Add(parameters.GetType().ToString());
+				foreach (object parameter in parameters) {
+					newParams.Add(parameter.GetType().ToString());
+					newParams.Add(parameter);
+				}
 			}
+			Console.WriteLine(JsonSerializer.Serialize<object>(newParams.ToArray()));
 			return newParams.ToArray();
 		}
-		public static object[] DeserializeParameters(dynamic parameterData, out bool hasArrays) {
+		public static dynamic DeserializeParameters(dynamic parameterData, out bool hasArrays) {
 			hasArrays = false;
-            object[] parameters = JsonSerializer.Deserialize<object[]>(parameterData);
+            
+            List<object> parameters = JsonSerializer.Deserialize<List<object>>(parameterData);
+            bool odd = parameters.Count()%2 != 0;
+            if (odd && parameters.Count() > 2) {
+                parameters.RemoveAt(0);
+            }
+            Console.WriteLine(JsonSerializer.Serialize<object>(parameters));
 			Type type = default;
 			List<object> final = new List<object>();
 			for (int i = 0; i < parameters.Count(); i++) {
@@ -474,9 +475,12 @@ namespace ServerFramework {
 					final.Add(dataTemp);
 				}
 			}
+            if (!odd) {
+                return final[0];
+            }
 			return final.ToArray();
 		}
-		public static object[] DeserializeParameters(dynamic parameterData) {
+		public static dynamic DeserializeParameters(dynamic parameterData) {
 			bool _;
 			return DeserializeParameters(parameterData,out _);
 		}
@@ -495,8 +499,6 @@ namespace ServerFramework {
             Console.WriteLine($"MODE: {type}");
             Console.WriteLine($"TIME: {DateTime.Now.Millisecond}");
             Console.WriteLine($"MessageType:{message.MessageType}");
-            Console.WriteLine($"ReturnDataType: {message.ReturnDataType}");
-            Console.WriteLine($"ReturnData: {message.ReturnData}");
             Console.WriteLine($"TargetId:{message.TargetId}");
             Console.WriteLine($"MethodName:{message.MethodName}");
             Console.WriteLine();

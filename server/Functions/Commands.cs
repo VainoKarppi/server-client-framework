@@ -47,7 +47,7 @@ namespace ServerFramework {
                 target = "0";
 
             Network.NetworkMessage message = new Network.NetworkMessage {
-                Parameters = new object[] {"TEST MSG FROM SERVER"},
+                Parameters = "TEST MSG FROM SERVER",
                 TargetId = Int32.Parse(target),
                 MethodName = method
             };

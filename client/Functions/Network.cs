@@ -41,8 +41,6 @@ namespace ClientFramework {
 			public string? MethodName { get; set; }
 			public dynamic? Parameters { get; set; }
 			// Array of parameters passed to method that is going to be executed
-			public string? ReturnDataType { get; set; }
-			public dynamic? ReturnData { get; set; }
 			public int Key { get; set; } = new Random().Next(100,int.MaxValue);
 			// Key for getting the response for specific request
 			public int? Sender { get; set; } = Client.Id;
@@ -164,26 +162,23 @@ namespace ClientFramework {
 					NetworkMessage? message = JsonSerializer.Deserialize<NetworkMessage>(ref msgBytes)!;
 					DebugMessage(message,2);
 					bool hasArrays;
-					object[] deserialisedParams = DeserializeParameters(message.Parameters,out hasArrays);
-
+					dynamic deserialisedParams = DeserializeParameters(message.Parameters,out hasArrays);
+					Console.WriteLine(deserialisedParams);
+					Console.WriteLine(deserialisedParams.GetType());
 					// Dump result to array and continue
 					if (message.MessageType == (int)MessageTypes.ResponseData) {
-						if (hasArrays) {
-							Results.Add(message.Key,deserialisedParams);
-						} else {
-							Results.Add(message.Key,deserialisedParams[0]);
-						}
+						Results.Add(message.Key,deserialisedParams);
 						continue;
 					}
 	
 					List<object> paramList = new List<object>();
                     paramList.Add(Client);
-                    foreach (object p in deserialisedParams) {
-                        paramList.Add(p);
+					if (!(message.Parameters is null)) {
+                        paramList.Add(deserialisedParams);
                     }
                     object[] parameters = paramList.ToArray();
 
-					
+					Console.WriteLine(parameters.Count());
 
 					// GET METHOD INFO
                     string methodName;
@@ -251,13 +246,7 @@ namespace ClientFramework {
 			} else {
 				if (!ServerMethods.Contains(message.MethodName,StringComparer.OrdinalIgnoreCase)) throw new Exception($"Method {message.MethodName} not listed in SERVER'S methods list");
 			}
-
-			if (message.ReturnData != null) {
-                if (message.ReturnDataType == null) {
-                    message.ReturnDataType = message.ReturnData.GetType().ToString();
-                }
-            }
-
+			Console.WriteLine(message.Parameters.GetType());
 			SendMessage(message,Client.GetStream());
 			DebugMessage(message,1);
         }
@@ -265,6 +254,7 @@ namespace ClientFramework {
 		public static void SendMessage(dynamic message, NetworkStream Stream) {
 			if (message is NetworkMessage && !(message.Parameters is null))
                 message.Parameters = SerializeParameters(message.Parameters);
+			
 			byte[] msg = JsonSerializer.SerializeToUtf8Bytes(message);
 			byte[] lenght = BitConverter.GetBytes((ushort)msg.Length);
 			byte[] bytes = lenght.Concat(msg).ToArray();
@@ -298,6 +288,7 @@ namespace ClientFramework {
 			if (message.TargetId == Client.Id) throw new Exception("Cannot request data from self!");
 			message.MessageType = (int?)MessageTypes.RequestData;
 			SendMessage(message,Client.GetStream());
+			DebugMessage(message,1);
 			return RequestDataResult(message);
 		}
 		public static dynamic RequestData<T>(NetworkMessage message) {
@@ -366,21 +357,37 @@ namespace ClientFramework {
 			return _clientID;	
 		}
 
-		public static object[] SerializeParameters(params object[] parameters) {
+		// new object[]{data,"test"} --> ["System.Object[]",[type,data],"System.String","text"]
+		// "data" --> ["System.String","text"]
+		public static object[] SerializeParameters(dynamic parameters) {
+			
 			List<object> newParams = new List<object>();
-			foreach (object parameter in parameters) {
-				newParams.Add(parameter.GetType().ToString());
-				newParams.Add(parameter);
+			if (!(parameters is Array)) {
+				newParams.Add(parameters.GetType().ToString());
+				newParams.Add(parameters);
+			} else {
+				newParams.Add(parameters.GetType().ToString());
+				foreach (object parameter in parameters) {
+					newParams.Add(parameter.GetType().ToString());
+					newParams.Add(parameter);
+				}
 			}
+			Console.WriteLine(JsonSerializer.Serialize<object>(newParams.ToArray()));
 			return newParams.ToArray();
 		}
-		public static object[] DeserializeParameters(dynamic parameterData, out bool hasArrays) {
+		public static dynamic DeserializeParameters(dynamic parameterData, out bool hasArrays) {
 			hasArrays = false;
-            object[] parameters = JsonSerializer.Deserialize<object[]>(parameterData);
+            
+            List<object> parameters = JsonSerializer.Deserialize<List<object>>(parameterData);
+            bool odd = parameters.Count()%2 != 0;
+            if (odd && parameters.Count() > 2) {
+                parameters.RemoveAt(0);
+            }
+            Console.WriteLine(JsonSerializer.Serialize<object>(parameters));
 			Type type = default;
 			List<object> final = new List<object>();
 			for (int i = 0; i < parameters.Count(); i++) {
-				dynamic value = parameters[i];
+				object value = parameters[i];
 				if (i%2 == 0) {
 					type = Type.GetType(value.ToString());
 					continue;
@@ -394,11 +401,14 @@ namespace ClientFramework {
 					final.Add(dataTemp);
 				}
 			}
+            if (!odd) {
+                return final[0];
+            }
 			return final.ToArray();
 		}
-		public static object[] DeserializeParameters(dynamic parameterData) {
+		public static dynamic DeserializeParameters(dynamic parameterData) {
 			bool _;
-			return (DeserializeParameters(parameterData,out _));
+			return DeserializeParameters(parameterData,out _);
 		}
 
 
@@ -415,8 +425,6 @@ namespace ClientFramework {
             Console.WriteLine($"TYPE: {type}");
             Console.WriteLine($"TIME: {DateTime.Now.Millisecond}");
             Console.WriteLine($"MessageType:{message.MessageType}");
-			Console.WriteLine($"ReturnDataType: {message.ReturnDataType}");
-            Console.WriteLine($"ReturnData: {message.ReturnData}");
             Console.WriteLine($"TargetId:{message.TargetId}");
             Console.WriteLine($"MethodName:{message.MethodName}");
             Console.WriteLine();

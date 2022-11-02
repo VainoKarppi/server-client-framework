@@ -11,8 +11,8 @@ namespace ServerFramework {
         public dynamic? Data { get; set; }
     }
     class ServerMethods {
-        public static string Test(NetworkClient client, string testMessage) {
-            Console.WriteLine($"MSG:{testMessage} CLIENT: {client.Client.RemoteEndPoint} ID:{client.ID}");
+        public static string Test(NetworkClient client, dynamic testMessage) {
+            Console.WriteLine($"MSG:{testMessage} ({testMessage.GetType()}) CLIENT: {client.Client.RemoteEndPoint} ID:{client.ID}");
             return "Hello MSG RESPONSE From SERVER!";
         }
         public static int TestInt(NetworkClient client, string testMessage) {
