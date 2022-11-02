@@ -200,7 +200,7 @@ namespace ClientFramework {
 					{
 						// SEND A REQUEST FOR CLIENT/SERVER
 						case (int)MessageTypes.RequestData:
-							object data = methodInfo?.Invoke(methodName,parameters);
+							object? data = methodInfo?.Invoke(methodName,parameters);
 
 							NetworkMessage responseMessage = new NetworkMessage {
 								MessageType = (int)MessageTypes.ResponseData,
@@ -237,7 +237,11 @@ namespace ClientFramework {
             if (!IsConnected()) throw new Exception("Not connected to server");
 			if (message.TargetId == Client.Id) throw new Exception("Cannot send data to self! (client)");	
 			if (message.MessageType == null) message.MessageType = (int?)MessageTypes.SendData;
-			if (message.ReturnData != null && (message.ReturnDataType == null)) message.ReturnDataType = message.ReturnData.GetType().ToString();
+			Console.WriteLine(message.ReturnData);
+			Console.WriteLine(message.ReturnData.GetType());
+			Console.WriteLine(message.ReturnDataType);
+
+			if (message.ReturnData != null && (message.ReturnDataType == default)) message.ReturnDataType = message.ReturnData.GetType().ToString();
 
 
 			DebugMessage(message,1);
