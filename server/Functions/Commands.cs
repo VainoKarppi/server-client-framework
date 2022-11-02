@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
@@ -30,7 +30,7 @@ namespace ServerFramework {
                 Console.WriteLine("    User: " + client.UserName + " - (" + remoteIP + ") : ID=" + client.ID.ToString());
             }
         }
-        public static void SendCommand() {
+        public static void SendData() {
             if (!Network.ServerRunning)
                 throw new Exception("Start the server first!");
 
@@ -47,11 +47,19 @@ namespace ServerFramework {
                 target = "0";
 
             Network.NetworkMessage message = new Network.NetworkMessage {
-                Parameters = Network.SerializeParameters("TEST MSG FROM SERVER"),
+                Parameters = new object[] {"TEST MSG FROM SERVER"},
                 TargetId = Int32.Parse(target),
                 MethodName = method
             };
             Network.SendData(message);
+        }
+        public static void GetClientMethods() {
+            Console.WriteLine();
+            foreach (var item in Network.ClientMethods) Console.WriteLine(item);
+        }
+        public static void GetServerMethods() {
+            Console.WriteLine();
+            foreach (var item in Network.ServerMethods) Console.WriteLine(item);
         }
         public static void RequestData() {
             if (!Network.ServerRunning)
@@ -70,11 +78,12 @@ namespace ServerFramework {
                 target = "0";
 
             Network.NetworkMessage message = new Network.NetworkMessage {
-                Parameters = Network.SerializeParameters("TEST MSG FROM SERVER"),
+                Parameters = new object[] {"TEST MSG FROM SERVER"},
                 TargetId = Int32.Parse(target),
                 MethodName = method
             };
-            string data = Network.RequestData(message);
+            dynamic data = Network.RequestData(message);
+            Console.WriteLine(data.GetType());
             Console.WriteLine(data);
         }
         public static void RequestDataType() {

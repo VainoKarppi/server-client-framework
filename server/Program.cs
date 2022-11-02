@@ -55,7 +55,13 @@ namespace ServerFramework {
                         Commands.UserList();
 
                     else if (command == "senddata")
-                        Commands.SendCommand();
+                        Commands.SendData();
+
+                    else if (command == "clientmethods")
+                        Commands.GetClientMethods();
+                    
+                    else if (command == "servermethods")
+                        Commands.GetServerMethods();
 
                     else if (command == "requestdata")
                         Commands.RequestData();

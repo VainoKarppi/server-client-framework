@@ -10,6 +10,10 @@ namespace ClientFramework {
             Console.WriteLine($"RECEIVED:{testMessage} IP:{server.Client.RemoteEndPoint}");
             return ($"Hello MSG RESPONSE From Client: {Network.Client.UserName} ({Network.Client.Id})");
         }
+        public static int TestInt(TcpClient server, string testMessage) {
+            Console.WriteLine($"RECEIVED:{testMessage} IP:{server.Client.RemoteEndPoint}");
+            return 1221;
+        }
         public static dynamic TestType(TcpClient server, string testMessage) {
 
             Console.WriteLine($"RECEIVED:{testMessage} IP:{server.Client.RemoteEndPoint}");

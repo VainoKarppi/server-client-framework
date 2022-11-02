@@ -43,7 +43,7 @@ namespace ClientFramework {
             string method = Console.ReadLine();
             Console.WriteLine();
             Console.WriteLine("DATA string to be sent to client/server: ");
-            string data = Console.ReadLine();
+            string? data = Console.ReadLine();
             Console.WriteLine();
             Console.WriteLine("Target ID: (Blank or 0 for all clients)");
             string target;
@@ -54,11 +54,19 @@ namespace ClientFramework {
             }
 
             Network.NetworkMessage message = new Network.NetworkMessage {
-                Parameters = Network.SerializeParameters(data),
-                MethodName = "test",
+                Parameters = new object[] {data},
+                MethodName = method,
                 TargetId = Int32.Parse(target)
             };
             Network.SendData(message);
+        }
+        public static void GetClientMethods() {
+            Console.WriteLine();
+            foreach (var item in Network.ClientMethods) Console.WriteLine(item);
+        }
+        public static void GetServerMethods() {
+            Console.WriteLine();
+            foreach (var item in Network.ServerMethods) Console.WriteLine(item);
         }
         public static void RequestData() {
             if (!Network.IsConnected())
@@ -78,12 +86,13 @@ namespace ClientFramework {
             }
 
             Network.NetworkMessage message = new Network.NetworkMessage {
-                Parameters = Network.SerializeParameters("Hello From Client"),
+                Parameters = "123",
                 MethodName = method,
                 TargetId = Int32.Parse(target)
             };
-            string a = Network.RequestData(message);
-            Console.WriteLine($"RETURNED:{a}");
+            dynamic a = Network.RequestData(message);
+			Console.WriteLine(a.GetType());
+            Console.WriteLine($"{a}");
         }
         public static void RequestDataType() {
             if (!Network.IsConnected())
@@ -99,7 +108,7 @@ namespace ClientFramework {
             }
 
             Network.NetworkMessage message = new Network.NetworkMessage {
-                Parameters = Network.SerializeParameters("Hello From Client"),
+                Parameters ="Hello REQUEST From Client",
                 MethodName = "TestType",
                 TargetId = Int32.Parse(target)
             };

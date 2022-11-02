@@ -15,6 +15,10 @@ namespace ServerFramework {
             Console.WriteLine($"MSG:{testMessage} CLIENT: {client.Client.RemoteEndPoint} ID:{client.ID}");
             return "Hello MSG RESPONSE From SERVER!";
         }
+        public static int TestInt(NetworkClient client, string testMessage) {
+            Console.WriteLine($"MSG:{testMessage} CLIENT: {client.Client.RemoteEndPoint} ID:{client.ID}");
+            return 123;
+        }
         public static dynamic TestType(NetworkClient client, string testMessage) {
             Console.WriteLine($"MSG:{testMessage} CLIENT: {client.Client.RemoteEndPoint} ID:{client.ID}");
             TestClass test = new TestClass();
@@ -22,9 +26,6 @@ namespace ServerFramework {
             test.Test = true;
             test.Data = new string[] {"asd"};
             return test;
-        }
-        public static void Disconnect(NetworkClient client, string testMessage) {
-            Console.WriteLine("CLIENT DISCONNECTED (TEST)");
         }
 
         public static object[] TestArray(NetworkClient client, object[] parameters) {

@@ -39,7 +39,7 @@ namespace ClientFramework {
 			// 0 = everyone, 1 = server, 2 = client 1...
 			// Minus numbers are for internal use!
 			public string? MethodName { get; set; }
-			public List<object>? Parameters { get; set; } = new List<object>() {};
+			public dynamic? Parameters { get; set; }
 			// Array of parameters passed to method that is going to be executed
 			public string? ReturnDataType { get; set; }
 			public dynamic? ReturnData { get; set; }
@@ -50,11 +50,12 @@ namespace ClientFramework {
 			public bool isHandshake { get; set; } = false;
 			// Used to detect for handshake. Else send error for not connected to server!
 		}
-		public static List<string> ClientMethods = new List<string>() {};
+		public static List<string>? ClientMethods;
+		public static List<string>? ServerMethods;
 		private static List<string> PrivateMethods = new List<string>() {"GetMethods","ConnectedClients","HandleEvent"};
 		// To be read from handshake (register on server)
 		public static Dictionary<int,dynamic> Results = new Dictionary<int,dynamic>();
-		public static ClientBase? Client;
+		public static ClientBase? Client = new ClientBase();
 
 
 
@@ -86,9 +87,14 @@ namespace ClientFramework {
 			return true;
 		}
 		public static void Connect(string ip = "127.0.0.1", int port = 2302, string userName = "unknown") {
-
 			if (IsConnected())
 				throw new Exception("Already connected to server!");
+
+			if (ClientMethods == null) {
+                List<string> methods = typeof(ClientMethods).GetMethods().Select(x => x.Name).ToList<string>();
+                methods.RemoveRange((methods.Count() - 4),4);
+                ClientMethods = methods;
+            }
 
 			Client = new ClientBase();
 
@@ -157,11 +163,16 @@ namespace ClientFramework {
 					var msgBytes = new Utf8JsonReader(bytes);
 					NetworkMessage? message = JsonSerializer.Deserialize<NetworkMessage>(ref msgBytes)!;
 					DebugMessage(message,2);
-					object[] deserialisedParams = DeserializeParameters(message.Parameters);
+					bool hasArrays;
+					object[] deserialisedParams = DeserializeParameters(message.Parameters,out hasArrays);
 
 					// Dump result to array and continue
 					if (message.MessageType == (int)MessageTypes.ResponseData) {
-                        Results.Add(message.Key,new object[] {message.ReturnData,message.ReturnDataType});
+						if (hasArrays) {
+							Results.Add(message.Key,deserialisedParams);
+						} else {
+							Results.Add(message.Key,deserialisedParams[0]);
+						}
 						continue;
 					}
 	
@@ -206,7 +217,7 @@ namespace ClientFramework {
 								Key = message.Key
 							};
 							object? data = methodInfo?.Invoke(methodName,parameters);
-							if (data != null) responseMessage.ReturnData = data;
+							if (data != null) responseMessage.Parameters = data;
 							Network.SendData(responseMessage);
 							break;
 						
@@ -235,20 +246,25 @@ namespace ClientFramework {
 			if (message.TargetId == Client.Id) throw new Exception("Cannot send data to self! (client)");	
 			if (message.MessageType == null) message.MessageType = (int?)MessageTypes.SendData;
 
-			Console.WriteLine("#-1");
+			if (message.TargetId != 1) {
+				if (!ClientMethods.Contains(message.MethodName,StringComparer.OrdinalIgnoreCase)) throw new Exception($"Method {message.MethodName} not listed in CLIENT's methods list");
+			} else {
+				if (!ServerMethods.Contains(message.MethodName,StringComparer.OrdinalIgnoreCase)) throw new Exception($"Method {message.MethodName} not listed in SERVER'S methods list");
+			}
+
 			if (message.ReturnData != null) {
-                Console.WriteLine("#0");
-                if (message.ReturnDataType == default) {
-                    Console.WriteLine("#1");
+                if (message.ReturnDataType == null) {
                     message.ReturnDataType = message.ReturnData.GetType().ToString();
                 }
             }
 
-			DebugMessage(message,1);
 			SendMessage(message,Client.GetStream());
+			DebugMessage(message,1);
         }
 
 		public static void SendMessage(dynamic message, NetworkStream Stream) {
+			if (message is NetworkMessage && !(message.Parameters is null))
+                message.Parameters = SerializeParameters(message.Parameters);
 			byte[] msg = JsonSerializer.SerializeToUtf8Bytes(message);
 			byte[] lenght = BitConverter.GetBytes((ushort)msg.Length);
 			byte[] bytes = lenght.Concat(msg).ToArray();
@@ -256,7 +272,6 @@ namespace ClientFramework {
 		}
 		public static byte[] ReadMessageBytes(NetworkStream Stream) {
 			byte[] lenghtBytes = new byte[2];
-
 			Stream.Read(lenghtBytes,0,2);
 			ushort msgLenght = BitConverter.ToUInt16(lenghtBytes,0);
 			byte[] bytes = new byte[msgLenght];
@@ -264,7 +279,7 @@ namespace ClientFramework {
 			return bytes;
 		}
 		public static dynamic RequestDataResult(NetworkMessage message) {
-			object[] returnMessage;
+			dynamic returnMessage;
 			short timer = 0;
 			while (true) {
 				Thread.Sleep(1);
@@ -276,28 +291,21 @@ namespace ClientFramework {
 				if (timer > 100) throw new Exception($"Request {message.Key} ({message.MethodName}) timed out!");
 				timer++;
 			}
-            
-            dynamic data = returnMessage[0];
-            string stringType = (string)returnMessage[1];
-
-            Type type = Type.GetType(stringType);
-            dynamic changedObj = Convert.ChangeType(data.ToString(), type);
-
-			return changedObj;
+			return returnMessage;
 		}
 		public static dynamic RequestData(NetworkMessage message) {
 			if (!IsConnected()) throw new Exception("Not connected to server");
+			if (message.TargetId == Client.Id) throw new Exception("Cannot request data from self!");
 			message.MessageType = (int?)MessageTypes.RequestData;
-			DebugMessage(message,1);
 			SendMessage(message,Client.GetStream());
-			JsonElement returnMessage = RequestDataResult(message);
-			return returnMessage;
+			return RequestDataResult(message);
 		}
 		public static dynamic RequestData<T>(NetworkMessage message) {
 			if (!IsConnected()) throw new Exception("Not connected to server");
+			if (message.TargetId == Client.Id) throw new Exception("Cannot request data from self!");	
 			message.MessageType = (int?)MessageTypes.RequestData;
-			DebugMessage(message,1);
 			SendMessage(message,Client.GetStream());
+			DebugMessage(message,1);
 			dynamic returnMessage = RequestDataResult(message);
 			if (returnMessage is JsonElement) {
 				return ((JsonElement)returnMessage).Deserialize<T>();
@@ -307,19 +315,18 @@ namespace ClientFramework {
 		
 		public static int Handshake(string userName) {
 			int version = Program.Version;
-			Console.WriteLine($"Starting HANDSHAKE with server, with version {version}");
+			Client.UserName = userName;
+			Console.WriteLine($"Starting HANDSHAKE with server, with version: {version}, with name: {userName}");
 
-			NetworkMessage handshakeMessage = new NetworkMessage
-			{
+			NetworkMessage handshakeMessage = new NetworkMessage {
+				MessageType = (int?)MessageTypes.RequestData,
 				TargetId = 1,
 				isHandshake = true,
-				Parameters = SerializeParameters(version,userName),
-				MessageType = (int?)MessageTypes.RequestData,
+				Parameters = new object[] {version,userName,ClientMethods.ToArray()},
 				Sender = -1
 			};
 
 			SendMessage(handshakeMessage,Client.GetStream());
-
 			byte[] bytes = ReadMessageBytes(Client.GetStream());
 			if (bytes.Count() == 0) {
 				Console.WriteLine("ERROR HANDSHAKE");
@@ -328,9 +335,9 @@ namespace ClientFramework {
 
 			var utf8Reader = new Utf8JsonReader(bytes);
 			NetworkMessage? returnMessage = JsonSerializer.Deserialize<NetworkMessage>(ref utf8Reader)!;
-
+			DebugMessage(returnMessage);
 			object[] returnedParams = DeserializeParameters(returnMessage.Parameters);
-
+			
 			int _clientID = (int)returnedParams[0];
 			if (_clientID < 0) {
 				if (_clientID == -2) throw new Exception("Version mismatch!");
@@ -340,11 +347,13 @@ namespace ClientFramework {
 
 			Client.Id = _clientID;
 			Client.UserName = userName;
+			
 			object[] methods = (object[])returnedParams[1];
 			foreach (string method in methods) {
-				ClientMethods.Add(method);
+				if (ServerMethods == null) ServerMethods = new List<string>();
+				ServerMethods.Add(method);
 			}
-			Console.WriteLine($"DEBUG: Added ({ClientMethods.Count()}) methods to list!");
+			Console.WriteLine($"DEBUG: Added ({ServerMethods.Count()}) SERVER methods to list!");
 
 			object[] clients = (object[])returnedParams[2];
 			foreach (object[] clientData in clients) {
@@ -352,38 +361,44 @@ namespace ClientFramework {
 			}
 			Console.WriteLine($"DEBUG: Added ({OtherClients.Count()}) other clients to list!");
 
-
 			Client.HandshakeDone = true;
 
 			return _clientID;	
 		}
 
-		public static List<object> SerializeParameters(params object[] parameters) {
+		public static object[] SerializeParameters(params object[] parameters) {
 			List<object> newParams = new List<object>();
 			foreach (object parameter in parameters) {
 				newParams.Add(parameter.GetType().ToString());
 				newParams.Add(parameter);
 			}
-			return newParams;
+			return newParams.ToArray();
 		}
-		public static object[] DeserializeParameters(List<object> parameters) {
+		public static object[] DeserializeParameters(dynamic parameterData, out bool hasArrays) {
+			hasArrays = false;
+            object[] parameters = JsonSerializer.Deserialize<object[]>(parameterData);
 			Type type = default;
 			List<object> final = new List<object>();
 			for (int i = 0; i < parameters.Count(); i++) {
-				object value = parameters[i];
+				dynamic value = parameters[i];
 				if (i%2 == 0) {
 					type = Type.GetType(value.ToString());
 					continue;
 				}
 				if (type.IsArray) {
+					hasArrays = true;
 					object[] data = ParseParamArray(value.ToString());
 					final.Add(data);
 				} else {
-					object data = TypeDescriptor.GetConverter(type).ConvertFromInvariantString(value.ToString());
-					final.Add(data);
+					object dataTemp = TypeDescriptor.GetConverter(type).ConvertFromInvariantString(value.ToString());
+					final.Add(dataTemp);
 				}
 			}
 			return final.ToArray();
+		}
+		public static object[] DeserializeParameters(dynamic parameterData) {
+			bool _;
+			return (DeserializeParameters(parameterData,out _));
 		}
 
 
@@ -404,12 +419,17 @@ namespace ClientFramework {
             Console.WriteLine($"ReturnData: {message.ReturnData}");
             Console.WriteLine($"TargetId:{message.TargetId}");
             Console.WriteLine($"MethodName:{message.MethodName}");
-            if (message.Parameters != null) {
+            Console.WriteLine();
+            Console.WriteLine(JsonSerializer.Serialize<object>(message.Parameters));
+            Console.WriteLine();
+            /*
+            if (!(message.Parameters is null)) {
+                object[] parameters = message.Parameters.ToArray();
 				int i = 0;
 				int ii = 1;
-				Console.WriteLine($"Parameters ({message.Parameters.Count()}):");
+				Console.WriteLine($"Parameters ({parameters.Count()}):");
                 Type LastType = default;
-                foreach (object pr in message.Parameters) {
+                foreach (dynamic pr in parameters) {
                     if (i%2 == 0) {
                         i++;
                         LastType = Type.GetType(pr.ToString());
@@ -429,13 +449,14 @@ namespace ClientFramework {
                     } 
                     ii++;
                 }
-            }
+            }*/
             Console.WriteLine($"Key:{message.Key}");
             Console.WriteLine($"Sender:{message.Sender}");
             Console.WriteLine("===============DEBUG MESSAGE===============");
 			Console.WriteLine();
         }
 	
+
 		public static object[] ParseParamArray(string args) {
 			if (args.ElementAt(0) != '[') 
 				args = "[" + args + "]";
@@ -512,4 +533,5 @@ namespace ClientFramework {
 		}
 	}
 	
+
 }

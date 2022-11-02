@@ -80,6 +80,12 @@ namespace ClientFramework {
                         case "senddata":
                             Commands.SendData();
                             break;
+                        case "clientmethods":
+                            Commands.GetClientMethods();
+                            break;
+                        case "servermethods":
+                            Commands.GetServerMethods();
+                            break;
                         case "requestdata":
                             Commands.RequestData();
                             break;
