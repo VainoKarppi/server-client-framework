@@ -147,7 +147,7 @@ namespace ServerFramework {
         }
 
         public static void SendMessage(dynamic message, NetworkStream Stream) {
-			if (message is NetworkMessage && !(message.Parameters is null) && message.TargetId != 0)
+			if (message is NetworkMessage && !(message.Parameters is null) && message.TargetId != 0 && message.Sender == 1)
                 message.Parameters = SerializeParameters(message.Parameters);
 
 			byte[] msg = JsonSerializer.SerializeToUtf8Bytes(message);
@@ -446,7 +446,6 @@ namespace ServerFramework {
 					newParams.Add(parameter);
 				}
 			}
-			Console.WriteLine(JsonSerializer.Serialize<object>(newParams.ToArray()));
 			return newParams.ToArray();
 		}
 		public static dynamic DeserializeParameters(dynamic parameterData, out bool hasArrays) {
@@ -457,7 +456,6 @@ namespace ServerFramework {
             if (odd && parameters.Count() > 2) {
                 parameters.RemoveAt(0);
             }
-            Console.WriteLine(JsonSerializer.Serialize<object>(parameters));
 			Type type = default;
 			List<object> final = new List<object>();
 			for (int i = 0; i < parameters.Count(); i++) {

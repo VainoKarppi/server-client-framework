@@ -163,8 +163,7 @@ namespace ClientFramework {
 					DebugMessage(message,2);
 					bool hasArrays;
 					dynamic deserialisedParams = DeserializeParameters(message.Parameters,out hasArrays);
-					Console.WriteLine(deserialisedParams);
-					Console.WriteLine(deserialisedParams.GetType());
+
 					// Dump result to array and continue
 					if (message.MessageType == (int)MessageTypes.ResponseData) {
 						Results.Add(message.Key,deserialisedParams);
@@ -177,8 +176,6 @@ namespace ClientFramework {
                         paramList.Add(deserialisedParams);
                     }
                     object[] parameters = paramList.ToArray();
-
-					Console.WriteLine(parameters.Count());
 
 					// GET METHOD INFO
                     string methodName;
@@ -246,7 +243,7 @@ namespace ClientFramework {
 			} else {
 				if (!ServerMethods.Contains(message.MethodName,StringComparer.OrdinalIgnoreCase)) throw new Exception($"Method {message.MethodName} not listed in SERVER'S methods list");
 			}
-			Console.WriteLine(message.Parameters.GetType());
+
 			SendMessage(message,Client.GetStream());
 			DebugMessage(message,1);
         }
