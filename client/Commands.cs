@@ -90,10 +90,19 @@ namespace ClientFramework {
             if (!Network.IsConnected())
                 throw new Exception("Connect to server first!");
 
+            Console.WriteLine();
+            Console.WriteLine("Target ID: (Blank or 0 for all clients)");
+            string target;
+            while (true) {
+                target = Console.ReadLine();
+                if (!string.IsNullOrEmpty(target)) break;
+                Console.WriteLine("Invalid target, try again!");
+            }
+
             Network.NetworkMessage message = new Network.NetworkMessage {
                 Parameters = Network.SerializeParameters("Hello From Client"),
                 MethodName = "TestType",
-                TargetId = 1
+                TargetId = Int32.Parse(target)
             };
             TestClass a = Network.RequestData<TestClass>(message);
             Console.WriteLine($"RETURNED:{a.StringTest}");
