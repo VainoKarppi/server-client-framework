@@ -161,8 +161,7 @@ namespace ClientFramework {
 
 					// Dump result to array and continue
 					if (message.MessageType == (int)MessageTypes.ResponseData) {
-						Results.Add(message.Key,message.ReturnData);
-						//Results.Add(message.Key,deserialisedParams);
+                        Results.Add(message.Key,new object[] {message.ReturnData,message.ReturnDataType});
 						continue;
 					}
 	
@@ -200,16 +199,14 @@ namespace ClientFramework {
 					{
 						// SEND A REQUEST FOR CLIENT/SERVER
 						case (int)MessageTypes.RequestData:
-							object? data = methodInfo?.Invoke(methodName,parameters);
-
 							NetworkMessage responseMessage = new NetworkMessage {
 								MessageType = (int)MessageTypes.ResponseData,
 								MethodName = message.MethodName,
 								TargetId = message.Sender,
 								Key = message.Key
 							};
-
-							responseMessage.ReturnData = data;
+							object? data = methodInfo?.Invoke(methodName,parameters);
+							if (data != null) responseMessage.ReturnData = data;
 							Network.SendData(responseMessage);
 							break;
 						
@@ -238,7 +235,8 @@ namespace ClientFramework {
 			if (message.TargetId == Client.Id) throw new Exception("Cannot send data to self! (client)");	
 			if (message.MessageType == null) message.MessageType = (int?)MessageTypes.SendData;
 
-			if (message.ReturnData != null ) {
+			Console.WriteLine("#-1");
+			if (message.ReturnData != null) {
                 Console.WriteLine("#0");
                 if (message.ReturnDataType == default) {
                     Console.WriteLine("#1");
@@ -266,7 +264,7 @@ namespace ClientFramework {
 			return bytes;
 		}
 		public static dynamic RequestDataResult(NetworkMessage message) {
-			dynamic returnMessage;
+			object[] returnMessage;
 			short timer = 0;
 			while (true) {
 				Thread.Sleep(1);
@@ -278,7 +276,14 @@ namespace ClientFramework {
 				if (timer > 100) throw new Exception($"Request {message.Key} ({message.MethodName}) timed out!");
 				timer++;
 			}
-			return returnMessage;
+            
+            dynamic data = returnMessage[0];
+            string stringType = (string)returnMessage[1];
+
+            Type type = Type.GetType(stringType);
+            dynamic changedObj = Convert.ChangeType(data.ToString(), type);
+
+			return changedObj;
 		}
 		public static JsonElement RequestData(NetworkMessage message) {
 			if (!IsConnected()) throw new Exception("Not connected to server");

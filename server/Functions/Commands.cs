@@ -74,7 +74,7 @@ namespace ServerFramework {
                 TargetId = Int32.Parse(target),
                 MethodName = method
             };
-            string data = Network.RequestData<string>(message);
+            string data = Network.RequestData(message);
             Console.WriteLine(data);
         }
         public static void RequestDataType() {

@@ -159,9 +159,9 @@ namespace ServerFramework {
 			
 			if (message.MessageType == null) message.MessageType = (int?)MessageTypes.SendData;
 
-            if (message.ReturnData != null ) {
+            if (message.ReturnData != null) {
                 Console.WriteLine("#0");
-                if (message.ReturnDataType == default) {
+                if (message.ReturnDataType == null) {
                     Console.WriteLine("#1");
                     message.ReturnDataType = message.ReturnData.GetType().ToString();
                 }
@@ -183,7 +183,7 @@ namespace ServerFramework {
         }
         
         public static dynamic RequestDataResult(NetworkMessage message) {
-			dynamic returnMessage;
+			object[] returnMessage;
 			short timer = 0;
 			while (true) {
 				Thread.Sleep(1);
@@ -195,8 +195,16 @@ namespace ServerFramework {
 				if (timer > 100) throw new Exception($"Request {message.Key} ({message.MethodName}) timed out!");
 				timer++;
 			}
-			return returnMessage;
+            
+            dynamic data = returnMessage[0];
+            string stringType = (string)returnMessage[1];
+
+            Type type = Type.GetType(stringType);
+            dynamic changedObj = Convert.ChangeType(data.ToString(), type);
+
+			return changedObj;
 		}
+
 		public static dynamic RequestData(NetworkMessage message) {
 			if (!ServerRunning) throw new Exception("Server Not running!");
 			message.MessageType = (int?)MessageTypes.RequestData;
@@ -208,8 +216,12 @@ namespace ServerFramework {
 			SendMessage(message,client.Stream);
 
 			dynamic returnMessage = RequestDataResult(message);
+            
 			return returnMessage;
 		}
+        public T CastObject<T>(object input) {   
+            return (T) input;   
+        }
 		public static dynamic RequestData<T>(NetworkMessage message) {
 			if (!ServerRunning) throw new Exception("Server Not running!");
 			message.MessageType = (int?)MessageTypes.RequestData;
@@ -284,9 +296,9 @@ namespace ServerFramework {
                     
                     // Dump result to array and continue
 					if (message.MessageType == (int)MessageTypes.ResponseData) {
-                        Results.Add(message.Key,parameters);
-                        continue;
-                    }
+                        Results.Add(message.Key,new object[] {message.ReturnData,message.ReturnDataType});
+						continue;
+					}
 
                     
                     
@@ -327,7 +339,7 @@ namespace ServerFramework {
                                 // HANDLE ON SERVER
                                 object? data = methodInfo?.Invoke(methodName,parameters);
 
-                                responseMessage.ReturnData = data;
+                                if (data != null) responseMessage.ReturnData = data;
 
                                 Network.SendData(responseMessage);
                             }
