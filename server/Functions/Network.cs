@@ -159,8 +159,8 @@ namespace ServerFramework {
 			
 			if (message.MessageType == null) message.MessageType = (int?)MessageTypes.SendData;
             Console.WriteLine(message.ReturnData);
-			Console.WriteLine(message.ReturnData.GetType());
 			Console.WriteLine(message.ReturnDataType);
+            
             if (message.ReturnData != null && (message.ReturnDataType == default)) message.ReturnDataType = message.ReturnData.GetType().ToString();
             
             // Send to single ro multiple users
