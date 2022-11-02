@@ -39,7 +39,7 @@ namespace ClientFramework {
             Console.Title = "EDEN Online Extension CLIENT";
             Console.WriteLine("Type 'help' for commands!");
 
-            //Network.Connect("127.0.0.1",2302,"vaino");
+            //Network.Connect("127.0.0.1",5001,"vaino");
 
             while (true) {
                 Console.WriteLine();
@@ -63,13 +63,16 @@ namespace ClientFramework {
                             Console.WriteLine("Enter IP adress:");
                             string ip = Console.ReadLine();
                             if (string.IsNullOrEmpty(ip)) ip = "127.0.0.1";
+                            Console.WriteLine("Enter Port");
+                            string port = Console.ReadLine();
+                            if (string.IsNullOrEmpty(port)) ip = "5001";
                             Console.WriteLine("Username:");
                             string name = Console.ReadLine();
                             if (string.IsNullOrEmpty(name)) {
                                 Random rd = new Random();
                                 name = ("RANDOMUSER" + rd.Next(1,10).ToString());
                             }
-                            Network.Connect(ip,2302,name);
+                            Network.Connect(ip,Int32.Parse(port),name);
                             break;
                         case "disconnect":
                             Network.Disconnect();

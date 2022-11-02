@@ -28,7 +28,7 @@ namespace ServerFramework {
             Console.Clear();
             Console.Title = "EDEN Online Extension SERVER";
             Console.WriteLine("Type 'help' for commands!");
-            Network.StartServer();
+            Network.StartServer(5001);
             while (true) {
                 Console.WriteLine();
                 string command = Console.ReadLine();
@@ -45,8 +45,14 @@ namespace ServerFramework {
                     else if (command == "exit")
                         break;
 
-                    else if (command == "start")
-                        Network.StartServer();
+                    else if (command == "start") {
+                        Console.WriteLine("Enter server port:");
+                        string port = Console.ReadLine();
+                        if (String.IsNullOrEmpty(port)) port = "5001";
+                        Network.StartServer(Int32.Parse(port));
+
+                    }
+                        
 
                     else if (command == "stop")
                         Network.StopServer();

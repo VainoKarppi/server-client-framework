@@ -53,13 +53,12 @@ namespace ServerFramework {
         private static List<string> PrivateMethods = new List<string>() {"GetMethods","ConnectedClients","HandleEvent"};
 		public static Dictionary<int,dynamic> Results = new Dictionary<int,dynamic>();
 
-        public static void StartServer() {
+        public static void StartServer(int serverPort) {
             if (ServerRunning)
                 throw new Exception("Server already running!");
             
             if (ServerMethods == null) {
                 List<string> methods = typeof(ServerMethods).GetMethods().Select(x => x.Name).ToList<string>();
-                Console.WriteLine(methods.Count());
                 methods.RemoveRange((methods.Count() - 4),4);
                 ServerMethods = methods;
             }
@@ -67,7 +66,7 @@ namespace ServerFramework {
             new Thread(() => {
                 Thread.CurrentThread.IsBackground = true; 
                 
-                ServerListener = new TcpListener(IPAddress.Any, ServerPort);
+                ServerListener = new TcpListener(IPAddress.Any, serverPort);
                 ServerListener.Start();
                 ServerRunning = true;
 
@@ -544,7 +543,6 @@ namespace ServerFramework {
 
 			List<object> array = new List<object>();
 			char[] nums = new char[] {'0','1','2','3','4','5','6','7','8','9','0','.','-'};
-            bool boolValue;
 			for (int i = 0; i < args.Length; i++) {
 				if (args[i] == '[') {
 					StringBuilder str = new StringBuilder();
