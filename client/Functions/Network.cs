@@ -285,7 +285,7 @@ namespace ClientFramework {
 
 			return changedObj;
 		}
-		public static JsonElement RequestData(NetworkMessage message) {
+		public static dynamic RequestData(NetworkMessage message) {
 			if (!IsConnected()) throw new Exception("Not connected to server");
 			message.MessageType = (int?)MessageTypes.RequestData;
 			DebugMessage(message,1);

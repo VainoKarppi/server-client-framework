@@ -82,9 +82,8 @@ namespace ClientFramework {
                 MethodName = method,
                 TargetId = Int32.Parse(target)
             };
-            JsonElement a = Network.RequestData(message);
-            string b = a.GetString();
-            Console.WriteLine($"RETURNED:{b}");
+            string a = Network.RequestData(message);
+            Console.WriteLine($"RETURNED:{a}");
         }
         public static void RequestDataType() {
             if (!Network.IsConnected())
