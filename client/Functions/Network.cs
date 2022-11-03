@@ -334,9 +334,8 @@ namespace ClientFramework {
 
 			var utf8Reader = new Utf8JsonReader(bytes);
 			NetworkMessage? returnMessage = JsonSerializer.Deserialize<NetworkMessage>(ref utf8Reader)!;
-			DebugMessage(returnMessage);
 			object[] returnedParams = DeserializeParameters(returnMessage.Parameters);
-			
+
 			int _clientID = (int)returnedParams[0];
 			if (_clientID < 0) {
 				if (_clientID == -2) throw new Exception("Version mismatch!");
@@ -380,7 +379,6 @@ namespace ClientFramework {
 					newParams.Add(parameter);
 				}
 			}
-			Console.WriteLine(JsonSerializer.Serialize<object>(newParams.ToArray()));
 			return newParams.ToArray();
 		}
 		public static dynamic DeserializeParameters(dynamic parameterData, out bool hasArrays) {
@@ -391,7 +389,6 @@ namespace ClientFramework {
             if (odd && parameters.Count() > 2) {
                 parameters.RemoveAt(0);
             }
-            Console.WriteLine(JsonSerializer.Serialize<object>(parameters));
 			Type type = default;
 			List<object> final = new List<object>();
 			for (int i = 0; i < parameters.Count(); i++) {

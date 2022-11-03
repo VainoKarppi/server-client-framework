@@ -390,8 +390,7 @@ namespace ServerFramework {
             if (ClientMethods == null) {
                 ClientMethods = new List<string>() {};
                 foreach (string method in (object[])parameters[2]) {
-                    Console.WriteLine(method);
-                    ClientMethods.Add(method.Trim( new Char[] {'"'} ));
+                    ClientMethods.Add(method);
                 }
                 Console.WriteLine($"Added ({ClientMethods.Count()}) client methods!");
             }
