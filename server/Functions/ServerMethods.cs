@@ -15,11 +15,11 @@ namespace ServerFramework {
             Console.WriteLine($"MSG:{testMessage} ({testMessage.GetType()}) CLIENT: {client.Client.RemoteEndPoint} ID:{client.ID}");
             return "Hello MSG RESPONSE From SERVER!";
         }
-        public static int TestInt(NetworkClient client, string testMessage) {
+        public static int TestInt(NetworkClient client, dynamic testMessage) {
             Console.WriteLine($"MSG:{testMessage} CLIENT: {client.Client.RemoteEndPoint} ID:{client.ID}");
             return 123;
         }
-        public static dynamic TestType(NetworkClient client, string testMessage) {
+        public static dynamic TestType(NetworkClient client, dynamic testMessage) {
             Console.WriteLine($"MSG:{testMessage} CLIENT: {client.Client.RemoteEndPoint} ID:{client.ID}");
             TestClass test = new TestClass();
             test.StringTest = "TESTI";
@@ -28,8 +28,7 @@ namespace ServerFramework {
             return test;
         }
 
-        public static object[] TestArray(NetworkClient client, object[] parameters) {
-            foreach (var x in parameters) Console.WriteLine(x);
+        public static object[] TestArray(NetworkClient client, dynamic parameters) {
             return new object[] {"test",true,1213};
         }
         
