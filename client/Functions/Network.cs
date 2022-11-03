@@ -329,6 +329,7 @@ namespace ClientFramework {
 			byte[] bytes = ReadMessageBytes(Client.GetStream());
 			if (bytes.Count() == 0) {
 				Console.WriteLine("ERROR HANDSHAKE");
+				Client.Client.Close();
 				return -1;
 			}
 
@@ -352,12 +353,20 @@ namespace ClientFramework {
 				ServerMethods.Add(method);
 			}
 			Console.WriteLine($"DEBUG: Added ({ServerMethods.Count()}) SERVER methods to list!");
-
+			
 			object[] clients = (object[])returnedParams[2];
 			foreach (object[] clientData in clients) {
 				OtherClients.Add(new OtherClient((int)clientData[0], (string)clientData[1]));
 			}
 			Console.WriteLine($"DEBUG: Added ({OtherClients.Count()}) other clients to list!");
+
+			NetworkMessage handshakeMessageSuccess = new NetworkMessage {
+				MessageType = (int?)MessageTypes.SendData,
+				TargetId = 1,
+				isHandshake = true,
+				Sender = Client.Id
+			};
+			SendMessage(handshakeMessageSuccess,Client.GetStream());
 
 			Client.HandshakeDone = true;
 

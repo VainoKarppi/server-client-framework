@@ -37,9 +37,6 @@ namespace ServerFramework {
             public string? MethodName { get; set; }
 			// Minus numbers are for internal use!
 			public dynamic? Parameters { get; set; }
-            internal object[]? ParameterData { get; set; }
-            public string? ReturnDataType { get; set; }
-            public dynamic? ReturnData { get; set; }
 			// Array of parameters passed to method that is going to be executed
 			public int Key { get; set; } = new Random().Next(100,int.MaxValue);
 			// Key for getting the response for specific request (0-100) = event id
@@ -289,7 +286,18 @@ namespace ServerFramework {
                     
                     // HANDLE HANDSHAKE
                     if (message.isHandshake) {
-                        HandshakeClient(_client,deserialisedParams);
+                        // Return of successfull handshake
+                        if (message.MessageType == (int)MessageTypes.SendData) {
+                            EventMessage eventMessage = new EventMessage {
+                                Targets = ClientList.Select(x => x.ID).Where(x => x != _client.ID).ToArray(),
+                                EventClass = new OnClientConnect(_client.ID,_client.UserName)
+                            };
+                            SendEvent(eventMessage);
+                            _client.HandshakeDone = true;
+                            Console.WriteLine($"*SUCCESS* Handshake done! ({_client.ID})");
+                        } else {
+                            HandshakeClient(_client,deserialisedParams);
+                        }
                         continue;
                     }
 
@@ -422,19 +430,9 @@ namespace ServerFramework {
                 if (!toAdd.Connected || toAdd.ID == client.ID) continue;
                 targetList.Add(toAdd.ID);
             }
-            EventMessage message = new EventMessage {
-                Targets = targetList.ToArray(),
-                EventClass = new OnClientConnect(client.ID,client.UserName)
-            };
-            SendEvent(message);
-            
-
             handshakeMessage.Parameters = new object[] {client.ID,ServerMethods.ToArray(),clientlist.ToArray()};
 
             Network.SendData(handshakeMessage);
-
-            Console.WriteLine($"*SUCCESS* Handshake done! ({client.ID})");
-            client.HandshakeDone = true;
         }
 
 
@@ -455,7 +453,7 @@ namespace ServerFramework {
 		}
 		public static dynamic DeserializeParameters(dynamic parameterData, out bool hasArrays) {
 			hasArrays = false;
-            
+            if(parameterData is null) return null;
             List<object> parameters = JsonSerializer.Deserialize<List<object>>(parameterData);
             bool odd = parameters.Count()%2 != 0;
             if (odd && parameters.Count() > 2) {
