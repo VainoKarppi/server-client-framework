@@ -229,6 +229,7 @@ namespace ClientFramework {
 				if (ex.InnerException is SocketException) {
 					if (Client.Id != null) Console.WriteLine("Server has crashed!");
 				}
+				Console.WriteLine("Disconnected from the server!");
 				Client.Client.Close();
 			}
 		}
@@ -243,7 +244,7 @@ namespace ClientFramework {
 			} else {
 				if (!ServerMethods.Contains(message.MethodName,StringComparer.OrdinalIgnoreCase)) throw new Exception($"Method {message.MethodName} not listed in SERVER'S methods list");
 			}
-
+			if (message.TargetId == 0) Console.WriteLine($"DATA SENT TO: ({OtherClients.Count()}) CLIENT(s)!");
 			SendMessage(message,Client.GetStream());
 			DebugMessage(message,1);
         }
@@ -283,6 +284,11 @@ namespace ClientFramework {
 		public static dynamic RequestData(NetworkMessage message) {
 			if (!IsConnected()) throw new Exception("Not connected to server");
 			if (message.TargetId == Client.Id) throw new Exception("Cannot request data from self!");
+			if (message.TargetId != 1) {
+				if (!ClientMethods.Contains(message.MethodName,StringComparer.OrdinalIgnoreCase)) throw new Exception($"Method {message.MethodName} not listed in CLIENT's methods list");
+			} else {
+				if (!ServerMethods.Contains(message.MethodName,StringComparer.OrdinalIgnoreCase)) throw new Exception($"Method {message.MethodName} not listed in SERVER'S methods list");
+			}
 			message.MessageType = (int?)MessageTypes.RequestData;
 			SendMessage(message,Client.GetStream());
 			DebugMessage(message,1);
@@ -290,7 +296,12 @@ namespace ClientFramework {
 		}
 		public static dynamic RequestData<T>(NetworkMessage message) {
 			if (!IsConnected()) throw new Exception("Not connected to server");
-			if (message.TargetId == Client.Id) throw new Exception("Cannot request data from self!");	
+			if (message.TargetId == Client.Id) throw new Exception("Cannot request data from self!");
+			if (message.TargetId != 1) {
+				if (!ClientMethods.Contains(message.MethodName,StringComparer.OrdinalIgnoreCase)) throw new Exception($"Method {message.MethodName} not listed in CLIENT's methods list");
+			} else {
+				if (!ServerMethods.Contains(message.MethodName,StringComparer.OrdinalIgnoreCase)) throw new Exception($"Method {message.MethodName} not listed in SERVER'S methods list");
+			}
 			message.MessageType = (int?)MessageTypes.RequestData;
 			SendMessage(message,Client.GetStream());
 			DebugMessage(message,1);

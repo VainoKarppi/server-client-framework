@@ -147,7 +147,7 @@ namespace ServerFramework {
         }
 
         public static void SendMessage(dynamic message, NetworkStream Stream) {
-			if (message is NetworkMessage && !(message.Parameters is null) && message.TargetId != 0 && message.Sender == 1)
+			if (message is NetworkMessage && !(message.Parameters is null) && message.Sender == 1)
                 message.Parameters = SerializeParameters(message.Parameters);
 
 			byte[] msg = JsonSerializer.SerializeToUtf8Bytes(message);
@@ -183,13 +183,13 @@ namespace ServerFramework {
                 DebugMessage(message,mode);
             } else {
                 int i = 0;
-                message.Parameters = SerializeParameters(message.Parameters);
                 foreach (NetworkClient client in ClientList) {
                     if (message.Sender == client.ID) continue;
                     SendMessage(message,client.Stream);
                     i++;
                 }
-                Console.WriteLine($"DATA SENT TO {i} USERS(s)!");
+                if (message.Sender == 1) Console.WriteLine($"DATA SENT TO {i} USERS(s)!");
+                else Console.WriteLine($"DATA FORWARDED TO {i} USERS(s)!");
             }
         }
         
@@ -212,6 +212,9 @@ namespace ServerFramework {
 		public static dynamic RequestData(NetworkMessage message) {
 			if (!ServerRunning) throw new Exception("Server Not running!");
             if (message.TargetId == 1) throw new Exception("Cannot request data from self!");
+            if (message.MessageType != (int)MessageTypes.ResponseData) {
+				if (!ClientMethods.Contains(message.MethodName,StringComparer.OrdinalIgnoreCase)) throw new Exception($"Method {message.MethodName} not listed in CLIENT's methods list");
+            }
 			message.MessageType = (int?)MessageTypes.RequestData;
 
             NetworkClient client = ClientList.FirstOrDefault(client => client.ID == message.TargetId);
@@ -226,6 +229,9 @@ namespace ServerFramework {
 		public static dynamic RequestData<T>(NetworkMessage message) {
 			if (!ServerRunning) throw new Exception("Server Not running!");
             if (message.TargetId == 1) throw new Exception("Cannot request data from self!");
+            if (message.MessageType != (int)MessageTypes.ResponseData) {
+				if (!ClientMethods.Contains(message.MethodName,StringComparer.OrdinalIgnoreCase)) throw new Exception($"Method {message.MethodName} not listed in CLIENT's methods list");
+            }
 			message.MessageType = (int?)MessageTypes.RequestData;
 
             NetworkClient client = ClientList.FirstOrDefault(client => client.ID == message.TargetId);

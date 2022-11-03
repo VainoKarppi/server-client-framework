@@ -2,3 +2,5 @@
 requestdatatype
 
 Add More events
+
+Handle client crash better
