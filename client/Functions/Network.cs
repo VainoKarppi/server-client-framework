@@ -1,4 +1,4 @@
-﻿using System.Diagnostics.Tracing;
+using System.Diagnostics.Tracing;
 using System.Reflection.Metadata;
 using System;
 using System.Collections.Generic;
@@ -161,8 +161,8 @@ namespace ClientFramework {
 					var msgBytes = new Utf8JsonReader(bytes);
 					NetworkMessage? message = JsonSerializer.Deserialize<NetworkMessage>(ref msgBytes)!;
 					DebugMessage(message,2);
-					bool hasArrays;
-					dynamic deserialisedParams = DeserializeParameters(message.Parameters,out hasArrays);
+					
+					dynamic deserialisedParams = DeserializeParameters(message.Parameters);
 
 					// Dump result to array and continue
 					if (message.MessageType == (int)MessageTypes.ResponseData) {

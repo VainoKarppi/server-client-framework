@@ -108,7 +108,7 @@ namespace ClientFramework {
             }
 
             Network.NetworkMessage message = new Network.NetworkMessage {
-                Parameters ="Hello REQUEST From Client",
+                Parameters = "Hello REQUEST From Client",
                 MethodName = "TestType",
                 TargetId = Int32.Parse(target)
             };
