@@ -101,7 +101,7 @@ namespace ServerFramework {
                 target = "0";
 
             Network.NetworkMessage message = new Network.NetworkMessage {
-                Parameters = Network.SerializeParameters("Hello From Client"),
+                Parameters = "Hello From Client",
                 MethodName = "TestType",
                 TargetId = Int32.Parse(target)
             };

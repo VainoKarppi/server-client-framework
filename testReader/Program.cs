@@ -24,7 +24,7 @@ class ConsoleApplication
         //DisplayValues();
 
 
-        var networkMessage = new NetworkMessage
+        NetworkMessage networkMessage = new NetworkMessage
         {
             Date = DateTime.Parse("2019-08-01"),
             TemperatureCelsius = 25,
@@ -32,8 +32,6 @@ class ConsoleApplication
             Summary = "Hot",
             Parameters = new object[] {10,true,new object[]{"asd"}}
         };
-
-        
 
         List<dynamic> newParams = new List<dynamic>();
         foreach (object parameter in networkMessage.Parameters) {

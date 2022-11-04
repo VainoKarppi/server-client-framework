@@ -8,12 +8,6 @@ using System.Reflection;
 
 
 namespace ClientFramework {
-    
-    public class TestClass {
-        public bool Test { get; set; }
-        public string? StringTest { get; set; }
-        public dynamic? Data { get; set; }
-    }
     public class Program {
         public const int Version = 1000;
         

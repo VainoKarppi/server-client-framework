@@ -5,6 +5,11 @@ using System.Net.Sockets;
 using System.Text;
 
 namespace ClientFramework {
+    public class TestClass {
+        public bool Test { get; set; }
+        public string? StringTest { get; set; }
+        public dynamic? Data { get; set; }
+    }
     class ClientMethods {
         public static string Test(TcpClient server, dynamic testMessage) {
             if (testMessage is Array) {
@@ -19,11 +24,11 @@ namespace ClientFramework {
             return 1221;
         }
         public static dynamic TestType(TcpClient server, dynamic testMessage) {
-
             Console.WriteLine($"MSG:{testMessage} IP:{server.Client.RemoteEndPoint}");
             TestClass test = new TestClass();
-            test.StringTest = "TEST";
+            test.StringTest = "TESTI";
             test.Test = true;
+            test.Data = new string[] {"asd"};
             return test;
         }
         public static object[] TestArray(TcpClient server, dynamic testMessage) {

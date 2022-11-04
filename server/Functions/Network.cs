@@ -37,6 +37,7 @@ namespace ServerFramework {
             public string? MethodName { get; set; }
 			// Minus numbers are for internal use!
 			public dynamic? Parameters { get; set; }
+            public bool UseClass { get; set; } = false;
 			// Array of parameters passed to method that is going to be executed
 			public int Key { get; set; } = new Random().Next(100,int.MaxValue);
 			// Key for getting the response for specific request (0-100) = event id
@@ -144,8 +145,12 @@ namespace ServerFramework {
         }
 
         public static void SendMessage(dynamic message, NetworkStream Stream) {
-			if (message is NetworkMessage && !(message.Parameters is null) && message.Sender == 1)
-                message.Parameters = SerializeParameters(message.Parameters);
+			if (message is NetworkMessage && !(message.Parameters is null) && message.Sender == 1) {
+                bool useClass = false;
+                message.Parameters = SerializeParameters(message.Parameters,ref useClass);
+                message.UseClass = useClass;
+            }
+
 
 			byte[] msg = JsonSerializer.SerializeToUtf8Bytes(message);
 			byte[] lenght = BitConverter.GetBytes((ushort)msg.Length);
@@ -240,7 +245,7 @@ namespace ServerFramework {
 
 			dynamic returnMessage = RequestDataResult(message);
 			if (returnMessage is JsonElement) {
-				return ((JsonElement)returnMessage).Deserialize<T>();
+				return ((JsonElement)returnMessage[1]).Deserialize<T>();
 			}
 			return (T)returnMessage;
 		}
@@ -281,8 +286,7 @@ namespace ServerFramework {
 
 					DebugMessage(message,2);
 
-                    bool hasArrays;
-					dynamic deserialisedParams = DeserializeParameters(message.Parameters,out hasArrays);
+					dynamic deserialisedParams = DeserializeParameters(message.Parameters,message.UseClass);
                     
                     // HANDLE HANDSHAKE
                     if (message.isHandshake) {
@@ -301,14 +305,6 @@ namespace ServerFramework {
                         continue;
                     }
 
-                    // DESERIALISE PARAMETERS AND ADD CLIENT AS FIRST PARAMETER
-                    List<object> paramList = new List<object>();
-                    paramList.Add(_client);
-                    if (!(message.Parameters is null)) {
-                        paramList.Add(deserialisedParams);
-                    }
-                    object[] parameters = paramList.ToArray();  
-                    
                     // Dump result to array and continue
 					if (message.MessageType == (int)MessageTypes.ResponseData) {
                         Results.Add(message.Key,deserialisedParams);
@@ -316,7 +312,13 @@ namespace ServerFramework {
 					}
 
                     
-                    
+                    // DESERIALISE PARAMETERS AND ADD CLIENT AS FIRST PARAMETER
+                    List<object> paramList = new List<object>();
+                    paramList.Add(_client);
+                    if (!(message.Parameters is null)) {
+                        paramList.Add(deserialisedParams);
+                    }
+                    object[] parameters = paramList.ToArray();  
                     
                     // GET METHOD INFO
                     string methodName;
@@ -437,7 +439,14 @@ namespace ServerFramework {
 
 
 
-        public static object[] SerializeParameters(dynamic parameters) {	
+        public static object[] SerializeParameters(dynamic parameters,ref bool useClass) {
+            try {
+                Type paramType = Type.GetType(parameters.ToString());
+                useClass = paramType.GetConstructor(new Type[0])!=null;
+                Console.WriteLine(useClass);
+                if (useClass) return parameters;
+            } catch {}
+            
 			List<object> newParams = new List<object>();
 			if (!(parameters is Array)) {
 				newParams.Add(parameters.GetType().ToString());
@@ -451,9 +460,9 @@ namespace ServerFramework {
 			}
 			return newParams.ToArray();
 		}
-		public static dynamic DeserializeParameters(dynamic parameterData, out bool hasArrays) {
-			hasArrays = false;
+		public static dynamic DeserializeParameters(dynamic parameterData,bool isClass = false) {
             if(parameterData is null) return null;
+			if (isClass) return parameterData;
             List<object> parameters = JsonSerializer.Deserialize<List<object>>(parameterData);
             bool odd = parameters.Count()%2 != 0;
             if (odd && parameters.Count() > 2) {
@@ -468,7 +477,6 @@ namespace ServerFramework {
 					continue;
 				}
 				if (type.IsArray) {
-					hasArrays = true;
 					object[] data = ParseParamArray(value.ToString());
 					final.Add(data);
 				} else {
@@ -480,10 +488,6 @@ namespace ServerFramework {
                 return final[0];
             }
 			return final.ToArray();
-		}
-		public static dynamic DeserializeParameters(dynamic parameterData) {
-			bool _;
-			return DeserializeParameters(parameterData,out _);
 		}
 
         public static void DebugMessage(NetworkMessage message,int mode = 0) {
@@ -502,6 +506,7 @@ namespace ServerFramework {
             Console.WriteLine($"MessageType:{message.MessageType}");
             Console.WriteLine($"TargetId:{message.TargetId}");
             Console.WriteLine($"MethodName:{message.MethodName}");
+            Console.WriteLine($"IsClass:{message.UseClass}");
             Console.WriteLine();
             Console.WriteLine(JsonSerializer.Serialize<object>(message.Parameters));
             Console.WriteLine();
