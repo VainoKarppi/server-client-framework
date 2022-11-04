@@ -91,8 +91,11 @@ namespace ClientFramework {
                 TargetId = Int32.Parse(target)
             };
             dynamic a = Network.RequestData(message);
-			Console.WriteLine(a.GetType());
-            Console.WriteLine($"{a}");
+            
+            if (a is Array)
+                foreach (var b in a) Console.WriteLine($"{b} ({b.GetType()})");
+            else 
+                Console.WriteLine($"{a} ({a.GetType()})");
         }
         public static void RequestDataType() {
             if (!Network.IsConnected())

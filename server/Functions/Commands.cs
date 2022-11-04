@@ -82,9 +82,11 @@ namespace ServerFramework {
                 TargetId = Int32.Parse(target),
                 MethodName = method
             };
-            dynamic data = Network.RequestData(message);
-            Console.WriteLine(data.GetType());
-            Console.WriteLine(data);
+            dynamic a = Network.RequestData(message);
+            if (a is Array)
+                foreach (var b in a) Console.WriteLine($"{b} ({b.GetType()})");
+            else 
+                Console.WriteLine($"{a} ({a.GetType()})");
         }
         public static void RequestDataType() {
             if (!Network.ServerRunning)
