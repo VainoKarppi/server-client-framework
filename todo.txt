@@ -1,5 +1,4 @@
 
-requestdatatype
 
 Add More events
 
@@ -7,5 +6,3 @@ Handle client crash better
 
 
 testarray: when requested from server
-
-requestdatatype: when requested from server

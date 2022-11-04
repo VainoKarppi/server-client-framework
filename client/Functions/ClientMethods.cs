@@ -37,9 +37,5 @@ namespace ClientFramework {
         public static void Disconnect(TcpClient server) {
             throw new NotImplementedException();
         }
-
-        public static object[] TestArray(TcpClient server) {
-            return new object[] {"asd",121};
-        }
     }
 }

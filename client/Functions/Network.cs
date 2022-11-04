@@ -209,6 +209,7 @@ namespace ClientFramework {
 								TargetId = message.Sender,
 								Key = message.Key
 							};
+							Console.WriteLine("asd");
 							object? data = methodInfo?.Invoke(methodName,parameters);
 							if (data != null) responseMessage.Parameters = data;
 							Network.SendData(responseMessage);
@@ -223,6 +224,7 @@ namespace ClientFramework {
 					}
 				}
 			} catch (Exception ex) {
+				Console.WriteLine(ex.Message);
 				if (!Client.HandshakeDone) {
 					return;
 				}
