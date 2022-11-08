@@ -93,7 +93,13 @@ namespace ClientFramework {
             dynamic a = Network.RequestData(message);
             
             if (a is Array)
-                foreach (var b in a) Console.WriteLine($"{b} ({b.GetType()})");
+                foreach (var b in a) {
+                    if (a is Array) {
+                        foreach (var c in b) Console.WriteLine($"{c} ({c.GetType()})");
+                        continue;
+                    }
+                    Console.WriteLine($"{b} ({b.GetType()})");
+                }
             else 
                 Console.WriteLine($"{a} ({a.GetType()})");
         }

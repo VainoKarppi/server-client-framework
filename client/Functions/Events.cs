@@ -36,44 +36,78 @@ namespace ClientFramework {
         public OnServerShutdownEvent (bool success) {
             Success = success;
         }
-    } 
-
-
-    public class ServerEventMessage : EventArgs {
-        public int ClientID { get; set; }
-        public int Code { get; set; }
-        public DateTime CompletionTime { get; set; }
-        public List<object>? Parameters { get; set; }
-
     }
-    public class ServerEvents {
-        public static ServerEvents? eventsListener { get; set; }
+    public class OnMessageSentEvent : BaseEventClass {
+        public Network.NetworkMessage Message;
+        public OnMessageSentEvent (Network.NetworkMessage message) {
+            Message = message;
+        }
+    }
+    public class OnMessageReceivedEvent : BaseEventClass {
+        public Network.NetworkMessage Message;
+        public OnMessageReceivedEvent (Network.NetworkMessage message) {
+            Message = message;
+        }
+    }
+
+
+
+
+
+
+    public class NetworkEvents {
+        public static NetworkEvents? eventsListener { get; set; }
         public event EventHandler<OnClientConnectEvent>? ClientConnected;
         public event EventHandler<OnClientDisconnectEvent>? ClientDisconnect;
-        public event EventHandler<bool>? ServerShutdown;
-        public void ExecuteEvent(dynamic classData) {
-            string eventName = ((JsonElement)classData).GetProperty("EventName").GetString();
-            switch (eventName.ToLower()) {
-				case "onclientconnect":
-                    OnClientConnected( ((JsonElement)classData).Deserialize<OnClientConnectEvent>() );
-					break;
-				case "onclientdisconnect":
-                    OnClientDisconnect( ((JsonElement)classData).Deserialize<OnClientDisconnectEvent>() );
-					break;
-				case "onservershutdown":
-                    OnServerShutdown( ((JsonElement)classData).GetProperty("Success").GetBoolean() );
-					break;
-				case "onmessagesent":
-					break;
-				case "onmessagereceived":
-					break;
-				case "onhandshakestart":
-					break;
-				case "onhandshakeend":
-					break;
-				default:
-					throw new NotImplementedException();
-			}
+        public event EventHandler<OnServerShutdownEvent>? ServerShutdown;
+        public event EventHandler<OnMessageSentEvent>? MessageSent;
+        public event EventHandler<OnMessageReceivedEvent>? MessageReceived;
+        public async void ExecuteEvent(dynamic classData, bool useBlocked = false) {
+            Thread eventThread = new Thread(() => {
+                try {
+                    // ((JsonElement)classData).GetProperty("EventName").GetString();
+                    string eventName;
+                    if (classData is JsonElement) {
+                        eventName = ((JsonElement)classData).GetProperty("EventName").GetString();
+                    } else {
+                        eventName = classData.EventName;
+                    }
+
+                    switch (eventName.ToLower()) {
+                        case "onclientconnectevent":
+                            if (classData is JsonElement) classData = ((JsonElement)classData).Deserialize<OnClientConnectEvent>();
+                            OnClientConnected(classData);
+                            break;
+                        case "onclientdisconnectevent":
+                            if (classData is JsonElement) classData = ((JsonElement)classData).Deserialize<OnClientDisconnectEvent>();
+                            OnClientDisconnect(classData);
+                            break;
+                        case "onservershutdownevent":
+                            if (classData is JsonElement) classData = ((JsonElement)classData).Deserialize<OnServerShutdownEvent>();
+                            OnServerShutdown(classData);
+                            break;
+                        case "onmessagesentevent":
+                            if (classData is JsonElement) classData = ((JsonElement)classData).Deserialize<Network.NetworkMessage>();
+                            OnMessageSent(classData);
+                            break;
+                        case "onmessagereceivedevent":
+                            if (classData is JsonElement) classData = ((JsonElement)classData).Deserialize<Network.NetworkMessage>();
+                            OnMessageReceived(classData);
+                            break;
+                        case "onhandshakestart":
+                            break;
+                        case "onhandshakeend":
+                            break;
+                        default:
+                            Console.WriteLine(JsonSerializer.Deserialize<object>(classData));
+                            throw new NotImplementedException();
+                    }
+                } catch (Exception ex) {
+                    Console.WriteLine(ex.Message);
+                }
+            });
+            if (!useBlocked) eventThread.Start();
+            else await Task.Factory.StartNew(() => {eventThread.Start();});
         }
 
 
@@ -85,8 +119,14 @@ namespace ClientFramework {
             Network.OtherClients.RemoveAll(x => x.Id == classData.Id);
             ClientDisconnect?.Invoke(this, classData);
         }
-        protected virtual void OnServerShutdown(bool success) {
-            ServerShutdown?.Invoke(this, success);
+        protected virtual void OnServerShutdown(OnServerShutdownEvent classData) {
+            ServerShutdown?.Invoke(this, classData);
+        }
+        protected virtual void OnMessageSent(OnMessageSentEvent classData) {
+            MessageSent?.Invoke(this, classData);
+        }
+        protected virtual void OnMessageReceived(OnMessageReceivedEvent classData) {
+            MessageReceived?.Invoke(this, classData);
         }
     }
 }

@@ -12,15 +12,18 @@ namespace ServerFramework {
     }
     class ServerMethods {
         public static string Test(NetworkClient client, dynamic testMessage) {
-            Console.WriteLine($"MSG:{testMessage} ({testMessage.GetType()}) CLIENT: {client.Client.RemoteEndPoint} ID:{client.ID}");
+            Console.WriteLine(
+                $"MSG:{testMessage} ({testMessage.GetType()}) " + 
+                $"CLIENT: {client.Client.RemoteEndPoint} ID:{client.Id}"
+            );
             return "Hello MSG RESPONSE From SERVER!";
         }
         public static int TestInt(NetworkClient client, dynamic testMessage) {
-            Console.WriteLine($"MSG:{testMessage} CLIENT: {client.Client.RemoteEndPoint} ID:{client.ID}");
+            Console.WriteLine($"MSG:{testMessage} CLIENT: {client.Client.RemoteEndPoint} ID:{client.Id}");
             return 123;
         }
         public static dynamic TestType(NetworkClient client, dynamic testMessage) {
-            Console.WriteLine($"MSG:{testMessage} CLIENT: {client.Client.RemoteEndPoint} ID:{client.ID}");
+            Console.WriteLine($"MSG:{testMessage} CLIENT: {client.Client.RemoteEndPoint} ID:{client.Id}");
             TestClass test = new TestClass();
             test.StringTest = "TESTI";
             test.Test = true;
@@ -34,11 +37,11 @@ namespace ServerFramework {
         
 
 
-        public static object[] ConnectedClients(NetworkClient client) {
+        public static object[] ConnectedClients(NetworkClient client, dynamic parameters) {
             List<object[]> list = new List<object[]>();
             foreach (NetworkClient toAdd in Network.ClientList) {
                 if (!toAdd.Connected) continue;
-                list.Add(new object[] {toAdd.ID,toAdd.UserName});
+                list.Add(new object[] {toAdd.Id,toAdd.UserName});
             }
             return list.ToArray();
         }

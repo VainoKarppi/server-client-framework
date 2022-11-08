@@ -9,32 +9,70 @@ using System.Threading;
 
 
 namespace ServerFramework {
-    public class Log {
-        public static void Write(object text = default!) {
-            string time = DateTime.Now.ToString("ss:FF");
-            if (time.Length < 11) {
-                string last = time.Substring(time.Length - 1,1);
-                time = time.Remove(time.Length - 1);
-                time = time + ("0" + last);
-            }
-            Console.WriteLine($"{time} | {text}");
-        }
-    }
     public class Program {
-        public const int Version = 1000;
+
+        public static void OnClientConnected(object sender, OnClientConnectEvent eventData){
+            Console.WriteLine($"CLIENT CONNECTED! ({eventData.UserName} ID:{eventData.Id})");
+        }
+        public static void OnClientDisconnect(object sender, OnClientDisconnectEvent eventData){
+            Console.WriteLine($"CLIENT DISCONNECTED! ({eventData.UserName} ID:{eventData.Id} SUCCESS:{eventData.Success})");
+        }
+        public static void OnServerShutdown(object sender, OnServerShutdownEvent eventData){
+            Console.WriteLine($"SERVER STOPPED! SUCCESS:{eventData.Success}");
+        }
+        public static void OnMessageSent(object sender, OnMessageSentEvent eventData){
+            Console.WriteLine($"MSG SENT: {eventData.Message.MethodName}");
+        }
+        public static void OnMessageReceived(object sender, OnMessageReceivedEvent eventData){
+            Console.WriteLine($"MSG RECEIVED: {eventData.Message.MethodName}");
+        }
+        
 
         static void Main(string[] args) {
-            Console.WriteLine();
+            NetworkEvents.eventsListener = new NetworkEvents();
+            NetworkEvents.eventsListener.ClientConnected += OnClientConnected;
+            NetworkEvents.eventsListener.ClientDisconnect += OnClientDisconnect;
+            NetworkEvents.eventsListener.ServerShutdown += OnServerShutdown;
+            NetworkEvents.eventsListener.MessageSent += OnMessageSent;
+            NetworkEvents.eventsListener.MessageReceived += OnMessageReceived;
+
+            
+            Console.Title = "SERVER";
             Console.Clear();
-            Console.Title = "EDEN Online Extension SERVER";
             Console.WriteLine("Type 'help' for commands!");
-            Network.StartServer(5001);
+            
+            
+            int port = 5001;
+            bool start = false;
+            foreach (var item in args) {
+                string[] splitted = item.Split(':');
+                if (splitted.Count() == 0) continue;
+                string a = splitted[0];
+                switch (a.ToLower())
+                {
+                    case "--port": {
+                        if (splitted.Count() != 2) continue;
+                        Int32.TryParse(splitted[1],out port);
+                        break;
+                    }
+                    case "--start": {
+                        start = true;
+                        break;
+                    }
+                    default: {
+                        continue;
+                    }
+                }
+            }
+            if (start) {
+                Network.StartServer(port);
+            }
+
             while (true) {
-                Console.WriteLine();
+                Console.Write("> ");
                 string command = Console.ReadLine();
                 command = command.ToLower();
-                
-
+            
                 try {
                     if (command == "help")
                         Commands.Help();
@@ -46,16 +84,19 @@ namespace ServerFramework {
                         break;
 
                     else if (command == "start") {
+                        if (Network.ServerRunning) throw new Exception("Server already running!");
                         Console.WriteLine("Enter server port:");
-                        string port = Console.ReadLine();
-                        if (String.IsNullOrEmpty(port)) port = "5001";
-                        Network.StartServer(Int32.Parse(port));
+                        string portNew = Console.ReadLine();
+                        if (String.IsNullOrEmpty(portNew)) portNew = "5001";
+                        Network.StartServer(Int32.Parse(portNew));
 
                     }
                         
 
-                    else if (command == "stop")
+                    else if (command == "stop") {
+                        if (!Network.ServerRunning) throw new Exception("Server not running!");
                         Network.StopServer();
+                    }
 
                     else if (command == "users")
                         Commands.UserList();
@@ -84,9 +125,8 @@ namespace ServerFramework {
                 } catch (Exception e) {
                     Console.WriteLine(e.Message);
                 }
+                Console.WriteLine();
             }
         }
-
-
     }
 }

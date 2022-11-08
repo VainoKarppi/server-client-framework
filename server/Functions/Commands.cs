@@ -27,7 +27,7 @@ namespace ServerFramework {
             Console.WriteLine("Connected clients count: " + Network.ClientList.Count());
             foreach (NetworkClient client in Network.ClientList) {
                 string remoteIP = ((IPEndPoint)client.Client.RemoteEndPoint).Address.ToString();
-                Console.WriteLine("    User: " + client.UserName + " - (" + remoteIP + ") : ID=" + client.ID.ToString());
+                Console.WriteLine("    User: " + client.UserName + " - (" + remoteIP + ") : ID=" + client.Id.ToString());
             }
         }
         public static void SendData() {

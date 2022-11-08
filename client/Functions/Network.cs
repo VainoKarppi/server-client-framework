@@ -24,6 +24,7 @@ namespace ClientFramework {
 	
 	
     public class Network {
+		public const int Version = 1000;
 		public class EventMessage {
             public int? MessageType { get; set; } = (int)MessageTypes.ServerEvent;
             public int[]? Targets { get; set; } = new int[] {1};
@@ -147,34 +148,38 @@ namespace ClientFramework {
 					if (!Int32.TryParse(property, out type)) continue;
 					if (type < 0) continue;
 
-					//TODO start in new thread?
+					
+					NetworkEvents listener = NetworkEvents.eventsListener;
 					if (type == (int)MessageTypes.ServerEvent) {
 						var eventBytes = new Utf8JsonReader(bytes);
+						
 						EventMessage? eventMessage = JsonSerializer.Deserialize<EventMessage>(ref eventBytes)!;
-
-						ServerEvents listener = ServerEvents.eventsListener;
-						new Thread(() => listener.ExecuteEvent(eventMessage?.EventClass)).Start();
+						listener.ExecuteEvent(eventMessage?.EventClass);
 
 						continue;
 					}
 
-					
+					// HANDLE EVENT
 					var msgBytes = new Utf8JsonReader(bytes);
 					NetworkMessage? message = JsonSerializer.Deserialize<NetworkMessage>(ref msgBytes)!;
+					
+
 					DebugMessage(message,2);
 					
-					dynamic deserialisedParams = DeserializeParameters(message.Parameters,message.UseClass);
+					message.Parameters = DeserializeParameters(message.Parameters,message.UseClass);
+
+					listener.ExecuteEvent(new OnMessageReceivedEvent(message));
 
 					// Dump result to array and continue
 					if (message.MessageType == (int)MessageTypes.ResponseData) {
-						Results.Add(message.Key,deserialisedParams);
+						Results.Add(message.Key,message.Parameters);
 						continue;
 					}
 	
 					List<object> paramList = new List<object>();
                     paramList.Add(Client);
 					if (!(message.Parameters is null)) {
-                        paramList.Add(deserialisedParams);
+                        paramList.Add(message.Parameters);
                     }
                     object[] parameters = paramList.ToArray();
 
@@ -209,7 +214,6 @@ namespace ClientFramework {
 								TargetId = message.Sender,
 								Key = message.Key
 							};
-							Console.WriteLine("asd");
 							object? data = methodInfo?.Invoke(methodName,parameters);
 							if (data != null) responseMessage.Parameters = data;
 							Network.SendData(responseMessage);
@@ -253,6 +257,8 @@ namespace ClientFramework {
         }
 
 		public static void SendMessage(dynamic message, NetworkStream Stream) {
+			NetworkEvents listener = NetworkEvents.eventsListener;
+			new Thread(() => listener.ExecuteEvent(new OnMessageSentEvent(message))).Start();
 			if (message is NetworkMessage && !(message.Parameters is null)) {
                 bool useClass = false;
                 message.Parameters = SerializeParameters(message.Parameters,ref useClass);
@@ -289,7 +295,9 @@ namespace ClientFramework {
 		public static dynamic RequestData(NetworkMessage message) {
 			if (!IsConnected()) throw new Exception("Not connected to server");
 			if (message.TargetId == Client.Id) throw new Exception("Cannot request data from self!");
+			OtherClient client = OtherClients.SingleOrDefault(x => x.Id == message.TargetId);
 			if (message.TargetId != 1) {
+				if ((OtherClients.SingleOrDefault(x => x.Id == message.TargetId)) == default) throw new Exception("Invalid target ID. ID not listed in clients list!");
 				if (!ClientMethods.Contains(message.MethodName,StringComparer.OrdinalIgnoreCase)) throw new Exception($"Method {message.MethodName} not listed in CLIENT's methods list");
 			} else {
 				if (!ServerMethods.Contains(message.MethodName,StringComparer.OrdinalIgnoreCase)) throw new Exception($"Method {message.MethodName} not listed in SERVER'S methods list");
@@ -318,7 +326,7 @@ namespace ClientFramework {
 		}
 		
 		public static int Handshake(string userName) {
-			int version = Program.Version;
+			int version = Network.Version;
 			Client.UserName = userName;
 			Console.WriteLine($"Starting HANDSHAKE with server, with version: {version}, with name: {userName}");
 
@@ -384,7 +392,6 @@ namespace ClientFramework {
             try {
                 Type paramType = Type.GetType(parameters.ToString());
                 useClass = paramType.GetConstructor(new Type[0])!=null;
-                Console.WriteLine(useClass);
                 if (useClass) return parameters;
             } catch {}
             

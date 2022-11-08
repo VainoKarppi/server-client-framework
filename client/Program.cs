@@ -9,37 +9,42 @@ using System.Reflection;
 
 namespace ClientFramework {
     public class Program {
-        public const int Version = 1000;
         
         
-        public static void OnClientConnected(object sender, OnClientConnectEvent client){
-            Console.WriteLine($"CLIENT CONNECTED! ({client.UserName} ID:{client.Id})");
+        
+        public static void OnClientConnected(object sender, OnClientConnectEvent eventData){
+            Console.WriteLine($"CLIENT CONNECTED! ({eventData.UserName} ID:{eventData.Id})");
         }
-        public static void OnClientDisconnect(object sender, OnClientDisconnectEvent client){
-            Console.WriteLine($"CLIENT DISCONNECTED! ({client.UserName} ID:{client.Id} SUCCESS:{client.Success})");
+        public static void OnClientDisconnect(object sender, OnClientDisconnectEvent eventData){
+            Console.WriteLine($"CLIENT DISCONNECTED! ({eventData.UserName} ID:{eventData.Id} SUCCESS:{eventData.Success})");
         }
-        public static void OnServerShutdown(object sender, bool success){
-            Console.WriteLine($"SERVER STOPPED! SUCCESS:{success}");
+        public static void OnServerShutdown(object sender, OnServerShutdownEvent eventData){
+            Console.WriteLine($"SERVER STOPPED! SUCCESS:{eventData.Success}");
+        }
+        public static void OnMessageSent(object sender, OnMessageSentEvent eventData){
+            Console.WriteLine($"MSG SENT: {eventData.Message.MethodName}");
+        }
+        public static void OnMessageReceived(object sender, OnMessageReceivedEvent eventData){
+            Console.WriteLine($"MSG RECEIVED: {eventData.Message.MethodName}");
         }
         public static void Main(string[] args) {
-            ServerEvents.eventsListener = new ServerEvents();
-            ServerEvents.eventsListener.ClientConnected += OnClientConnected;
-            ServerEvents.eventsListener.ClientDisconnect += OnClientDisconnect;
-            ServerEvents.eventsListener.ServerShutdown += OnServerShutdown;
+            NetworkEvents.eventsListener = new NetworkEvents();
+            NetworkEvents.eventsListener.ClientConnected += OnClientConnected;
+            NetworkEvents.eventsListener.ClientDisconnect += OnClientDisconnect;
+            NetworkEvents.eventsListener.ServerShutdown += OnServerShutdown;
+            NetworkEvents.eventsListener.MessageSent += OnMessageSent;
+            NetworkEvents.eventsListener.MessageReceived += OnMessageReceived;
             
-            //bl.StartProcess();
 
-            Console.WriteLine();
-            Console.Title = "EDEN Online Extension CLIENT";
+            Console.Title = "CLIENT";
+            Console.Clear();
             Console.WriteLine("Type 'help' for commands!");
-
-            //Network.Connect("127.0.0.1",5001,"vaino");
+            Console.WriteLine("> ");
 
             while (true) {
-                Console.WriteLine();
+                Console.Write("> ");
                 string? command = Console.ReadLine();
                 command = command.ToLower();
-
 
                 try {
                     switch (command)
@@ -99,6 +104,7 @@ namespace ClientFramework {
                 } catch (Exception e) {
                     Console.WriteLine(e.Message);
                 }
+                Console.WriteLine();
             }
         }
     }
