@@ -54,7 +54,9 @@ namespace ServerFramework {
 			public bool isHandshake { get; set; } = false;
 			// Used to detect for handshake. Else send error for not connected to server!
 		}
+        public static List<object[]>? ServerMethodsNEW; 
         public static List<string>? ServerMethods;
+        public static List<string>? ServerVoidMethods;
         public static List<string>? ClientMethods;
         private static List<string> PrivateMethods = new List<string>() {};
 		public static Dictionary<int,dynamic> Results = new Dictionary<int,dynamic>();
@@ -64,9 +66,17 @@ namespace ServerFramework {
                 throw new Exception("Server already running!");
             
             if (ServerMethods == null) {
-                List<string> methods = typeof(ServerMethods).GetMethods().Select(x => x.Name).ToList<string>();
+                MethodInfo[] methodInfos = typeof(ServerMethods).GetMethods();
+                List<string> ServerVoidMethods = methodInfos.Where(x => (x.ReturnType == typeof(void))).Select(x => x.Name).ToList<string>();
+                List<string> methods = methodInfos.Select(x => x.Name).ToList<string>();
                 methods.RemoveRange((methods.Count() - 4),4);
                 ServerMethods = methods;
+
+                ServerMethodsNEW = new List<object[]> ();
+                foreach (MethodInfo method in methodInfos) {
+                    ServerMethodsNEW.Add(new object[]{method.Name,method.ReturnType.ToString()});
+                }
+                ServerMethodsNEW.RemoveRange(ServerMethodsNEW.Count() - 4,4);
             }
 
             new Thread(() => {
@@ -455,7 +465,7 @@ namespace ServerFramework {
                 if (!toAdd.Connected || toAdd.Id == client.Id) continue;
                 targetList.Add(toAdd.Id);
             }
-            handshakeMessage.Parameters = new object[] {client.Id,ServerMethods.ToArray(),clientlist.ToArray()};
+            handshakeMessage.Parameters = new object[] {client.Id,ServerMethodsNEW.ToArray(),clientlist.ToArray()};
 
             Network.SendData(handshakeMessage);
         }

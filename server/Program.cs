@@ -12,7 +12,7 @@ namespace ServerFramework {
     public class Program {
 
         public static void OnClientConnected(object sender, OnClientConnectEvent eventData){
-            Console.WriteLine($"*EVENT* CLIENT CONNECTED! ({eventData.UserName} ID:{eventData.Id})");
+            Console.WriteLine($"*EVENT* CLIENT CONNECTED! ({eventData.UserName} ID:{eventData.Id} SUCCESS:{eventData.Success})");
         }
         public static void OnClientDisconnect(object sender, OnClientDisconnectEvent eventData){
             Console.WriteLine($"*EVENT* CLIENT DISCONNECTED! ({eventData.UserName} ID:{eventData.Id} SUCCESS:{eventData.Success})");

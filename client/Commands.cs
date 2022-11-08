@@ -68,7 +68,7 @@ namespace ClientFramework {
         }
         public static void GetServerMethods() {
             Console.WriteLine();
-            foreach (var item in Network.ServerMethods) Console.WriteLine(item);
+            foreach (var item in Network.ServerMethodsNEW) Console.WriteLine($"{item.Key} : ({item.Value})");
         }
         public static void RequestData() {
             if (!Network.IsConnected())
@@ -96,7 +96,7 @@ namespace ClientFramework {
             
             if (a is Array)
                 foreach (var b in a) {
-                    if (a is Array) {
+                    if (b is Array) {
                         foreach (var c in b) Console.WriteLine($"{c} ({c.GetType()})");
                         continue;
                     }

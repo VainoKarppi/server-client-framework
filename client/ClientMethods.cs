@@ -10,7 +10,7 @@ namespace ClientFramework {
         public string? StringTest { get; set; }
         public dynamic? Data { get; set; }
     }
-    class ClientMethods {
+    public class ClientMethods {
         public static string Test(TcpClient server, dynamic testMessage) {
             if (testMessage is Array) {
                 foreach (var item in testMessage) Console.WriteLine($"MSG:{item} ({item.GetType()})");

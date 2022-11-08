@@ -56,6 +56,8 @@ namespace ClientFramework {
 		}
 		public static List<string>? ClientMethods;
 		public static List<string>? ServerMethods;
+		public static Dictionary<string,Type>? ServerMethodsNEW = new Dictionary<string,Type>();
+		public static Dictionary<string,Type>? ClientMethodsNEW = new Dictionary<string,Type>();
 		private static List<string> PrivateMethods = new List<string>() {};
 		// To be read from handshake (register on server)
 		private static Dictionary<int,dynamic> Results = new Dictionary<int,dynamic>();
@@ -255,9 +257,9 @@ namespace ClientFramework {
 			if (message.MessageType == null) message.MessageType = (int?)MessageTypes.SendData;
 
 			if (message.TargetId != 1) {
-				if (!ClientMethods.Contains(message.MethodName,StringComparer.OrdinalIgnoreCase)) throw new Exception($"Method {message.MethodName} not listed in CLIENT's methods list");
+				if (!ClientMethods.Contains(message.MethodName)) throw new Exception($"Method {message.MethodName} not listed in CLIENT's methods list");
 			} else {
-				if (!ServerMethods.Contains(message.MethodName,StringComparer.OrdinalIgnoreCase)) throw new Exception($"Method {message.MethodName} not listed in SERVER'S methods list");
+				if (!ServerMethodsNEW.ContainsKey(message.MethodName.ToLower())) throw new Exception($"Method {message.MethodName} not listed in SERVER'S methods list");
 			}
 			if (message.TargetId == 0) Log.Write($"DATA SENT TO: ({OtherClients.Count()}) CLIENT(s)!");
 			SendMessage(message,Client.GetStream());
@@ -309,8 +311,14 @@ namespace ClientFramework {
 			if (message.TargetId != 1) {
 				if ((OtherClients.SingleOrDefault(x => x.Id == message.TargetId)) == default) throw new Exception("Invalid target ID. ID not listed in clients list!");
 				if (!ClientMethods.Contains(message.MethodName,StringComparer.OrdinalIgnoreCase)) throw new Exception($"Method {message.MethodName} not listed in CLIENT's methods list");
+				
+				Type returnType = ClientMethodsNEW.SingleOrDefault(x => x.Key == message.MethodName.ToLower()).Value;
+				if (returnType == typeof(void)) throw new Exception($"Method {message.MethodName} doesen't have a return value! (Uses void)");	
 			} else {
-				if (!ServerMethods.Contains(message.MethodName,StringComparer.OrdinalIgnoreCase)) throw new Exception($"Method {message.MethodName} not listed in SERVER'S methods list");
+				if (!ServerMethodsNEW.ContainsKey(message.MethodName.ToLower())) throw new Exception($"Method {message.MethodName} not listed in SERVER'S methods list");
+				
+				Type returnType = ServerMethodsNEW.SingleOrDefault(x => x.Key == message.MethodName.ToLower()).Value;
+				if (returnType == typeof(void)) throw new Exception($"Method {message.MethodName} doesen't have a return value! (Uses void)");			
 			}
 			message.MessageType = (int?)MessageTypes.RequestData;
 			SendMessage(message,Client.GetStream());
@@ -323,7 +331,7 @@ namespace ClientFramework {
 			if (message.TargetId != 1) {
 				if (!ClientMethods.Contains(message.MethodName,StringComparer.OrdinalIgnoreCase)) throw new Exception($"Method {message.MethodName} not listed in CLIENT's methods list");
 			} else {
-				if (!ServerMethods.Contains(message.MethodName,StringComparer.OrdinalIgnoreCase)) throw new Exception($"Method {message.MethodName} not listed in SERVER'S methods list");
+				if (!ServerMethodsNEW.ContainsKey(message.MethodName.ToLower())) throw new Exception($"Method {message.MethodName} not listed in SERVER'S methods list");
 			}
 			message.MessageType = (int?)MessageTypes.RequestData;
 			SendMessage(message,Client.GetStream());
@@ -370,9 +378,10 @@ namespace ClientFramework {
 			Client.UserName = userName;
 			
 			object[] methods = (object[])returnedParams[1];
-			foreach (string method in methods) {
-				if (ServerMethods == null) ServerMethods = new List<string>();
-				ServerMethods.Add(method);
+			if (ServerMethods == null) ServerMethods = new List<string>(){};
+			foreach (object[] method in methods) {
+				ServerMethods.Add((string)method[0]);
+				ServerMethodsNEW.Add(method[0].ToString().ToLower(),Type.GetType((string)method[1]));
 			}
 			Log.Write($"DEBUG: Added ({ServerMethods.Count()}) SERVER methods to list!");
 			

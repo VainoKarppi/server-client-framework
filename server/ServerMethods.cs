@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Sockets;
+using System.Reflection;
 using System.Text;
 
 namespace ServerFramework {
@@ -10,7 +11,18 @@ namespace ServerFramework {
         public string? StringTest { get; set; }
         public dynamic? Data { get; set; }
     }
-    class ServerMethods {
+    public class ServerMethods {
+        public static object[] TestDictionary(NetworkClient client, dynamic test) {
+
+            List<object[]> ServerMethodsNEW = new List<object[]>();
+            MethodInfo[] methodInfos = typeof(ServerMethods).GetMethods();
+
+            foreach (MethodInfo method in methodInfos) {
+                ServerMethodsNEW.Add(new object[]{method.Name,method.ReturnType.ToString()});
+            }
+            ServerMethodsNEW.RemoveRange(ServerMethodsNEW.Count() - 4,4);
+            return ServerMethodsNEW.ToArray();
+        }
         public static string Test(NetworkClient client, dynamic testMessage) {
             Console.WriteLine(
                 $"MSG:{testMessage} ({testMessage.GetType()}) " + 
@@ -21,6 +33,9 @@ namespace ServerFramework {
         public static int TestInt(NetworkClient client, dynamic testMessage) {
             Console.WriteLine($"MSG:{testMessage} CLIENT: {client.Client.RemoteEndPoint} ID:{client.Id}");
             return 123;
+        }
+        public static void TestVoid(NetworkClient client, dynamic testMessage) {
+            Console.WriteLine($"This is a VOID method: {testMessage}");
         }
         public static dynamic TestType(NetworkClient client, dynamic testMessage) {
             Console.WriteLine($"MSG:{testMessage} CLIENT: {client.Client.RemoteEndPoint} ID:{client.Id}");
