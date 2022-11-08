@@ -112,7 +112,7 @@ namespace ClientFramework {
 
 
         protected virtual void OnClientConnected(OnClientConnectEvent classData) {
-            Network.OtherClients.Add(new Network.OtherClient(classData.Id,classData.UserName));
+            Network.OtherClients.Add(new Network.NetworkClient(classData.Id,classData.UserName));
             ClientConnected?.Invoke(this, classData);
         }
         protected virtual void OnClientDisconnect(OnClientDisconnectEvent classData) {

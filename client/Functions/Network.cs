@@ -67,13 +67,13 @@ namespace ClientFramework {
 			public bool HandshakeDone { get; set; } = false;
 			public string UserName { get; set; } = "error (NoName)";
 		}
-		public static List<OtherClient> OtherClients = new List<OtherClient>() {};
+		public static List<NetworkClient> OtherClients = new List<NetworkClient>() {};
 		// {ID,USERNAME,CONNECTED}
-		public class OtherClient {
+		public class NetworkClient {
 			public int? Id { get; set;}
 			public string UserName { get; set; } = "error (NoName)";
 			public bool Connected { get; set; } = true;
-			public OtherClient(int id, string name, bool connected = true) {
+			public NetworkClient(int id, string name, bool connected = true) {
 				this.Id = id;
 				this.UserName = name;
 				this.Connected = connected;
@@ -117,7 +117,7 @@ namespace ClientFramework {
 		}
 
 		public static void Disconnect() {
-			OtherClients = new List<OtherClient>() {};
+			OtherClients = new List<NetworkClient>() {};
 			if (!IsConnected())
 				throw new Exception("Not connected to server!");
 			
@@ -295,7 +295,6 @@ namespace ClientFramework {
 		public static dynamic RequestData(NetworkMessage message) {
 			if (!IsConnected()) throw new Exception("Not connected to server");
 			if (message.TargetId == Client.Id) throw new Exception("Cannot request data from self!");
-			OtherClient client = OtherClients.SingleOrDefault(x => x.Id == message.TargetId);
 			if (message.TargetId != 1) {
 				if ((OtherClients.SingleOrDefault(x => x.Id == message.TargetId)) == default) throw new Exception("Invalid target ID. ID not listed in clients list!");
 				if (!ClientMethods.Contains(message.MethodName,StringComparer.OrdinalIgnoreCase)) throw new Exception($"Method {message.MethodName} not listed in CLIENT's methods list");
@@ -369,7 +368,7 @@ namespace ClientFramework {
 			
 			object[] clients = (object[])returnedParams[2];
 			foreach (object[] clientData in clients) {
-				OtherClients.Add(new OtherClient((int)clientData[0], (string)clientData[1]));
+				OtherClients.Add(new NetworkClient((int)clientData[0], (string)clientData[1]));
 			}
 			Console.WriteLine($"DEBUG: Added ({OtherClients.Count()}) other clients to list!");
 
