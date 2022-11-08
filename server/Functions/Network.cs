@@ -23,7 +23,7 @@ namespace ServerFramework {
     public class Network {
         public static bool Debug = true;
         public const int Version = 1000;
-        public static TcpListener ServerListener = default!;
+        public static TcpListener? ServerListener;
         public static readonly object _lock = new object();
         public static readonly List<NetworkClient> ClientList = new List<NetworkClient>();
         public static bool ServerRunning { get; set; }
@@ -118,8 +118,12 @@ namespace ServerFramework {
             SendEvent(message);
             
             ServerRunning = false;
-            ServerListener.Stop();
-            ServerListener = default!;
+            ServerListener.Server.Dispose();
+            ServerListener.Server.Close();
+            ServerListener = null;
+            foreach (NetworkClient client in ClientList) {
+                client.Close();
+            }
             ClientList.Clear();
 
             Log.Write("Server stopped!");

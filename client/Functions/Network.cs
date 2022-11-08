@@ -143,8 +143,9 @@ namespace ClientFramework {
 				while (Client.Connected) {
 					byte[] bytes = ReadMessageBytes(Client.GetStream());
 					if (bytes.Count() == 0) {
+						if (Client.Connected) throw new Exception("ERROR BYTES!");
 						Client.Close();
-						throw new Exception("ERROR BYTES!");
+						break;
 					}
 					
 					var utf8Reader = new Utf8JsonReader(bytes);
@@ -244,7 +245,7 @@ namespace ClientFramework {
 					if (Client.Id != default) Log.Write("Server has crashed!");
 				}
 				Log.Write("Disconnected from the server!");
-				Client.Client.Close();
+				Client.Dispose();
 			}
 		}
 		// Fire and forget
