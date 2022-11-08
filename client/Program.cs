@@ -13,19 +13,19 @@ namespace ClientFramework {
         
         
         public static void OnClientConnected(object sender, OnClientConnectEvent eventData){
-            Console.WriteLine($"CLIENT CONNECTED! ({eventData.UserName} ID:{eventData.Id})");
+            Console.WriteLine($"*EVENT* CLIENT CONNECTED! ({eventData.UserName} ID:{eventData.Id})");
         }
         public static void OnClientDisconnect(object sender, OnClientDisconnectEvent eventData){
-            Console.WriteLine($"CLIENT DISCONNECTED! ({eventData.UserName} ID:{eventData.Id} SUCCESS:{eventData.Success})");
+            Console.WriteLine($"*EVENT* CLIENT DISCONNECTED! ({eventData.UserName} ID:{eventData.Id} SUCCESS:{eventData.Success})");
         }
         public static void OnServerShutdown(object sender, OnServerShutdownEvent eventData){
-            Console.WriteLine($"SERVER STOPPED! SUCCESS:{eventData.Success}");
+            Console.WriteLine($"*EVENT* SERVER STOPPED! SUCCESS:{eventData.Success}");
         }
         public static void OnMessageSent(object sender, OnMessageSentEvent eventData){
-            Console.WriteLine($"MSG SENT: {eventData.Message.MethodName}");
+            Console.WriteLine($"*EVENT* MSG SENT: {eventData.Message.MethodName}");
         }
         public static void OnMessageReceived(object sender, OnMessageReceivedEvent eventData){
-            Console.WriteLine($"MSG RECEIVED: {eventData.Message.MethodName}");
+            Console.WriteLine($"*EVENT* MSG RECEIVED: {eventData.Message.MethodName}");
         }
         public static void Main(string[] args) {
             NetworkEvents.eventsListener = new NetworkEvents();

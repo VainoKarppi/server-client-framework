@@ -228,10 +228,10 @@ namespace ClientFramework {
 					}
 				}
 			} catch (Exception ex) {
-				Console.WriteLine(ex.Message);
 				if (!Client.HandshakeDone) {
 					return;
 				}
+				Console.WriteLine(ex.Message);
 
 				if (ex.InnerException is SocketException) {
 					if (Client.Id != null) Console.WriteLine("Server has crashed!");
@@ -258,7 +258,7 @@ namespace ClientFramework {
 
 		public static void SendMessage(dynamic message, NetworkStream Stream) {
 			NetworkEvents listener = NetworkEvents.eventsListener;
-			new Thread(() => listener.ExecuteEvent(new OnMessageSentEvent(message))).Start();
+			listener.ExecuteEvent(new OnMessageSentEvent(message));
 			if (message is NetworkMessage && !(message.Parameters is null)) {
                 bool useClass = false;
                 message.Parameters = SerializeParameters(message.Parameters,ref useClass);

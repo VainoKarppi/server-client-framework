@@ -20,7 +20,6 @@ namespace ServerFramework {
         public static TcpListener ServerListener = default!;
         public static readonly object _lock = new object();
         public static readonly List<NetworkClient> ClientList = new List<NetworkClient>();
-        public static int ServerPort { get; set; } = 2302;
         public static bool ServerRunning { get; set; }
         public enum MessageTypes : int {SendData, RequestData, ResponseData, ServerEvent, ClientEvent}
         public class EventMessage {
@@ -145,12 +144,13 @@ namespace ServerFramework {
         }
 
         public static void SendMessage(dynamic message, NetworkStream Stream) {
+            NetworkEvents listener = NetworkEvents.eventsListener;
+			listener.ExecuteEvent(new OnMessageSentEvent(message));
 			if (message is NetworkMessage && !(message.Parameters is null) && message.Sender == 1) {
                 bool useClass = false;
                 message.Parameters = SerializeParameters(message.Parameters,ref useClass);
                 message.UseClass = useClass;
             }
-
 
 			byte[] msg = JsonSerializer.SerializeToUtf8Bytes(message);
 			byte[] lenght = BitConverter.GetBytes((ushort)msg.Length);
