@@ -14,18 +14,19 @@ namespace ServerFramework {
         }
     }
     public class OnClientConnectEvent : BaseEventClass {
-        public int Id { get; set; }
+        public int? Id { get; set; }
         public string? UserName { get; set; }
-        public bool Success { get; set; } = true;
-        public OnClientConnectEvent (int id, string username) {
+        public bool? Success { get; set; } = true;
+        public OnClientConnectEvent (int id, string username, bool success = false) {
             Id = id;
             UserName = username;
+            Success = success;
         }
     }
     public class OnClientDisconnectEvent : BaseEventClass {
-        public int Id { get; set; }
+        public int? Id { get; set; }
         public string? UserName { get; set; }
-        public bool Success { get; set; }
+        public bool? Success { get; set; }
         public OnClientDisconnectEvent (int id, string username, bool success = false) {
             Id = id;
             UserName = username;
@@ -55,11 +56,6 @@ namespace ServerFramework {
 
     public class NetworkEvents {
         public static NetworkEvents? eventsListener { get; set; }
-        public event EventHandler<OnClientConnectEvent>? ClientConnected;
-        public event EventHandler<OnClientDisconnectEvent>? ClientDisconnect;
-        public event EventHandler<OnServerShutdownEvent>? ServerShutdown;
-        public event EventHandler<OnMessageSentEvent>? MessageSent;
-        public event EventHandler<OnMessageReceivedEvent>? MessageReceived;
         public async void ExecuteEvent(dynamic classData, bool useBlocked = false) {
             Thread eventThread = new Thread(() => {
                 try {
@@ -91,10 +87,6 @@ namespace ServerFramework {
                             if (classData is JsonElement) classData = ((JsonElement)classData).Deserialize<Network.NetworkMessage>();
                             OnMessageReceived(classData);
                             break;
-                        case "onhandshakestart":
-                            break;
-                        case "onhandshakeend":
-                            break;
                         default:
                             Console.WriteLine(JsonSerializer.Deserialize<object>(classData));
                             throw new NotImplementedException();
@@ -108,18 +100,27 @@ namespace ServerFramework {
         }
 
 
+        public event EventHandler<OnClientConnectEvent>? ClientConnected;
         protected virtual void OnClientConnected(OnClientConnectEvent classData) {
             ClientConnected?.Invoke(this, classData);
         }
+        
+        public event EventHandler<OnClientDisconnectEvent>? ClientDisconnect;
         protected virtual void OnClientDisconnect(OnClientDisconnectEvent classData) {
             ClientDisconnect?.Invoke(this, classData);
         }
+
+        public event EventHandler<OnServerShutdownEvent>? ServerShutdown;
         protected virtual void OnServerShutdown(OnServerShutdownEvent classData) {
             ServerShutdown?.Invoke(this, classData);
         }
+
+        public event EventHandler<OnMessageSentEvent>? MessageSent;
         protected virtual void OnMessageSent(OnMessageSentEvent classData) {
             MessageSent?.Invoke(this, classData);
         }
+
+        public event EventHandler<OnMessageReceivedEvent>? MessageReceived;
         protected virtual void OnMessageReceived(OnMessageReceivedEvent classData) {
             MessageReceived?.Invoke(this, classData);
         }

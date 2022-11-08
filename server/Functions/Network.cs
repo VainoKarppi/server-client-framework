@@ -14,18 +14,27 @@ using System.Text.Json;
 using System.Threading;
 
 namespace ServerFramework {
-
+    public class Log {
+		public static void Write(object data) {
+			if (!Network.Debug) return;
+			Console.WriteLine(data);
+		}
+	}
     public class Network {
+        public static bool Debug = true;
         public const int Version = 1000;
         public static TcpListener ServerListener = default!;
         public static readonly object _lock = new object();
         public static readonly List<NetworkClient> ClientList = new List<NetworkClient>();
         public static bool ServerRunning { get; set; }
         public enum MessageTypes : int {SendData, RequestData, ResponseData, ServerEvent, ClientEvent}
-        public class EventMessage {
+        private class NetworkEvent {
             public int? MessageType { get; set; } = (int)MessageTypes.ServerEvent;
-            public int[]? Targets { get; set; }
-            public dynamic? EventClass { get; set; }
+            public int[]? Targets { get; set; } = new int[] {1};
+			public dynamic? EventClass { get; set; }
+			public NetworkEvent (dynamic data = null) {
+				EventClass = data;
+			}
         }
         
 		public class NetworkMessage {
@@ -47,7 +56,7 @@ namespace ServerFramework {
 		}
         public static List<string>? ServerMethods;
         public static List<string>? ClientMethods;
-        private static List<string> PrivateMethods = new List<string>() {"GetMethods","ConnectedClients","HandleEvent"};
+        private static List<string> PrivateMethods = new List<string>() {};
 		public static Dictionary<int,dynamic> Results = new Dictionary<int,dynamic>();
 
         public static void StartServer(int serverPort) {
@@ -67,8 +76,7 @@ namespace ServerFramework {
                 ServerListener.Start();
                 ServerRunning = true;
 
-                Console.WriteLine("Running server at port: " + ServerListener.LocalEndpoint.ToString().Split(':')[1]);
-                Console.WriteLine();
+                Log.Write("Running server at port: " + ServerListener.LocalEndpoint.ToString().Split(':')[1]);
 
                 int _clientID = 2; // (0 = All clients, 1 = server, 2 and above for specific clients)
                 while (ServerRunning) {
@@ -76,7 +84,6 @@ namespace ServerFramework {
                         // Start accepting clients
                         NetworkClient _client = new NetworkClient(ServerListener);
                         _client.Id = _clientID;
-                        _client.Client.SendTimeout = 5;
                         // Make sure the connection is already not created
                         if(ClientList.Contains(_client)) {
                             _client.Close();
@@ -84,7 +91,7 @@ namespace ServerFramework {
                         }
                         lock (_lock) ClientList.Add(_client);
                         
-                        Console.WriteLine("*NEW* Client (" + _client.Client.RemoteEndPoint  + ") trying to connect...");
+                        Log.Write("*NEW* Client (" + _client.Client.RemoteEndPoint  + ") trying to connect...");
 
                         if (_clientID >= 32000) throw new Exception("Max user count reached! (32000)");
 
@@ -93,7 +100,7 @@ namespace ServerFramework {
                         _clientID++;;
                     } catch (Exception ex) {
                         if (!(ex is SocketException)) {
-                            Console.WriteLine(ex.Message);
+                            Log.Write(ex.Message);
                         }
                     }
                 }
@@ -103,9 +110,9 @@ namespace ServerFramework {
             if (!ServerRunning)
                 throw new Exception("Server not running!");
             
-            Console.WriteLine("Stopping server...");
+            Log.Write("Stopping server...");
 
-            EventMessage message = new EventMessage {
+            NetworkEvent message = new NetworkEvent {
                 EventClass = new OnServerShutdownEvent(true)
             };
             SendEvent(message);
@@ -115,14 +122,13 @@ namespace ServerFramework {
             ServerListener = default!;
             ClientList.Clear();
 
-            // TODO Send msg to all clients for succesfull server shutdown?
-            Console.WriteLine("Server stopped!");
+            Log.Write("Server stopped!");
         }
 
 
         // Request ID is used to answer to specific message
 
-        public static void SendEvent(EventMessage message) {
+        private static void SendEvent(NetworkEvent message) {
             if (!ServerRunning) throw new Exception("Server not running!");
 
             // Add ALL clients to list if left as blank
@@ -138,14 +144,16 @@ namespace ServerFramework {
             foreach (int id in message.Targets) {
                 NetworkClient client = ClientList.FirstOrDefault(c => c.Id == id);
                 if (client == default) continue;
-                message.Targets = null; // Dont send targets over net
+                
                 SendMessage(message,client.Stream);
             }
         }
 
-        public static void SendMessage(dynamic message, NetworkStream Stream) {
-            NetworkEvents listener = NetworkEvents.eventsListener;
-			listener.ExecuteEvent(new OnMessageSentEvent(message));
+        private static void SendMessage(dynamic message, NetworkStream Stream) {
+            if (!message.isHandshake) {
+				NetworkEvents listener = NetworkEvents.eventsListener;
+				listener.ExecuteEvent(new OnMessageSentEvent(message));
+			}
 			if (message is NetworkMessage && !(message.Parameters is null) && message.Sender == 1) {
                 bool useClass = false;
                 message.Parameters = SerializeParameters(message.Parameters,ref useClass);
@@ -157,7 +165,7 @@ namespace ServerFramework {
 			byte[] bytes = lenght.Concat(msg).ToArray();
 			Stream.WriteAsync(bytes,0,bytes.Length);
 		}
-        public static byte[] ReadMessageBytes(NetworkStream Stream) {
+        private static byte[] ReadMessageBytes(NetworkStream Stream) {
 			byte[] lenghtBytes = new byte[2];
 			Stream.Read(lenghtBytes,0,2);
 			ushort msgLenght = BitConverter.ToUInt16(lenghtBytes,0);
@@ -190,12 +198,12 @@ namespace ServerFramework {
                     SendMessage(message,client.Stream);
                     i++;
                 }
-                if (message.Sender == 1) Console.WriteLine($"DATA SENT TO {i} USERS(s)!");
-                else Console.WriteLine($"DATA FORWARDED TO {i} USERS(s)!");
+                if (message.Sender == 1) Log.Write($"DATA SENT TO {i} USERS(s)!");
+                else Log.Write($"DATA FORWARDED TO {i} USERS(s)!");
             }
         }
         
-        public static dynamic RequestDataResult(NetworkMessage message) {
+        private static dynamic RequestDataResult(NetworkMessage message) {
 			dynamic returnMessage;
 			short timer = 0;
 			while (true) {
@@ -252,7 +260,7 @@ namespace ServerFramework {
 
         // One thread for one user
         // Start listening data coming from this client
-        public static void HandleClient(NetworkClient _client) {
+        private static void HandleClient(NetworkClient _client) {
             while (true) {
                 try {
                     byte[] bytes = ReadMessageBytes(_client.Stream);
@@ -271,7 +279,7 @@ namespace ServerFramework {
 
                     if (type == (int)MessageTypes.ServerEvent) {
 						var eventBytes = new Utf8JsonReader(bytes);
-						EventMessage? eventMessage = JsonSerializer.Deserialize<EventMessage>(ref eventBytes)!;
+						NetworkEvent? eventMessage = JsonSerializer.Deserialize<NetworkEvent>(ref eventBytes)!;
 						SendEvent(eventMessage);
 						continue;
 					}
@@ -295,19 +303,19 @@ namespace ServerFramework {
                         // Return of successfull handshake
                         if (message.MessageType == (int)MessageTypes.SendData) {
                             if (message.Sender > 1) {
-                                EventMessage eventMessage = new EventMessage {
+                                NetworkEvent eventMessage = new NetworkEvent {
                                     Targets = ClientList.Select(x => x.Id).Where(x => x != _client.Id).ToArray(),
-                                    EventClass = new OnClientConnectEvent(_client.Id,_client.UserName)
+                                    EventClass = new OnClientConnectEvent(_client.Id,_client.UserName,true)
                                 };
                                 SendEvent(eventMessage);
                                 
                                 listener.ExecuteEvent(eventMessage?.EventClass);
 
                                 _client.HandshakeDone = true;
-                                Console.WriteLine($"*SUCCESS* Handshake done! ({_client.Id})");
+                                Log.Write($"*SUCCESS* Handshake done! ({_client.Id})");
                             } else {
                                 _client.Close();
-                                Console.WriteLine($"*FAILED* Handshake failed! ({_client.Id})");
+                                Log.Write($"*FAILED* Handshake failed! ({_client.Id})");
                             }
                         } else {
                             HandshakeClient(_client,message.Parameters);
@@ -380,16 +388,15 @@ namespace ServerFramework {
 						default:
 							throw new NotImplementedException();
 					}
-                    Console.WriteLine("\n");
                 } catch (Exception ex) {
                     ClientList.Remove(_client);
                     bool success = (ex is IOException || ex is SocketException);
                     if (success)
-                        Console.WriteLine("Client " + _client.Id.ToString() + " disconnected!");
+                        Log.Write("Client " + _client.Id.ToString() + " disconnected!");
                     else
-                        Console.WriteLine(ex);
+                        Log.Write(ex);
                     
-                    EventMessage message = new EventMessage {
+                    NetworkEvent message = new NetworkEvent {
                         EventClass = new OnClientDisconnectEvent(_client.Id,_client.UserName,success)
                     };
                     SendEvent(message);
@@ -401,12 +408,12 @@ namespace ServerFramework {
             _client.Close();
         }
 
-        public static void HandshakeClient(NetworkClient client, object[] parameters) {
+        private static void HandshakeClient(NetworkClient client, object[] parameters) {
             
             int version = (int)parameters[0];
             string userName = (string)parameters[1];
             // RETURNS client id if success (minus number if error (each value is one type of error))
-            Console.WriteLine($"*HANDSHAKE START* Version:{version} Name:{userName}");
+            Log.Write($"*HANDSHAKE START* Version:{version} Name:{userName}");
             client.UserName = userName;
 
             if (ClientMethods == null) {
@@ -414,7 +421,7 @@ namespace ServerFramework {
                 foreach (string method in (object[])parameters[2]) {
                     ClientMethods.Add(method);
                 }
-                Console.WriteLine($"Added ({ClientMethods.Count()}) client methods!");
+                Log.Write($"Added ({ClientMethods.Count()}) client methods!");
             }
             
             
@@ -428,7 +435,7 @@ namespace ServerFramework {
 
             //TODO add major and minor checking
             if (version != Network.Version) {
-                Console.WriteLine($"User {userName} has wrong version! Should be: {Network.Version} has: {version}");
+                Log.Write($"User {userName} has wrong version! Should be: {Network.Version} has: {version}");
                 Network.SendData(handshakeMessage);
                 return;
             }
@@ -451,7 +458,7 @@ namespace ServerFramework {
 
 
 
-        public static object[] SerializeParameters(dynamic parameters,ref bool useClass) {
+        private static object[] SerializeParameters(dynamic parameters,ref bool useClass) {
             try {
                 Type paramType = Type.GetType(parameters.ToString());
                 useClass = paramType.GetConstructor(new Type[0])!=null;
@@ -471,7 +478,7 @@ namespace ServerFramework {
 			}
 			return newParams.ToArray();
 		}
-		public static dynamic DeserializeParameters(dynamic parameterData,bool isClass = false) {
+		private static dynamic DeserializeParameters(dynamic parameterData,bool isClass = false) {
             if(parameterData is null) return null;
 			if (isClass) return parameterData;
             List<object> parameters = JsonSerializer.Deserialize<List<object>>(parameterData);
@@ -501,7 +508,8 @@ namespace ServerFramework {
 			return final.ToArray();
 		}
 
-        public static void DebugMessage(NetworkMessage message,int mode = 0) {
+        private static void DebugMessage(NetworkMessage message,int mode = 0) {
+            if (!Debug) return;
             Console.WriteLine();
             Console.WriteLine("===============DEBUG MESSAGE===============");
             string type = "UNKNOWN";
@@ -521,40 +529,12 @@ namespace ServerFramework {
             Console.WriteLine();
             Console.WriteLine(JsonSerializer.Serialize<object>(message.Parameters));
             Console.WriteLine();
-            /*
-            if (!(message.Parameters is null)) {
-                object[] parameters = message.Parameters.ToArray();
-				int i = 0;
-				int ii = 1;
-				Console.WriteLine($"Parameters ({parameters.Count()}):");
-                Type LastType = default;
-                foreach (dynamic pr in parameters) {
-                    if (i%2 == 0) {
-                        i++;
-                        LastType = Type.GetType(pr.ToString());
-                        continue;
-                    }
-                    i++;
-                    object data = default;
-                    if (LastType.IsArray) {
-                        data = pr;
-                    } else {
-                        data = TypeDescriptor.GetConverter(LastType).ConvertFromInvariantString(pr.ToString());
-                    }
-                    if (data.GetType().IsArray) {
-                        Console.WriteLine($"  ({ii}): ({data.GetType()}): {JsonSerializer.Serialize<object>(data)}");
-                    } else {
-                        Console.WriteLine($"  ({ii}): ({data.GetType()}): {data.ToString()}");
-                    } 
-                    ii++;
-                }
-            }*/
             Console.WriteLine($"Key:{message.Key}");
             Console.WriteLine($"Sender:{message.Sender}");
             Console.WriteLine("===============DEBUG MESSAGE===============");
             Console.WriteLine();
         }
-        public static object[] ParseParamArray(string args) {
+        private static object[] ParseParamArray(string args) {
 			if (args.ElementAt(0) != '[') 
 				args = "[" + args + "]";
 				

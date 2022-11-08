@@ -12,14 +12,16 @@ namespace ClientFramework {
         public static void Help() {
             Console.WriteLine("Commands: ");
             Console.WriteLine();
-            Console.WriteLine("Clear        | Clears console");
-            Console.WriteLine("Users        | Users connected to server");
-            Console.WriteLine("Connect      | Connect to server");
-            Console.WriteLine("Disconnect   | Disconnect from server");
-            Console.WriteLine("Status       | Check if connected to server");
-            Console.WriteLine("SendData     | Sends a command to another client/server");
-            Console.WriteLine("RequestData  | Gets a value from another client/server");
-            Console.WriteLine("Exit         | Closes application");
+            Console.WriteLine("Clear            | Clears console");
+            Console.WriteLine("Users            | Users connected to server");
+            Console.WriteLine("Connect          | Connect to server");
+            Console.WriteLine("Disconnect       | Disconnect from server");
+            Console.WriteLine("Status           | Check if connected to server");
+            Console.WriteLine("SendData         | Sends a command to another client/server");
+            Console.WriteLine("RequestData      | Gets a value from another client/server");
+            Console.WriteLine("ClientMethods    | Methods available on client");
+            Console.WriteLine("ServerMethods    | Methods available on server");
+            Console.WriteLine("Exit             | Closes application");
         }
         public static void UserList() {
             if (Network.OtherClients.Count() == 0) {

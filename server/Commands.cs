@@ -18,6 +18,8 @@ namespace ServerFramework {
             Console.WriteLine("Status       | Check if server is running");
             Console.WriteLine("SendData     | Sends a command to user(s)");
             Console.WriteLine("RequestData  | Requests data from user");
+            Console.WriteLine("ClientMethods| Methods available on client");
+            Console.WriteLine("ServerMethods| Methods available on server");
             Console.WriteLine("Exit         | Closes server");
         }
         public static void UserList() {
