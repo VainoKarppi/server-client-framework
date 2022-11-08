@@ -41,32 +41,6 @@ namespace ServerFramework {
             Console.Clear();
             Console.WriteLine("Type 'help' for commands!");
             
-            
-            int port = 5001;
-            bool start = false;
-            foreach (var item in args) {
-                string[] splitted = item.Split(':');
-                if (splitted.Count() == 0) continue;
-                string a = splitted[0];
-                switch (a.ToLower())
-                {
-                    case "--port": {
-                        if (splitted.Count() != 2) continue;
-                        Int32.TryParse(splitted[1],out port);
-                        break;
-                    }
-                    case "--start": {
-                        start = true;
-                        break;
-                    }
-                    default: {
-                        continue;
-                    }
-                }
-            }
-            if (start) {
-                Network.StartServer(port);
-            }
 
             while (true) {
                 Console.Write("> ");
@@ -74,54 +48,62 @@ namespace ServerFramework {
                 command = command.ToLower();
             
                 try {
-                    if (command == "help")
-                        Commands.Help();
+                    switch (command) {
+                        case "help":
+                            Commands.Help();
+                            break;
 
-                    else if (command == "clear")
-                        Console.Clear();
+                        case "clear":
+                            Console.Clear();
+                            break;
 
-                    else if (command == "exit")
-                        break;
+                        case "exit":
+                            break;
 
-                    else if (command == "start") {
-                        if (Network.ServerRunning) throw new Exception("Server already running!");
-                        Console.WriteLine("Enter server port:");
-                        string portNew = Console.ReadLine();
-                        if (String.IsNullOrEmpty(portNew)) portNew = "5001";
-                        Network.StartServer(Int32.Parse(portNew));
+                        case "start":
+                            if (Network.ServerRunning) throw new Exception("Server already running!");
+                            Console.WriteLine("Enter server port:");
+                            string portNew = Console.ReadLine();
+                            if (String.IsNullOrEmpty(portNew)) portNew = "5001";
+                            Network.StartServer(Int32.Parse(portNew));
+                            break;
 
-                    }
+                        case "stop":
+                            Network.StopServer();
+                            break;
+
+                        case "users":
+                            Commands.UserList();
+                            break;
+
+                        case "senddata":
+                            Commands.SendData();
+                            break;
                         
-
-                    else if (command == "stop") {
-                        if (!Network.ServerRunning) throw new Exception("Server not running!");
-                        Network.StopServer();
-                    }
-
-                    else if (command == "users")
-                        Commands.UserList();
-
-                    else if (command == "senddata")
-                        Commands.SendData();
-
-                    else if (command == "clientmethods")
-                        Commands.GetClientMethods();
-                    
-                    else if (command == "servermethods")
-                        Commands.GetServerMethods();
-
-                    else if (command == "requestdata")
-                        Commands.RequestData();
-
-                    else if (command == "requestdatatype")
-                        Commands.RequestDataType();
-
-                    else if (command == "status")
-                        Console.WriteLine(Network.ServerRunning ? "Server is running!" : "Server is not running!");
+                        case "clientmethods":
+                            Commands.GetClientMethods();
+                            break;
+                            
+                        case "servermethods":
+                            Commands.GetServerMethods();
+                            break;
                         
-                    else
-                        Console.WriteLine("Unknown command!" + "\n" + "Type 'help' for commands!");
+                        case "requestdata":
+                            Commands.RequestData();
+                            break;
+                            
+                        case "requestdatatype":
+                            Commands.RequestDataType();
+                            break;
+                        
+                        case "status":
+                            Console.WriteLine(Network.ServerRunning ? "Server is running!" : "Server is not running!");
+                            break;
 
+                        default:
+                            Console.WriteLine("Unknown command!" + "\n" + "Type 'help' for commands!");
+                            break;
+                    }
                 } catch (Exception e) {
                     Console.WriteLine(e.Message);
                 }

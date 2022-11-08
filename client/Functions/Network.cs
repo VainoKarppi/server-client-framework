@@ -17,12 +17,6 @@ using System.ComponentModel;
 using System.Text.Json.Nodes;
 
 namespace ClientFramework {
-	// 0 SendData = Fire And forget
-	// 1 RequestData = Send using a ID and read from ResponseData
-	// 2 ResponseData = Used to receive the data for ID that was sent using RequestData
-	
-	
-	
     public class Network {
 		public const int Version = 1000;
 		public class EventMessage {
@@ -55,11 +49,11 @@ namespace ClientFramework {
 		private static List<string> PrivateMethods = new List<string>() {"GetMethods","ConnectedClients","HandleEvent"};
 		// To be read from handshake (register on server)
 		public static Dictionary<int,dynamic> Results = new Dictionary<int,dynamic>();
-		public static ClientBase? Client = new ClientBase();
+		public static NetworkClientSelf? Client = new NetworkClientSelf();
 
 
 
-		public class ClientBase : TcpClient {
+		public class NetworkClientSelf : TcpClient {
 			public NetworkStream? Stream { get; set; }
 			public StreamReader? Reader { get; set; }
         	public StreamWriter? Writer { get; set; }
@@ -96,7 +90,7 @@ namespace ClientFramework {
                 ClientMethods = methods;
             }
 
-			Client = new ClientBase();
+			Client = new NetworkClientSelf();
 
 			Console.WriteLine("Trying to connect at: (" + ip + ":" + port.ToString() + "), with name: " + userName);
 			Client.Connect(IPAddress.Parse(ip), port);
@@ -567,6 +561,4 @@ namespace ClientFramework {
 			return input.Substring(start, length);
 		}
 	}
-	
-
 }

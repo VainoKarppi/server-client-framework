@@ -63,7 +63,6 @@ namespace ServerFramework {
         public async void ExecuteEvent(dynamic classData, bool useBlocked = false) {
             Thread eventThread = new Thread(() => {
                 try {
-                    // ((JsonElement)classData).GetProperty("EventName").GetString();
                     string eventName;
                     if (classData is JsonElement) {
                         eventName = ((JsonElement)classData).GetProperty("EventName").GetString();

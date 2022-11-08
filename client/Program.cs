@@ -4,9 +4,6 @@ using System.Net.Mime;
 using System.Reflection;
 
 
-
-
-
 namespace ClientFramework {
     public class Program {
         
@@ -39,7 +36,6 @@ namespace ClientFramework {
             Console.Title = "CLIENT";
             Console.Clear();
             Console.WriteLine("Type 'help' for commands!");
-            Console.WriteLine("> ");
 
             while (true) {
                 Console.Write("> ");
