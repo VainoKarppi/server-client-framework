@@ -65,6 +65,12 @@ namespace ServerFramework {
             Console.WriteLine();
             foreach (var item in Network.ServerMethods) Console.WriteLine($"{item[0]} : ({item[1]})");    
         }
+        public static void SendEvent() {
+            Network.NetworkEvent eventData = new Network.NetworkEvent {
+                EventClass = new OnServerShutdownEvent(true)
+            };
+            Network.SendEvent(eventData);
+        }
         public static void RequestData() {
             if (!Network.ServerRunning)
                 throw new Exception("Start the server first!");

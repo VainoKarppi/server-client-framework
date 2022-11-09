@@ -29,8 +29,8 @@ namespace ServerFramework {
         public static bool ServerRunning { get; set; }
         public enum MessageTypes : int {SendData, RequestData, ResponseData, ServerEvent, ClientEvent}
         public class NetworkEvent {
-            public int? MessageType { get; set; } = (int)MessageTypes.ServerEvent;
-            public int[]? Targets { get; set; } = new int[] {1};
+            public int MessageType { get; set; } = (int)MessageTypes.ServerEvent;
+            public int[]? Targets { get; set; }
 			public dynamic? EventClass { get; set; }
         }
         
@@ -133,7 +133,7 @@ namespace ServerFramework {
 
         // Request ID is used to answer to specific message
 
-        private static void SendEvent(NetworkEvent message) {
+        public static void SendEvent(NetworkEvent message) {
             if (!ServerRunning) throw new Exception("Server not running!");
 
             // Add ALL clients to list if left as blank
@@ -143,7 +143,6 @@ namespace ServerFramework {
             // Exclusive targeting [-2] = everyone else expect client 2
             
             if (message.Targets.Count() == 1) {
-                Console.WriteLine(message.Targets[0]);
                 int target = message.Targets[0];
                 if (target < 0) {
                     foreach (NetworkClient client in ClientList) {
@@ -161,7 +160,6 @@ namespace ServerFramework {
             foreach (int id in targets) {
                 NetworkClient client = ClientList.FirstOrDefault(c => c.Id == id);
                 if (client == default) continue;
-                
                 SendMessage(message,client.Stream);
             }
         }
@@ -414,6 +412,7 @@ namespace ServerFramework {
 							throw new NotImplementedException();
 					}
                 } catch (Exception ex) {
+                    ClientList.Remove(_client);
                     bool success = (ex is IOException || ex is SocketException);
                     if (!success) Log.Write(ex.Message);
                     

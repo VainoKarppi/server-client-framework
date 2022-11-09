@@ -97,6 +97,10 @@ namespace ServerFramework {
                             Commands.RequestDataType();
                             break;
                         
+                        case "sendevent":
+                            Commands.SendEvent();
+                            break;
+                        
                         case "status":
                             Console.WriteLine(Network.ServerRunning ? "Server is running!" : "Server is not running!");
                             break;

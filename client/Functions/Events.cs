@@ -79,19 +79,15 @@ namespace ClientFramework {
             Thread eventThread = new Thread(() => {
                 try {
                     string eventName;
-                    Console.WriteLine("asdasd");
                     if (classData is JsonElement) {
                         eventName = ((JsonElement)classData).GetProperty("EventName").GetString();
                     } else {
                         eventName = classData.EventName;
                     }
-                    Console.WriteLine(eventName);
 
                     switch (eventName.ToLower()) {
                         case "onclientconnectevent":
-                            Console.WriteLine("1111");
                             if (classData is JsonElement) classData = ((JsonElement)classData).Deserialize<OnClientConnectEvent>();
-                            
                             OnClientConnected(classData);
                             break;
                         case "onclientdisconnectevent":

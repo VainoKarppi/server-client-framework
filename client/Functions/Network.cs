@@ -27,7 +27,7 @@ namespace ClientFramework {
 		public static bool Debug = true;
 		public const int Version = 1000;
 		public class NetworkEvent {
-            public int? MessageType { get; set; } = (int)MessageTypes.ServerEvent;
+            public int MessageType { get; set; } = (int)MessageTypes.ServerEvent;
             public int[]? Targets { get; set; }
 			public dynamic? EventClass { get; set; }
         }
@@ -158,24 +158,18 @@ namespace ClientFramework {
 					if (type < 0) continue;
 
 					
+					// HANDLE EVENT
 					NetworkEvents listener = NetworkEvents.eventsListener;
 					if (type == (int)MessageTypes.ServerEvent) {
-						var eventBytes = new Utf8JsonReader(bytes);
-						Console.WriteLine("WTF");
-						Console.WriteLine(JsonSerializer.Deserialize<object>(ref eventBytes)!);
-						Console.WriteLine("WTF2");
-						NetworkEvent? eventMessage = JsonSerializer.Deserialize<NetworkEvent>(ref eventBytes)!;
-						Console.WriteLine("WTF3");
-						listener.ExecuteEvent(eventMessage?.EventClass);
-
+						dynamic eventClass = ((JsonElement)messageTemp).GetProperty("EventClass");
+						listener.ExecuteEvent(eventClass);
 						continue;
 					}
 
-					// HANDLE EVENT
+
 					var msgBytes = new Utf8JsonReader(bytes);
 					NetworkMessage? message = JsonSerializer.Deserialize<NetworkMessage>(ref msgBytes)!;
 					
-
 					DebugMessage(message,2);
 					
 					message.Parameters = DeserializeParameters(message.Parameters,message.UseClass);
