@@ -56,12 +56,14 @@ namespace ServerFramework {
             Network.SendData(message);
         }
         public static void GetClientMethods() {
+            if (Network.ClientMethods == null) throw new Exception("Client Methods not Initialized yet! (Gets populated when first client joins)");
             Console.WriteLine();
-            foreach (var item in Network.ClientMethods) Console.WriteLine(item);
+            foreach (var item in Network.ClientMethods) Console.WriteLine($"{item[0]} : ({item[1]})");
         }
         public static void GetServerMethods() {
+            if (Network.ServerMethods == null) throw new Exception("Server Methods not Initialized yet! (Gets populated when server running)");
             Console.WriteLine();
-            foreach (var item in Network.ServerMethods) Console.WriteLine(item);
+            foreach (var item in Network.ServerMethods) Console.WriteLine($"{item[0]} : ({item[1]})");    
         }
         public static void RequestData() {
             if (!Network.ServerRunning)

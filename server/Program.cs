@@ -41,6 +41,7 @@ namespace ServerFramework {
             Console.Clear();
             Console.WriteLine("Type 'help' for commands!");
             
+            Network.StartServer(5001);
 
             while (true) {
                 Console.Write("> ");

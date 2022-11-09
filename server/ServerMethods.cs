@@ -12,17 +12,6 @@ namespace ServerFramework {
         public dynamic? Data { get; set; }
     }
     public class ServerMethods {
-        public static object[] TestDictionary(NetworkClient client, dynamic test) {
-
-            List<object[]> ServerMethodsNEW = new List<object[]>();
-            MethodInfo[] methodInfos = typeof(ServerMethods).GetMethods();
-
-            foreach (MethodInfo method in methodInfos) {
-                ServerMethodsNEW.Add(new object[]{method.Name,method.ReturnType.ToString()});
-            }
-            ServerMethodsNEW.RemoveRange(ServerMethodsNEW.Count() - 4,4);
-            return ServerMethodsNEW.ToArray();
-        }
         public static string Test(NetworkClient client, dynamic testMessage) {
             Console.WriteLine(
                 $"MSG:{testMessage} ({testMessage.GetType()}) " + 
