@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
+using System.Reflection;
 using System.Text;
 using System.Threading;
 
@@ -27,8 +28,31 @@ namespace ServerFramework {
             Console.WriteLine($"*EVENT* MSG RECEIVED: {eventData.Message.MethodName}");
         }
         
+        public static MethodInfo[] GetMethods(string asd) {
+            Type type = Type.GetType(asd);
 
+            MethodInfo[] mInfos = type.GetMethods(BindingFlags.Public |
+                BindingFlags.Static);
+
+            return mInfos;
+
+        }
+        public static bool Basd() {
+            return true;
+        }
         static void Main(string[] args) {
+
+            List<MethodInfo[]> asd = new List<MethodInfo[]>();
+
+            asd.Add(GetMethods("ServerMethods"));
+
+            foreach(MethodInfo[] info in asd) {
+                foreach (MethodInfo infoThis in info) {
+                    object aa = infoThis.Invoke(infoThis,new object[] {123});
+                }
+            }
+
+
             NetworkEvents.eventsListener = new NetworkEvents();
             NetworkEvents.eventsListener.ClientConnected += OnClientConnected;
             NetworkEvents.eventsListener.ClientDisconnect += OnClientDisconnect;
