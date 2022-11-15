@@ -66,6 +66,9 @@ namespace ClientFramework {
 		}
 		public static List<OtherClient> OtherClients = new List<OtherClient>() {};
 		// {ID,USERNAME,CONNECTED}
+		/// <summary>
+        /// Creates a instance of another client info.
+        /// </summary>
 		public class OtherClient {
 			public int? Id { get; set;}
 			public string UserName { get; set; } = "error (NoName)";
@@ -79,6 +82,10 @@ namespace ClientFramework {
 
 		
 		//!! METHODS !!//
+		/// <summary>
+        /// Checks if connected to server (once handshake is done)
+        /// </summary>
+        /// <returns>BOOL : TRUE if connected, FALSE if not</returns>
 		public static bool IsConnected() {
 			if (Client == default || (!Client.Connected || !Client.HandshakeDone)) return false;
 			return true;
@@ -116,7 +123,10 @@ namespace ClientFramework {
 			Thread thread = new Thread(ReceiveDataThread);
 			thread.Start();
 		}
-
+		/// <summary>
+        /// Disconnects from the server
+        /// </summary>
+        /// <exception cref="Exception">Not connected to server!</exception>
 		public static void Disconnect() {
 			OtherClients = new List<OtherClient>() {};
 			if (!IsConnected())
@@ -162,7 +172,7 @@ namespace ClientFramework {
 						continue;
 					}
 
-
+					// HANDLE NETWORK MESSAGE
 					var msgBytes = new Utf8JsonReader(bytes);
 					NetworkMessage? message = JsonSerializer.Deserialize<NetworkMessage>(ref msgBytes)!;
 					
@@ -177,7 +187,8 @@ namespace ClientFramework {
 						Results.Add(message.Key,message.Parameters);
 						continue;
 					}
-	
+
+
 					List<object> paramList = new List<object>();
                     paramList.Add(Client);
 					if (!(message.Parameters is null)) {
@@ -246,6 +257,12 @@ namespace ClientFramework {
 			}
 		}
 		// Fire and forget
+		/// <summary>
+        /// Sends NetworkMessage to client(s).
+        /// See NetworkMessage class for more info.
+        /// </summary>
+        /// <param name="message"></param>
+        /// <exception cref="Exception"></exception>
 		public static void SendData(NetworkMessage message) {
             if (!IsConnected()) throw new Exception("Not connected to server");
 			if (message.TargetId == Client.Id) throw new Exception("Cannot send data to self! (client)");	
@@ -262,6 +279,15 @@ namespace ClientFramework {
 			SendMessage(message,Client.GetStream());
 			DebugMessage(message,1);
         }
+
+
+
+		/// <summary>
+        /// Requests data from target. Return data specified on Method called on target. If returned data is class, use RequestData<T> with class deserializer.
+        /// </summary>
+        /// <param name="message"></param>
+        /// <returns></returns>
+        /// <exception cref="Exception"></exception>
 		public static dynamic RequestData(NetworkMessage message) {
 			if (!IsConnected()) throw new Exception("Not connected to server");
 			if (message.TargetId == Client.Id) throw new Exception("Cannot request data from self!");
@@ -281,6 +307,13 @@ namespace ClientFramework {
 			DebugMessage(message,1);
 			return RequestDataResult(message);
 		}
+		/// <summary>
+        /// Requests data from target. Return data specified on Method called on target.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="message"></param>
+        /// <returns></returns>
+        /// <exception cref="Exception"></exception>
 		public static dynamic RequestData<T>(NetworkMessage message) {
 			if (!IsConnected()) throw new Exception("Not connected to server");
 			if (message.TargetId == Client.Id) throw new Exception("Cannot request data from self!");

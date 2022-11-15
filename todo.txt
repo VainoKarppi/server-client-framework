@@ -7,3 +7,5 @@ Handle client crash better
 Event handlers for server
 
 Server event handler onuserdisconnect
+
+CLIENT & SERVER: When other client disconnects leave that in other clients list, but set connected to false
