@@ -4,6 +4,7 @@ using System.Linq;
 using System.Net.Sockets;
 using System.Reflection;
 using System.Text;
+using static ServerFramework.Network;
 
 namespace ServerFramework {
     public class TestClass {

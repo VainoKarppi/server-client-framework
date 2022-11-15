@@ -13,21 +13,17 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 
+using static ServerFramework.Logger;
+
 namespace ServerFramework {
-    public class Log {
-		public static void Write(object data) {
-			if (!Network.Debug) return;
-			Console.WriteLine(data);
-		}
-	}
     public class Network {
         public static bool Debug = true;
         public const int Version = 1000;
-        public static TcpListener? ServerListener;
-        public static readonly object _lock = new object();
+        private static TcpListener? ServerListener;
+        private static readonly object _lock = new object();
         public static readonly List<NetworkClient> ClientList = new List<NetworkClient>();
         public static bool ServerRunning { get; set; }
-        public enum MessageTypes : int {SendData, RequestData, ResponseData, ServerEvent, ClientEvent}
+        private enum MessageTypes : int {SendData, RequestData, ResponseData, ServerEvent, ClientEvent}
         public class NetworkEvent {
             public int MessageType { get; set; } = (int)MessageTypes.ServerEvent;
             public int[]? Targets { get; set; }
@@ -54,7 +50,7 @@ namespace ServerFramework {
         public static List<object[]>? ServerMethods;
         public static List<object[]>? ClientMethods; 
         private static List<string> PrivateMethods = new List<string>() {};
-		public static Dictionary<int,dynamic> Results = new Dictionary<int,dynamic>();
+		private static Dictionary<int,dynamic> Results = new Dictionary<int,dynamic>();
 
         public static void StartServer(int serverPort) {
             if (ServerRunning)
@@ -77,7 +73,7 @@ namespace ServerFramework {
                 ServerListener.Start();
                 ServerRunning = true;
 
-                Log.Write("Running server at port: " + ServerListener.LocalEndpoint.ToString().Split(':')[1]);
+                Log("Running server at port: " + ServerListener.LocalEndpoint.ToString().Split(':')[1]);
 
                 int _clientID = 2; // (0 = All clients, 1 = server, 2 and above for specific clients)
                 while (ServerRunning) {
@@ -92,7 +88,7 @@ namespace ServerFramework {
                         }
                         lock (_lock) ClientList.Add(_client);
                         
-                        Log.Write("*NEW* Client (" + _client.Client.RemoteEndPoint  + ") trying to connect...");
+                        Log("*NEW* Client (" + _client.Client.RemoteEndPoint  + ") trying to connect...");
 
                         if (_clientID >= 32000) throw new Exception("Max user count reached! (32000)");
 
@@ -101,7 +97,7 @@ namespace ServerFramework {
                         _clientID++;;
                     } catch (Exception ex) {
                         if (!(ex is SocketException)) {
-                            Log.Write(ex.Message);
+                            Log(ex.Message);
                         }
                     }
                 }
@@ -111,7 +107,7 @@ namespace ServerFramework {
             if (!ServerRunning)
                 throw new Exception("Server not running!");
             
-            Log.Write("Stopping server...");
+            Log("Stopping server...");
 
             NetworkEvent message = new NetworkEvent {
                 EventClass = new OnServerShutdownEvent(true)
@@ -127,7 +123,7 @@ namespace ServerFramework {
             }
             ClientList.Clear();
 
-            Log.Write("Server stopped!");
+            Log("Server stopped!");
         }
 
 
@@ -214,8 +210,8 @@ namespace ServerFramework {
                     SendMessage(message,client.Stream);
                     i++;
                 }
-                if (message.Sender == 1) Log.Write($"DATA SENT TO {i} USERS(s)!");
-                else Log.Write($"DATA FORWARDED TO {i} USERS(s)!");
+                if (message.Sender == 1) Log($"DATA SENT TO {i} USERS(s)!");
+                else Log($"DATA FORWARDED TO {i} USERS(s)!");
             }
         }
         
@@ -332,10 +328,10 @@ namespace ServerFramework {
                                 listener.ExecuteEvent(eventMessage?.EventClass);
 
                                 _client.HandshakeDone = true;
-                                Log.Write($"*SUCCESS* Handshake done! ({_client.Id})");
+                                Log($"*SUCCESS* Handshake done! ({_client.Id})");
                             } else {
                                 _client.Close();
-                                Log.Write($"*FAILED* Handshake failed! ({_client.Id})");
+                                Log($"*FAILED* Handshake failed! ({_client.Id})");
                             }
                         } else {
                             HandshakeClient(_client,message.Parameters);
@@ -414,14 +410,18 @@ namespace ServerFramework {
                 } catch (Exception ex) {
                     ClientList.Remove(_client);
                     bool success = (ex is IOException || ex is SocketException);
-                    if (!success) Log.Write(ex.Message);
+                    if (!success) Log(ex.Message);
                     
-                    Log.Write($"Client {_client.Id} disconnected! (SUCCESS: {success})");
+                    Log($"Client {_client.Id} disconnected! (SUCCESS: {success})");
 
                     NetworkEvent message = new NetworkEvent {
                         EventClass = new OnClientDisconnectEvent(_client.Id,_client.UserName,success)
                     };
                     SendEvent(message);
+
+                    NetworkEvents listener = NetworkEvents.eventsListener;
+                    listener.ExecuteEvent(message.EventClass);
+
                     break;
                 }
             }
@@ -435,7 +435,7 @@ namespace ServerFramework {
             int version = (int)parameters[0];
             string userName = (string)parameters[1];
             // RETURNS client id if success (minus number if error (each value is one type of error))
-            Log.Write($"*HANDSHAKE START* Version:{version} Name:{userName}");
+            Log($"*HANDSHAKE START* Version:{version} Name:{userName}");
             client.UserName = userName;
 
             if (ClientMethods == null) {
@@ -443,7 +443,7 @@ namespace ServerFramework {
                 foreach (object[] method in (object[])parameters[2]) {
                     ClientMethods.Add(new object[] {(string)method[0],Type.GetType((string)method[1])});
                 }
-                Log.Write($"Added ({ClientMethods.Count()}) client methods!");
+                Log($"Added ({ClientMethods.Count()}) client methods!");
             }
             
             
@@ -457,7 +457,7 @@ namespace ServerFramework {
 
             //TODO add major and minor checking
             if (version != Network.Version) {
-                Log.Write($"User {userName} has wrong version! Should be: {Network.Version} has: {version}");
+                Log($"User {userName} has wrong version! Should be: {Network.Version} has: {version}");
                 Network.SendData(handshakeMessage);
                 return;
             }
@@ -536,13 +536,8 @@ namespace ServerFramework {
             Console.WriteLine();
             Console.WriteLine("===============DEBUG MESSAGE===============");
             string type = "UNKNOWN";
-            if (mode == 1) {
-                type = "OUTBOUND";
-            } else if (mode == 2) {
-                type = "INBOUND";
-            } else if (mode == 3) {
-                type = "FORWARD";
-            }
+            if (mode == 1) type = "OUTBOUND";
+            else if (mode == 2) type = "INBOUND";
             Console.WriteLine();
             Console.WriteLine(JsonSerializer.Serialize<object>(message));
             Console.WriteLine();
@@ -633,26 +628,26 @@ namespace ServerFramework {
 			}
 			return input.Substring(start, length);
 		}
-    }
 
-    public class NetworkClient : TcpClient {
-        public NetworkStream? Stream { get; set; }
-        public StreamReader Reader { get; set; }
-        public StreamWriter Writer { get; set; }
-        public int Id { get; set; }
-        public string UserName { get; set; } = "error (NoName)";
-        public bool HandshakeDone { get; set; } = false;
-        public NetworkClient(TcpListener listener)
-        {   
-            TcpClient _client = listener.AcceptTcpClient();
-            Stream = _client.GetStream();
+        public class NetworkClient : TcpClient {
+            public NetworkStream? Stream { get; set; }
+            public StreamReader Reader { get; set; }
+            public StreamWriter Writer { get; set; }
+            public int Id { get; set; }
+            public string UserName { get; set; } = "error (NoName)";
+            public bool HandshakeDone { get; set; } = false;
+            public NetworkClient(TcpListener listener)
+            {   
+                TcpClient _client = listener.AcceptTcpClient();
+                Stream = _client.GetStream();
 
-            this.Client = _client.Client;
-            
-            this.Active = true;
-            //TcpClient _client = listener.AcceptTcpClient();
-            Reader = new StreamReader(Stream);
-            Writer = new StreamWriter(Stream);
+                this.Client = _client.Client;
+                
+                this.Active = true;
+                //TcpClient _client = listener.AcceptTcpClient();
+                Reader = new StreamReader(Stream);
+                Writer = new StreamWriter(Stream);
+            }
         }
     }
 }

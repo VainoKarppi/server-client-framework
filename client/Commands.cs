@@ -31,7 +31,7 @@ namespace ClientFramework {
             Console.WriteLine("Connected clients: ");
 
             int i = 1;
-            foreach (Network.NetworkClient _client in Network.OtherClients) {
+            foreach (Network.OtherClient _client in Network.OtherClients) {
                 Console.WriteLine($"    ({i}) ID={_client.Id} Name={_client.UserName}");
                 i++;
             }

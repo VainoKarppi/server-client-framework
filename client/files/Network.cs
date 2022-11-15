@@ -16,15 +16,11 @@ using System.Text.Json;
 using System.ComponentModel;
 using System.Text.Json.Nodes;
 
+using static ClientFramework.Logger;
+
+
 namespace ClientFramework {
-	public class Log {
-		public static void Write(object data) {
-			if (!Network.Debug) return;
-			Console.WriteLine(data);
-		}
-	}
     public class Network {
-		public static bool Debug = true;
 		public const int Version = 1000;
 		public class NetworkEvent {
             public int MessageType { get; set; } = (int)MessageTypes.ServerEvent;
@@ -56,11 +52,11 @@ namespace ClientFramework {
 		private static List<string> PrivateMethods = new List<string>() {};
 		// To be read from handshake (register on server)
 		private static Dictionary<int,dynamic> Results = new Dictionary<int,dynamic>();
-		public static NetworkClientSelf? Client = new NetworkClientSelf();
+		public static NetworkClient? Client = new NetworkClient();
 
 
 
-		public class NetworkClientSelf : TcpClient {
+		public class NetworkClient : TcpClient {
 			public NetworkStream? Stream { get; set; }
 			public StreamReader? Reader { get; set; }
         	public StreamWriter? Writer { get; set; }
@@ -68,13 +64,13 @@ namespace ClientFramework {
 			public bool HandshakeDone { get; set; } = false;
 			public string UserName { get; set; } = "error (NoName)";
 		}
-		public static List<NetworkClient> OtherClients = new List<NetworkClient>() {};
+		public static List<OtherClient> OtherClients = new List<OtherClient>() {};
 		// {ID,USERNAME,CONNECTED}
-		public class NetworkClient {
+		public class OtherClient {
 			public int? Id { get; set;}
 			public string UserName { get; set; } = "error (NoName)";
 			public bool Connected { get; set; } = true;
-			public NetworkClient(int id, string name, bool connected = true) {
+			public OtherClient(int id, string name, bool connected = true) {
 				this.Id = id;
 				this.UserName = name;
 				this.Connected = connected;
@@ -87,7 +83,7 @@ namespace ClientFramework {
 			if (Client == default || (!Client.Connected || !Client.HandshakeDone)) return false;
 			return true;
 		}
-		public static void Connect(string ip = "127.0.0.1", int port = 2302, string userName = "unknown") {
+		public static void Connect(string ip = "127.0.0.1", int port = 5001, string userName = "unknown") {
 			if (IsConnected())
 				throw new Exception("Already connected to server!");
 
@@ -101,9 +97,9 @@ namespace ClientFramework {
                 ClientMethods.RemoveRange(ClientMethods.Count() - 4,4);
             }
 
-			Client = new NetworkClientSelf();
+			Client = new NetworkClient();
 
-			Log.Write("Trying to connect at: (" + ip + ":" + port.ToString() + "), with name: " + userName);
+			Log("Trying to connect at: (" + ip + ":" + port.ToString() + "), with name: " + userName);
 			Client.Connect(IPAddress.Parse(ip), port);
 
 
@@ -114,7 +110,7 @@ namespace ClientFramework {
 			// Request client ID and do handshake
 			int _id = Network.Handshake(userName);
 			if (_id < 0) return;
-			Log.Write($"HANDSHAKE DONE: ID={_id}");
+			Log($"HANDSHAKE DONE: ID={_id}");
 
 			// Continue in new thread
 			Thread thread = new Thread(ReceiveDataThread);
@@ -122,11 +118,11 @@ namespace ClientFramework {
 		}
 
 		public static void Disconnect() {
-			OtherClients = new List<NetworkClient>() {};
+			OtherClients = new List<OtherClient>() {};
 			if (!IsConnected())
 				throw new Exception("Not connected to server!");
 			
-			Log.Write("Disconnected From the server!");
+			Log("Disconnected From the server!");
 			Client.HandshakeDone = false;
 			Client.Client.Close();
 
@@ -240,12 +236,12 @@ namespace ClientFramework {
 				if (!Client.HandshakeDone) {
 					return;
 				}
-				Log.Write(ex.Message);
+				Log(ex.Message);
 
 				if (ex.InnerException is SocketException) {
-					if (Client.Id != default) Log.Write("Server has crashed!");
+					if (Client.Id != default) Log("Server has crashed!");
 				}
-				Log.Write("Disconnected from the server!");
+				Log("Disconnected from the server!");
 				Client.Dispose();
 			}
 		}
@@ -262,7 +258,7 @@ namespace ClientFramework {
 				var found = ServerMethods.FirstOrDefault(x => x[0].ToString().ToLower() == message.MethodName.ToLower());
 				if (found == default) throw new Exception($"Method {message.MethodName} not listed in SERVER'S methods list");
 			}
-			if (message.TargetId == 0) Log.Write($"DATA SENT TO: ({OtherClients.Count()}) CLIENT(s)!");
+			if (message.TargetId == 0) Log($"DATA SENT TO: ({OtherClients.Count()}) CLIENT(s)!");
 			SendMessage(message,Client.GetStream());
 			DebugMessage(message,1);
         }
@@ -349,7 +345,7 @@ namespace ClientFramework {
 		private static int Handshake(string userName) {
 			int version = Network.Version;
 			Client.UserName = userName;
-			Log.Write($"Starting HANDSHAKE with server, with version: {version}, with name: {userName}");
+			Log($"Starting HANDSHAKE with server, with version: {version}, with name: {userName}");
 
 			object[] methodsToSend = ClientMethods.Select(x => new object[] {x[0],x[1].ToString()}).ToArray();
 			NetworkMessage handshakeMessage = new NetworkMessage {
@@ -386,13 +382,13 @@ namespace ClientFramework {
 			foreach (object[] method in methods) {
 				ServerMethods.Add(new object[]{(string)method[0],Type.GetType((string)method[1])});
 			}
-			Log.Write($"DEBUG: Added ({ServerMethods.Count()}) SERVER methods to list!");
+			Log($"DEBUG: Added ({ServerMethods.Count()}) SERVER methods to list!");
 			
 			object[] clients = (object[])returnedParams[2];
 			foreach (object[] clientData in clients) {
-				OtherClients.Add(new NetworkClient((int)clientData[0], (string)clientData[1]));
+				OtherClients.Add(new OtherClient((int)clientData[0], (string)clientData[1]));
 			}
-			Log.Write($"DEBUG: Added ({OtherClients.Count()}) other clients to list!");
+			Log($"DEBUG: Added ({OtherClients.Count()}) other clients to list!");
 
 			NetworkMessage handshakeMessageSuccess = new NetworkMessage {
 				MessageType = (int?)MessageTypes.SendData,
@@ -465,31 +461,27 @@ namespace ClientFramework {
 
 
         private static void DebugMessage(NetworkMessage message,int mode = 0) {
-			if (!Debug) return;
-			Console.WriteLine();
-            Console.WriteLine("===============DEBUG MESSAGE===============");
+			Log();
+            Log("===============DEBUG MESSAGE===============");
             string type = "UNKNOWN";
-            if (mode == 1) {
-                type = "OUTBOUND";
-            } else if (mode == 2) {
-                type = "INBOUND";
-            }
-			Console.WriteLine();
-            Console.WriteLine(JsonSerializer.Serialize<object>(message));
-            Console.WriteLine();
-            Console.WriteLine($"TYPE: {type}");
-            Console.WriteLine($"TIME: {DateTime.Now.Millisecond}");
-            Console.WriteLine($"MessageType:{message.MessageType}");
-            Console.WriteLine($"TargetId:{message.TargetId}");
-            Console.WriteLine($"MethodName:{message.MethodName}");
-			Console.WriteLine($"IsClass:{message.UseClass}");
-            Console.WriteLine();
-            Console.WriteLine(JsonSerializer.Serialize<object>(message.Parameters));
-            Console.WriteLine();
-            Console.WriteLine($"Key:{message.Key}");
-            Console.WriteLine($"Sender:{message.Sender}");
-            Console.WriteLine("===============DEBUG MESSAGE===============");
-			Console.WriteLine();
+            if (mode == 1) type = "OUTBOUND";
+            else if (mode == 2) type = "INBOUND";
+			Log();
+            Log(JsonSerializer.Serialize<object>(message));
+            Log();
+            Log($"TYPE: {type}");
+            Log($"TIME: {DateTime.Now.Millisecond}");
+            Log($"MessageType:{message.MessageType}");
+            Log($"TargetId:{message.TargetId}");
+            Log($"MethodName:{message.MethodName}");
+			Log($"IsClass:{message.UseClass}");
+            Log();
+            Log(JsonSerializer.Serialize<object>(message.Parameters));
+            Log();
+            Log($"Key:{message.Key}");
+            Log($"Sender:{message.Sender}");
+            Log("===============DEBUG MESSAGE===============");
+			Log();
         }
 	
 

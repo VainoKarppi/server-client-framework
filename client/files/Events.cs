@@ -1,22 +1,21 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
 
-
-namespace ServerFramework {
-        public class BaseEventClass {
+namespace ClientFramework {
+    public class BaseEventClass {
         public string? EventName { get; set; }
         public BaseEventClass() {
             EventName = this.GetType().UnderlyingSystemType.Name;
         }
     }
     public class OnClientConnectEvent : BaseEventClass {
-        public int? Id { get; set; }
+        public int Id { get; set; }
         public string? UserName { get; set; }
-        public bool? Success { get; set; } = true;
+        public bool Success { get; set; } = true;
         public OnClientConnectEvent (int id, string username, bool success = false) {
             Id = id;
             UserName = username;
@@ -24,9 +23,9 @@ namespace ServerFramework {
         }
     }
     public class OnClientDisconnectEvent : BaseEventClass {
-        public int? Id { get; set; }
+        public int Id { get; set; }
         public string? UserName { get; set; }
-        public bool? Success { get; set; }
+        public bool Success { get; set; }
         public OnClientDisconnectEvent (int id, string username, bool success = false) {
             Id = id;
             UserName = username;
@@ -49,6 +48,26 @@ namespace ServerFramework {
         public Network.NetworkMessage Message;
         public OnMessageReceivedEvent (Network.NetworkMessage message) {
             Message = message;
+        }
+    }
+    public class OnConnectEvent : BaseEventClass {
+        public int Id { get; set; }
+        public string? UserName { get; set; }
+        public bool Success { get; set; }
+        public OnConnectEvent (int id, string username, bool success = false) {
+            Id = id;
+            UserName = username;
+            Success = success;
+        }
+    }
+    public class OnDisconnectEvent : BaseEventClass {
+        public int Id { get; set; }
+        public string? UserName { get; set; }
+        public bool Success { get; set; }
+        public OnDisconnectEvent (int id, string username, bool success = false) {
+            Id = id;
+            UserName = username;
+            Success = success;
         }
     }
 
@@ -87,6 +106,14 @@ namespace ServerFramework {
                             if (classData is JsonElement) classData = ((JsonElement)classData).Deserialize<Network.NetworkMessage>();
                             OnMessageReceived(classData);
                             break;
+                        case "onconnectevent":
+                            if (classData is JsonElement) classData = ((JsonElement)classData).Deserialize<OnConnectEvent>();
+                            OnConnect(classData);
+                            break;
+                        case "ondisconnectevent":
+                            if (classData is JsonElement) classData = ((JsonElement)classData).Deserialize<OnDisconnectEvent>();
+                            OnDisconnect(classData);
+                            break;
                         default:
                             Console.WriteLine(JsonSerializer.Deserialize<object>(classData));
                             throw new NotImplementedException();
@@ -102,11 +129,13 @@ namespace ServerFramework {
 
         public event EventHandler<OnClientConnectEvent>? ClientConnected;
         protected virtual void OnClientConnected(OnClientConnectEvent classData) {
+            Network.OtherClients.Add(new Network.OtherClient(classData.Id,classData.UserName));
             ClientConnected?.Invoke(this, classData);
         }
         
         public event EventHandler<OnClientDisconnectEvent>? ClientDisconnect;
         protected virtual void OnClientDisconnect(OnClientDisconnectEvent classData) {
+            Network.OtherClients.RemoveAll(x => x.Id == classData.Id);
             ClientDisconnect?.Invoke(this, classData);
         }
 
@@ -123,6 +152,21 @@ namespace ServerFramework {
         public event EventHandler<OnMessageReceivedEvent>? MessageReceived;
         protected virtual void OnMessageReceived(OnMessageReceivedEvent classData) {
             MessageReceived?.Invoke(this, classData);
+        }
+
+
+
+
+
+        // CLIENT ONLY EVENTS
+        public event EventHandler<OnConnectEvent>? Connect;
+        protected virtual void OnConnect(OnConnectEvent classData) {
+            Connect?.Invoke(this, classData);
+        }
+
+        public event EventHandler<OnDisconnectEvent>? Disconnect;
+        protected virtual void OnDisconnect(OnDisconnectEvent classData) {
+            Disconnect?.Invoke(this, classData);
         }
     }
 }

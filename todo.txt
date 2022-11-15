@@ -5,3 +5,5 @@ Add More events
 Handle client crash better
 
 Event handlers for server
+
+Server event handler onuserdisconnect
