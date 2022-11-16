@@ -398,8 +398,7 @@ namespace ClientFramework {
 
 			int _clientID = (int)returnedParams[0];
 			if (_clientID < 0) {
-                string data = (string)returnedParams[1];
-                if (_clientID == -2) throw new Exception($"Version mismatch! You have: {version}, server has: {data}");
+                if (_clientID == -2) throw new Exception($"Version mismatch! You have: {version}, server has: {(string)returnedParams[1]}");
 				if (_clientID == -3) throw new Exception("Username already in use!");
 				throw new Exception($"Handshake failed. Code:{_clientID}");
 			}

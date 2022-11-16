@@ -5,10 +5,10 @@ namespace ClientFramework;
 public static class Logger {
     public static bool Enabled = true;
     public static bool Debug = true;
-    public static Thread? writerThread;
-    public static List<object> Texts = new List<object>();
-    public static string? logFile;
-    public static void WriterThread() {
+    private static Thread? writerThread;
+    private static List<object?> Texts = new List<object?>();
+    private static string? logFile;
+    private static void WriterThread() {
         string LogFolder = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + @"\Logs";
         if (!Directory.Exists(LogFolder))
             Directory.CreateDirectory(LogFolder);
@@ -20,8 +20,8 @@ public static class Logger {
         while (writerThread != null) {
             if (Texts.Count() > 0) {
                 try {
-                    foreach (object text in Texts.ToList()) {
-                        writer.WriteLine(DateTime.Now.ToString("HH:mm:ss:FF\t") + text.ToString());
+                    foreach (object? text in Texts.ToList()) {
+                        writer.WriteLine(text?.ToString());
                         Texts.Remove(text);
                     }
                     writer.Flush();
@@ -35,7 +35,7 @@ public static class Logger {
         writer.Close();
     }
 
-    public static void CloseWriter() {
+    private static void CloseWriter() {
         writerThread = null;
     }
 
@@ -46,7 +46,7 @@ public static class Logger {
             time = time.Remove(time.Length - 1);
             time = time + ("0" + last);
         }
-        text = text == null ? "" : $"{time} | {text}";
+        text = text == null ? null : $"{time} | {text}";
 
         if (Debug) Console.WriteLine(text);
 

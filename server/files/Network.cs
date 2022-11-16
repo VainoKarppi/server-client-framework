@@ -16,6 +16,9 @@ using System.Threading;
 using static ServerFramework.Logger;
 
 namespace ServerFramework {
+    public class Settings {
+        public static bool AllowSameUsername = true;
+    }
     public class Network {
         public const int Version = 1000;
         private static TcpListener? ServerListener;
@@ -457,6 +460,17 @@ namespace ServerFramework {
                 handshakeMessage.Parameters = new object[] {-2,progVersion};
                 Network.SendData(handshakeMessage);
                 return;
+            }
+
+            // Check if username already in use
+            if (!Settings.AllowSameUsername) {
+                NetworkClient? usedClient = ClientList.First(x => x.UserName.ToLower() == userName.ToLower());
+                if (usedClient != null) {
+                    Log($"Username alread in use!");
+                    handshakeMessage.Parameters = new object[] {-3};
+                    Network.SendData(handshakeMessage);
+                    return;
+                }
             }
 
             List<object[]> clientlist = new List<object[]>(){};
