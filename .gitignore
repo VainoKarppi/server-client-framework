@@ -1,6 +1,7 @@
 .vscode
 .vs
 
+test
 
 server/bin/**
 server/bin/*

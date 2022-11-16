@@ -12,6 +12,7 @@ namespace ServerFramework {
             Console.WriteLine("Commands: ");
             Console.WriteLine();
             Console.WriteLine("Clear        | Clears console");
+            Console.WriteLine("ToggleDebug  | Sets Debug ON or OFF for console");
             Console.WriteLine("Users        | Users connected to server");
             Console.WriteLine("Start        | Start server");
             Console.WriteLine("Stop         | Stop server");
@@ -61,9 +62,8 @@ namespace ServerFramework {
             foreach (var item in Network.ClientMethods) Console.WriteLine($"{item[0]} : ({item[1]})");
         }
         public static void GetServerMethods() {
-            if (Network.ServerMethods == null) throw new Exception("Server Methods not Initialized yet! (Gets populated when server running)");
             Console.WriteLine();
-            foreach (var item in Network.ServerMethods) Console.WriteLine($"{item[0]} : ({item[1]})");    
+            foreach (var item in Network.ServerMethods) Console.WriteLine($"{item.Name} : ({item.ReturnType})");    
         }
         public static void SendEvent() {
             Network.NetworkEvent eventData = new Network.NetworkEvent {

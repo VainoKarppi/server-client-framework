@@ -39,18 +39,15 @@ public static class Logger {
         writerThread = null;
     }
 
-    public static void Log(object text = null) {
-        if (text == null) {
-            
-        }
+    public static void Log(object? text = null) {
         string time = DateTime.Now.ToString("ss:FF");
         if (time.Length < 11) {
             string last = time.Substring(time.Length - 1,1);
             time = time.Remove(time.Length - 1);
             time = time + ("0" + last);
         }
-        text = $"{time} | {text}";
-        
+        text = text == null ? "" : $"{time} | {text}";
+
         if (Debug) Console.WriteLine(text);
 
         if (!Enabled) return;

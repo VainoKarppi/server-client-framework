@@ -17,7 +17,6 @@ using static ServerFramework.Logger;
 
 namespace ServerFramework {
     public class Network {
-        public static bool Debug = true;
         public const int Version = 1000;
         private static TcpListener? ServerListener;
         private static readonly object _lock = new object();
@@ -47,24 +46,43 @@ namespace ServerFramework {
 			public bool isHandshake { get; set; } = false;
 			// Used to detect for handshake. Else send error for not connected to server!
 		}
-        public static List<object[]>? ServerMethods;
         public static List<object[]>? ClientMethods; 
-        private static List<string> PrivateMethods = new List<string>() {};
+        private static List<string> PrivateMethods = new List<string>();
 		private static Dictionary<int,dynamic> Results = new Dictionary<int,dynamic>();
+        public static List<MethodInfo> ServerMethods = new List<MethodInfo>();
+
+        /// <summary>
+        /// Registers method to be invoked. Can be class or single method.
+        /// 
+        /// </summary>
+        /// <param name="className"></param>
+        /// <param name="methodName"></param>
+        /// <returns>INT : Number of methods registered</returns>
+        public static int RegisterMethod(Type className, string? methodName = null) {
+            try {
+                if (ServerRunning) throw new Exception("Cannot register new methods while server is running!");
+                if (methodName == null) {
+                    MethodInfo[] methods = className.GetMethods(BindingFlags.Static | BindingFlags.Public);
+                    int i = 0;
+                    foreach (var item in methods) {
+                        if (ServerMethods.Contains(item)) continue;
+                        ServerMethods.Add(item);
+                        i++;
+                    }
+                    return i;
+                } else {
+                    MethodInfo? item = className.GetMethod(methodName,BindingFlags.Static | BindingFlags.Public | BindingFlags.IgnoreCase);
+                    if (item == null) return 0;
+                    if (ServerMethods.Contains(item)) return 0;
+                    ServerMethods.Add(item);
+                    return 1;
+                }
+            } catch { return -1; }
+        }
 
         public static void StartServer(int serverPort) {
             if (ServerRunning)
                 throw new Exception("Server already running!");
-            
-            if (ServerMethods == null) {
-                MethodInfo[] methodInfos = typeof(ServerMethods).GetMethods();
-
-                ServerMethods = new List<object[]> ();
-                foreach (MethodInfo method in methodInfos) {
-                    ServerMethods.Add(new object[]{method.Name,method.ReturnType});
-                }
-                ServerMethods.RemoveRange(ServerMethods.Count() - 4,4);
-            }
 
             new Thread(() => {
                 Thread.CurrentThread.IsBackground = true;
@@ -73,7 +91,7 @@ namespace ServerFramework {
                 ServerListener.Start();
                 ServerRunning = true;
 
-                Log("Running server at port: " + ServerListener.LocalEndpoint.ToString().Split(':')[1]);
+                Log("Running server at port: " + ServerListener.LocalEndpoint?.ToString()?.Split(':')[1]);
 
                 int _clientID = 2; // (0 = All clients, 1 = server, 2 and above for specific clients)
                 while (ServerRunning) {
@@ -115,8 +133,8 @@ namespace ServerFramework {
             SendEvent(message);
             
             ServerRunning = false;
-            ServerListener.Server.Dispose();
-            ServerListener.Server.Close();
+            ServerListener?.Server.Dispose();
+            ServerListener?.Server.Close();
             ServerListener = null;
             foreach (NetworkClient client in ClientList) {
                 client.Close();
@@ -154,16 +172,16 @@ namespace ServerFramework {
             // Send to single or multiple users
             message.Targets = null; // Dont send targets over net
             foreach (int id in targets) {
-                NetworkClient client = ClientList.FirstOrDefault(c => c.Id == id);
-                if (client == default) continue;
+                NetworkClient? client = ClientList.FirstOrDefault(c => c.Id == id);
+                if (client == null) continue;
                 SendMessage(message,client.Stream);
             }
         }
 
         private static void SendMessage(dynamic message, NetworkStream Stream) {
             if (message is NetworkMessage && (!message.isHandshake)) {
-				NetworkEvents listener = NetworkEvents.eventsListener;
-				listener.ExecuteEvent(new OnMessageSentEvent(message));
+				NetworkEvents? listener = NetworkEvents.eventsListener;
+				listener?.ExecuteEvent(new OnMessageSentEvent(message));
 			}
 			if (message is NetworkMessage && !(message.Parameters is null) && message.Sender == 1) {
                 bool useClass = false;
@@ -192,14 +210,14 @@ namespace ServerFramework {
 			if (message.MessageType == null) message.MessageType = (int?)MessageTypes.SendData;
 
             if (message.MessageType != (int)MessageTypes.ResponseData) {
-                var found = ClientMethods.FirstOrDefault(x => x[0].ToString().ToLower() == message.MethodName.ToLower());
+                var found = ClientMethods?.FirstOrDefault(x => x[0].ToString()?.ToLower() == message.MethodName?.ToLower());
 				if (found == default) throw new Exception($"Method {message.MethodName} not listed in CLIENT'S methods list");
             }
             
             // Send to single ro multiple users
             if (message.TargetId > 0) {
-                NetworkClient client = ClientList.FirstOrDefault(c => c.Id == message.TargetId);
-                if (client == default) throw new Exception("Invalid target!");
+                NetworkClient? client = ClientList.FirstOrDefault(c => c.Id == message.TargetId);
+                if (client == null) throw new Exception("Invalid target!");
                 SendMessage(message,client.Stream);
                 int mode = message.Sender == 1?1:3;
                 DebugMessage(message,mode);
@@ -235,14 +253,14 @@ namespace ServerFramework {
 			if (!ServerRunning) throw new Exception("Server Not running!");
             if (message.TargetId == 1) throw new Exception("Cannot request data from self!");
             if (message.MessageType != (int)MessageTypes.ResponseData) {
-                var found = ClientMethods.FirstOrDefault(x => x[0].ToString().ToLower() == message.MethodName.ToLower());
+                var found = ClientMethods?.FirstOrDefault(x => x[0].ToString()?.ToLower() == message.MethodName?.ToLower());
 				if (found == default) throw new Exception($"Method {message.MethodName} not listed in CLIENT'S methods list");
 				if (((Type)found[1]) == typeof(void)) throw new Exception($"Method {message.MethodName} doesn't have a return value! (Uses void)");	
             }
 			message.MessageType = (int?)MessageTypes.RequestData;
 
-            NetworkClient client = ClientList.FirstOrDefault(client => client.Id == message.TargetId);
-            if (client == default) throw new Exception("Invalid target!");
+            NetworkClient? client = ClientList.FirstOrDefault(client => client.Id == message.TargetId);
+            if (client == null) throw new Exception("Invalid target!");
 
 			
 			SendMessage(message,client.Stream);
@@ -251,25 +269,11 @@ namespace ServerFramework {
 			return RequestDataResult(message);
 		}
 		public static dynamic RequestData<T>(NetworkMessage message) {
-			if (!ServerRunning) throw new Exception("Server Not running!");
-            if (message.TargetId == 1) throw new Exception("Cannot request data from self!");
-            if (message.MessageType != (int)MessageTypes.ResponseData) {
-                var found = ClientMethods.FirstOrDefault(x => x[0].ToString().ToLower() == message.MethodName.ToLower());
-				if (found == default) throw new Exception($"Method {message.MethodName} not listed in CLIENT'S methods list");
-				if (((Type)found[1]) == typeof(void)) throw new Exception($"Method {message.MethodName} doesn't have a return value! (Uses void)");	
-            }
-			message.MessageType = (int?)MessageTypes.RequestData;
-
-            NetworkClient client = ClientList.FirstOrDefault(client => client.Id == message.TargetId);
-            if (client == default) throw new Exception("Invalid target!");
-            
-			
-			SendMessage(message,client.Stream);
-            DebugMessage(message,1);
-
-			dynamic returnMessage = RequestDataResult(message);
+			dynamic returnMessage = RequestData(message);
 			if (returnMessage is JsonElement) {
-				return ((JsonElement)returnMessage[1]).Deserialize<T>();
+                var returned = ((JsonElement)returnMessage[1]).Deserialize<T>();
+                if (returned == null) throw new NullReferenceException();
+                return returned;
 			}
 			return (T)returnMessage;
 		}
@@ -312,7 +316,7 @@ namespace ServerFramework {
 
 					message.Parameters = DeserializeParameters(message.Parameters,message.UseClass);
 
-                    NetworkEvents listener = NetworkEvents.eventsListener;
+                    NetworkEvents? listener = NetworkEvents.eventsListener;
                     
                     // HANDLE HANDSHAKE
                     if (message.isHandshake) {
@@ -325,7 +329,7 @@ namespace ServerFramework {
                                 };
                                 SendEvent(eventMessage);
                                 
-                                listener.ExecuteEvent(eventMessage?.EventClass);
+                                listener?.ExecuteEvent(eventMessage?.EventClass);
 
                                 _client.HandshakeDone = true;
                                 Log($"*SUCCESS* Handshake done! ({_client.Id})");
@@ -339,7 +343,7 @@ namespace ServerFramework {
                         continue;
                     }
 
-                    listener.ExecuteEvent(new OnMessageReceivedEvent(message));
+                    listener?.ExecuteEvent(new OnMessageReceivedEvent(message));
 
                     // Dump result to array and continue
 					if (message.MessageType == (int)MessageTypes.ResponseData) {
@@ -347,65 +351,54 @@ namespace ServerFramework {
 						continue;
 					}
 
-                    
-                    // DESERIALISE PARAMETERS AND ADD CLIENT AS FIRST PARAMETER
-                    List<object> paramList = new List<object>();
-                    paramList.Add(_client);
-                    if (!(message.Parameters is null)) {
-                        paramList.Add(message.Parameters);
-                    }
-                    object[] parameters = paramList.ToArray();  
+                
                     
                     // GET METHOD INFO
-                    string methodName;
 					int methodId;
-                    MethodInfo methodInfo;
+                    MethodInfo? method;
 					bool isInt = int.TryParse(message.MethodName, out methodId);
-					if (isInt) {
-						if (methodId < 0) {
-							methodName = PrivateMethods[Math.Abs(methodId) - 1];
-							methodInfo = typeof(Network).GetMethod(methodName);
-						} else {
-							methodName = (string)(ServerMethods[methodId])[0];
-							methodInfo = typeof(ServerMethods).GetMethod(methodName);
-							if (methodInfo == null) throw new Exception($"Method {methodId} was not found ({methodName})");
-						}
+					if (isInt && (methodId < 0)) {
+                        string methodName = PrivateMethods[Math.Abs(methodId) - 1];
+                        method = typeof(Network).GetMethod(methodName);
 					} else {
-                        object[] methodData = ServerMethods.FirstOrDefault(x => x[0].ToString().ToLower() == message.MethodName.ToLower());
-                        if (methodData == default) throw new Exception($"Method {message.MethodName} was not found from ServerMethods!");
+                        method = ServerMethods.FirstOrDefault(x => x.Name.ToLower() == message.MethodName?.ToLower());
+                        if (method == default) throw new Exception($"Method {message.MethodName} was not found from Registered Methods!");
+                    }
 
-                        methodName = (string)methodData[0];
-						methodInfo = typeof(ServerMethods).GetMethod(methodName);
-						if (methodInfo == null) throw new Exception($"Method {methodName} was not found");
-					}
+                    // DESERIALISE PARAMETERS AND ADD CLIENT AS FIRST PARAMETER
+                    object[]? parameters = null;
+                    if (method?.GetParameters().Count() > 0) {
+                        List<object> paramList = new List<object>();
+                        paramList.Add(_client);
+                        if (!(message.Parameters is null)) {
+                            paramList.Add(message.Parameters);
+                        }
+                        parameters = paramList.ToArray();  
+                    }
 
-					switch (message.MessageType)
-					{
-						// SEND A RESPONSE FOR CLIENT/SERVER
-						case (int)MessageTypes.RequestData:
-                            if (message.TargetId > 1) {
-                                Network.SendData(message); // FORWARD TO CLIENT
-                            } else {
-                                NetworkMessage responseMessage = new NetworkMessage {
-                                    MessageType = (int)MessageTypes.ResponseData,
-                                    MethodName = message.MethodName,
-                                    TargetId = message.Sender,
-                                    Key = message.Key
-                                };
-                                // HANDLE ON SERVER
-                                object? data = methodInfo?.Invoke(methodName,parameters);
-                                if (data != null) responseMessage.Parameters = data;
+					switch (message.MessageType) {
+                        case (int)MessageTypes.RequestData: { // Invoke Method and send response back to client
+                            NetworkMessage responseMessage = new NetworkMessage {
+                                MessageType = (int)MessageTypes.ResponseData,
+                                MethodName = message.MethodName,
+                                TargetId = message.Sender,
+                                Key = message.Key
+                            };
+                            object? data = method?.Invoke(null, parameters);
+                            if (data != null) responseMessage.Parameters = data;
 
-                                Network.SendData(responseMessage);
-                            }
+                            Network.SendData(responseMessage);
+                            break;
+                        }
+
+                        case (int)MessageTypes.SendData: { // FIRE AND FORGET was used (Dont return method return data)
+                            method?.Invoke(null, parameters);
 							break;
-						
-						// FIRE AND FORGET (Dont return method return data)
-						case (int)MessageTypes.SendData:
-							methodInfo?.Invoke(methodName,parameters);
-							break;
-						default:
-							throw new NotImplementedException();
+                        }
+
+						default: {
+                            throw new NotImplementedException();
+                        }
 					}
                 } catch (Exception ex) {
                     ClientList.Remove(_client);
@@ -419,8 +412,8 @@ namespace ServerFramework {
                     };
                     SendEvent(message);
 
-                    NetworkEvents listener = NetworkEvents.eventsListener;
-                    listener.ExecuteEvent(message.EventClass);
+                    NetworkEvents? listener = NetworkEvents.eventsListener;
+                    listener?.ExecuteEvent(message.EventClass);
 
                     break;
                 }
@@ -441,7 +434,9 @@ namespace ServerFramework {
             if (ClientMethods == null) {
                 ClientMethods = new List<object[]>() {};
                 foreach (object[] method in (object[])parameters[2]) {
-                    ClientMethods.Add(new object[] {(string)method[0],Type.GetType((string)method[1])});
+                    Type? type = Type.GetType((string)method[1]);
+                    if (type == null) continue;
+                    ClientMethods.Add(new object[] {(string)method[0], type});
                 }
                 Log($"Added ({ClientMethods.Count()}) client methods!");
             }
@@ -473,7 +468,7 @@ namespace ServerFramework {
                 if (!toAdd.Connected || toAdd.Id == client.Id) continue;
                 targetList.Add(toAdd.Id);
             }
-            object[] methodsToSend = ServerMethods.Select(x => new object[] {x[0],x[1].ToString()}).ToArray();
+            object[] methodsToSend = ServerMethods.Select(x => new object[] {x.Name,x.ReturnType.ToString()}).ToArray();
             handshakeMessage.Parameters = new object[] {client.Id,methodsToSend,clientlist.ToArray()};
 
             Network.SendData(handshakeMessage);
@@ -501,7 +496,7 @@ namespace ServerFramework {
 			}
 			return newParams.ToArray();
 		}
-		private static dynamic DeserializeParameters(dynamic parameterData,bool isClass = false) {
+		private static dynamic? DeserializeParameters(dynamic parameterData,bool isClass = false) {
             if(parameterData is null) return null;
 			if (isClass) return parameterData;
             List<object> parameters = JsonSerializer.Deserialize<List<object>>(parameterData);
@@ -509,20 +504,23 @@ namespace ServerFramework {
             if (odd && parameters.Count() > 2) {
                 parameters.RemoveAt(0);
             }
-			Type type = default;
-			List<object> final = new List<object>();
+			Type? type = default;
+			List<object?> final = new List<object?>();
 			for (int i = 0; i < parameters.Count(); i++) {
-				object value = parameters[i];
-				if (i%2 == 0) {
-					type = Type.GetType(value.ToString());
+				object? value = parameters[i];
+                string? valueString = value.ToString();
+                if (valueString == null) continue;
+                if (i%2 == 0) {
+					type = Type.GetType(valueString);
 					continue;
 				}
-				if (type.IsArray) {
-					object[] data = ParseParamArray(value.ToString());
+                if (type == null) continue;
+                if (type.IsArray) {
+					object[] data = ParseParamArray(valueString);
 					final.Add(data);
 				} else {
-					object dataTemp = TypeDescriptor.GetConverter(type).ConvertFromInvariantString(value.ToString());
-					final.Add(dataTemp);
+					object? dataTemp = TypeDescriptor.GetConverter(type).ConvertFromInvariantString(valueString);
+                    final.Add(dataTemp);
 				}
 			}
             if (!odd) {
@@ -532,28 +530,27 @@ namespace ServerFramework {
 		}
 
         private static void DebugMessage(NetworkMessage message,int mode = 0) {
-            if (!Debug) return;
-            Console.WriteLine();
-            Console.WriteLine("===============DEBUG MESSAGE===============");
+            Log();
+            Log("===============DEBUG MESSAGE===============");
             string type = "UNKNOWN";
             if (mode == 1) type = "OUTBOUND";
             else if (mode == 2) type = "INBOUND";
-            Console.WriteLine();
-            Console.WriteLine(JsonSerializer.Serialize<object>(message));
-            Console.WriteLine();
-            Console.WriteLine($"MODE: {type}");
-            Console.WriteLine($"TIME: {DateTime.Now.Millisecond}");
-            Console.WriteLine($"MessageType:{message.MessageType}");
-            Console.WriteLine($"TargetId:{message.TargetId}");
-            Console.WriteLine($"MethodName:{message.MethodName}");
-            Console.WriteLine($"IsClass:{message.UseClass}");
-            Console.WriteLine();
-            Console.WriteLine(JsonSerializer.Serialize<object>(message.Parameters));
-            Console.WriteLine();
-            Console.WriteLine($"Key:{message.Key}");
-            Console.WriteLine($"Sender:{message.Sender}");
-            Console.WriteLine("===============DEBUG MESSAGE===============");
-            Console.WriteLine();
+            Log();
+            Log(JsonSerializer.Serialize<object>(message));
+            Log();
+            Log($"MODE: {type}");
+            Log($"TIME: {DateTime.Now.Millisecond}");
+            Log($"MessageType:{message.MessageType}");
+            Log($"TargetId:{message.TargetId}");
+            Log($"MethodName:{message.MethodName}");
+            Log($"IsClass:{message.UseClass}");
+            Log();
+            Log(JsonSerializer.Serialize<object>(message.Parameters));
+            Log();
+            Log($"Key:{message.Key}");
+            Log($"Sender:{message.Sender}");
+            Log("===============DEBUG MESSAGE===============");
+            Log();
         }
         private static object[] ParseParamArray(string args) {
 			if (args.ElementAt(0) != '[') 
@@ -630,7 +627,7 @@ namespace ServerFramework {
 		}
 
         public class NetworkClient : TcpClient {
-            public NetworkStream? Stream { get; set; }
+            public NetworkStream Stream { get; set; }
             public StreamReader Reader { get; set; }
             public StreamWriter Writer { get; set; }
             public int Id { get; set; }

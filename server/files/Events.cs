@@ -56,15 +56,11 @@ namespace ServerFramework {
 
     public class NetworkEvents {
         public static NetworkEvents? eventsListener { get; set; }
-        public async void ExecuteEvent(dynamic classData, bool useBlocked = false) {
+        public async void ExecuteEvent(dynamic? classData, bool useBlocked = false) {
             Thread eventThread = new Thread(() => {
                 try {
-                    string eventName;
-                    if (classData is JsonElement) {
-                        eventName = ((JsonElement)classData).GetProperty("EventName").GetString();
-                    } else {
-                        eventName = classData.EventName;
-                    }
+                    string? eventName = (classData is JsonElement) ? ((JsonElement)classData).GetProperty("EventName").GetString() : classData?.EventName;
+                    if (eventName == null) throw new NullReferenceException(eventName);
 
                     switch (eventName.ToLower()) {
                         case "onclientconnectevent":

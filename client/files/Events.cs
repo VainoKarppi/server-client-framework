@@ -75,15 +75,11 @@ namespace ClientFramework {
 
     public class NetworkEvents {
         public static NetworkEvents? eventsListener { get; set; }
-        public async void ExecuteEvent(dynamic classData, bool useBlocked = false) {
+        public async void ExecuteEvent(dynamic? classData, bool useBlocked = false) {
             Thread eventThread = new Thread(() => {
                 try {
-                    string eventName;
-                    if (classData is JsonElement) {
-                        eventName = ((JsonElement)classData).GetProperty("EventName").GetString();
-                    } else {
-                        eventName = classData.EventName;
-                    }
+                    string? eventName = (classData is JsonElement) ? ((JsonElement)classData).GetProperty("EventName").GetString() : classData?.EventName;
+                    if (eventName == null) throw new NullReferenceException(eventName);
 
                     switch (eventName.ToLower()) {
                         case "onclientconnectevent":
@@ -129,7 +125,7 @@ namespace ClientFramework {
 
         public event EventHandler<OnClientConnectEvent>? ClientConnected;
         protected virtual void OnClientConnected(OnClientConnectEvent classData) {
-            Network.OtherClients.Add(new Network.OtherClient(classData.Id,classData.UserName));
+            if (classData.UserName != null) Network.OtherClients.Add(new Network.OtherClient(classData.Id,classData.UserName));
             ClientConnected?.Invoke(this, classData);
         }
         

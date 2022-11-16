@@ -42,14 +42,14 @@ namespace ClientFramework {
             NetworkEvents.eventsListener.MessageSent += OnMessageSent;
             NetworkEvents.eventsListener.MessageReceived += OnMessageReceived;
 
-            
+            Network.RegisterMethod(typeof(ClientFramework.ClientMethods));
 
             Console.Title = "CLIENT";
             Console.Clear();
             Console.WriteLine("Type 'help' for commands!");
 
             while (true) {
-                Console.Write("> ");
+                Console.WriteLine();
                 string? command = Console.ReadLine();
                 command = command.ToLower();
 
@@ -58,6 +58,9 @@ namespace ClientFramework {
                     {
                         case "help":
                             Commands.Help();
+                            break;
+                        case "toggledebug":
+                            Logger.Debug = !Logger.Debug;
                             break;
                         case "clear":
                             Console.Clear();

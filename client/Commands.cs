@@ -13,6 +13,7 @@ namespace ClientFramework {
             Console.WriteLine("Commands: ");
             Console.WriteLine();
             Console.WriteLine("Clear            | Clears console");
+            Console.WriteLine("ToggleDebug      | Sets Debug ON or OFF for console");
             Console.WriteLine("Users            | Users connected to server");
             Console.WriteLine("Connect          | Connect to server");
             Console.WriteLine("Disconnect       | Disconnect from server");
@@ -63,9 +64,8 @@ namespace ClientFramework {
             Network.SendData(message);
         }
         public static void GetClientMethods() {
-            if (Network.ClientMethods == null) throw new Exception("Client Methods not Initialized yet! (Gets populated when client has connected to server)");
             Console.WriteLine();
-            foreach (var item in Network.ClientMethods) Console.WriteLine($"{item[0]} : ({item[1]})");
+            foreach (var item in Network.ClientMethods) Console.WriteLine($"{item.Name} : ({item.ReturnType})");
         }
         public static void GetServerMethods() {
             if (Network.ServerMethods == null) throw new Exception("Server Methods not Initialized yet! (Gets populated when when connected to server)");
