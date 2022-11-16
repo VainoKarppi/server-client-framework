@@ -43,13 +43,13 @@ namespace ClientFramework {
 
             Console.WriteLine();
             Console.WriteLine("method to be sent to client/server: ");
-            string method = Console.ReadLine();
+            string? method = Console.ReadLine();
             Console.WriteLine();
             Console.WriteLine("DATA string to be sent to client/server: ");
             string? data = Console.ReadLine();
             Console.WriteLine();
             Console.WriteLine("Target ID: (Blank or 0 for all clients)");
-            string target;
+            string? target;
             while (true) {
                 target = Console.ReadLine();
                 if (!string.IsNullOrEmpty(target)) break;
@@ -57,7 +57,7 @@ namespace ClientFramework {
             }
 
             Network.NetworkMessage message = new Network.NetworkMessage {
-                Parameters = new object[] {data},
+                Parameters = data == null ? null : new object[] {data},
                 MethodName = method,
                 TargetId = Int32.Parse(target)
             };
@@ -78,11 +78,11 @@ namespace ClientFramework {
 
             Console.WriteLine();
             Console.WriteLine("Enter Method Name:");
-            string method = Console.ReadLine();
+            string? method = Console.ReadLine();
 
             Console.WriteLine();
             Console.WriteLine("Target ID: (Blank or 0 for all clients)");
-            string target;
+            string? target;
             while (true) {
                 target = Console.ReadLine();
                 if (!string.IsNullOrEmpty(target)) break;
@@ -113,7 +113,7 @@ namespace ClientFramework {
 
             Console.WriteLine();
             Console.WriteLine("Target ID: (Blank or 0 for all clients)");
-            string target;
+            string? target;
             while (true) {
                 target = Console.ReadLine();
                 if (!string.IsNullOrEmpty(target)) break;
@@ -125,9 +125,9 @@ namespace ClientFramework {
                 MethodName = "TestType",
                 TargetId = Int32.Parse(target)
             };
-            TestClass a = Network.RequestData<TestClass>(message);
+            TestClass? a = Network.RequestData<TestClass>(message);
             Console.WriteLine($"RETURNED:{a.StringTest}");
-            Console.WriteLine($"RETURNED:{a.Data[0]}");
+            Console.WriteLine($"RETURNED:{a.Data?[0]}");
         }
     }
 }

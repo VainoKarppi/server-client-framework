@@ -41,6 +41,8 @@ public class Program {
         Console.Title = "SERVER";
         Console.WriteLine("Type 'help' for commands!");
 
+        Settings.AllowSameUsername = false;
+
         var version = Assembly.GetExecutingAssembly().GetName().Version;
         Console.WriteLine(version);
 
@@ -60,8 +62,8 @@ public class Program {
 
         while (true) {
             Console.WriteLine();
-            string command = Console.ReadLine();
-            command = command.ToLower();
+            string? command = Console.ReadLine();
+            command = command?.ToLower();
         
             try {
                 switch (command) {
@@ -83,7 +85,7 @@ public class Program {
                     case "start":
                         if (Network.ServerRunning) throw new Exception("Server already running!");
                         Console.WriteLine("Enter server port:");
-                        string portNew = Console.ReadLine();
+                        string? portNew = Console.ReadLine();
                         if (String.IsNullOrEmpty(portNew)) portNew = "5001";
                         Network.StartServer(Int32.Parse(portNew));
                         break;

@@ -51,7 +51,7 @@ namespace ClientFramework {
             while (true) {
                 Console.WriteLine();
                 string? command = Console.ReadLine();
-                command = command.ToLower();
+                command = command?.ToLower();
 
                 try {
                     switch (command)
@@ -70,13 +70,13 @@ namespace ClientFramework {
                             break;
                         case "connect":
                             Console.WriteLine("Enter IP adress:");
-                            string ip = Console.ReadLine();
+                            string? ip = Console.ReadLine();
                             if (string.IsNullOrEmpty(ip)) ip = "127.0.0.1";
                             Console.WriteLine("Enter Port");
-                            string port = Console.ReadLine();
+                            string? port = Console.ReadLine();
                             if (string.IsNullOrEmpty(port)) port = "5001";
                             Console.WriteLine("Username:");
-                            string name = Console.ReadLine();
+                            string? name = Console.ReadLine();
                             if (string.IsNullOrEmpty(name)) {
                                 Random rd = new Random();
                                 name = ("RANDOMUSER" + rd.Next(1,10).ToString());

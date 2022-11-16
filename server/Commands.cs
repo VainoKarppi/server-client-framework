@@ -28,8 +28,9 @@ namespace ServerFramework {
                 throw new Exception("No users connected!");
 
             Console.WriteLine("Connected clients count: " + Network.ClientList.Count());
-            foreach (Network.NetworkClient client in Network.ClientList) {
-                string remoteIP = ((IPEndPoint)client.Client.RemoteEndPoint).Address.ToString();
+            foreach (Network.NetworkClient? client in Network.ClientList) {
+                EndPoint? endPoint = client.Client.RemoteEndPoint;
+                string? remoteIP = (endPoint as IPEndPoint)?.Address?.ToString();
                 Console.WriteLine("    User: " + client.UserName + " - (" + remoteIP + ") : ID=" + client.Id.ToString());
             }
         }
@@ -42,10 +43,10 @@ namespace ServerFramework {
 
             Console.WriteLine();
             Console.WriteLine("method to be sent to client: ");
-            string method = Console.ReadLine();
+            string? method = Console.ReadLine();
             Console.WriteLine();
             Console.WriteLine("Target ID: (Blank or 0 for all clients)");
-            string target = Console.ReadLine();
+            string? target = Console.ReadLine();
             if (string.IsNullOrEmpty(target))
                 target = "0";
 
@@ -80,10 +81,10 @@ namespace ServerFramework {
 
             Console.WriteLine();
             Console.WriteLine("method to be sent to client: ");
-            string method = Console.ReadLine();
+            string? method = Console.ReadLine();
             Console.WriteLine();
             Console.WriteLine("Target ID: (Blank or 0 for all clients)");
-            string target = Console.ReadLine();
+            string? target = Console.ReadLine();
             if (string.IsNullOrEmpty(target))
                 target = "0";
 
@@ -106,7 +107,7 @@ namespace ServerFramework {
                 throw new Exception("No clients online!");
 
             Console.WriteLine("Target ID: (Blank or 0 for all clients)");
-            string target = Console.ReadLine();
+            string? target = Console.ReadLine();
             if (string.IsNullOrEmpty(target))
                 target = "0";
 
@@ -117,7 +118,7 @@ namespace ServerFramework {
             };
             TestClass a = Network.RequestData<TestClass>(message);
             Console.WriteLine($"RETURNED:{a.StringTest}");
-            Console.WriteLine($"RETURNED:{a.Data[0]}");
+            Console.WriteLine($"RETURNED:{a.Data?[0]}");
         }
     }
 }

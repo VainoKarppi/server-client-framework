@@ -17,7 +17,16 @@ using static ServerFramework.Logger;
 
 namespace ServerFramework {
     public class Settings {
+        /// <summary>
+        /// Checks if username is already in use on one of the clients. If in use and set to false, error will occur
+        /// </summary>
         public static bool AllowSameUsername = true;
+
+        /// <summary>
+        /// If true all clients can have their own methods.
+        /// Otherwise the first client that joins is used as a "base" for methods and if other clients have more or less methods, this will occur error
+        /// </summary>
+        public static bool AllowDifferentMethods = false;
     }
     public class Network {
         public const int Version = 1000;
@@ -49,6 +58,10 @@ namespace ServerFramework {
 			public bool isHandshake { get; set; } = false;
 			// Used to detect for handshake. Else send error for not connected to server!
 		}
+
+        /// <summary>
+        /// Returns list of available methods on client. Array of arrays. First object is string of the method name. Second object is the returned data type
+        /// </summary>
         public static List<object[]>? ClientMethods; 
         private static List<string> PrivateMethods = new List<string>();
 		private static Dictionary<int,dynamic> Results = new Dictionary<int,dynamic>();
@@ -264,8 +277,7 @@ namespace ServerFramework {
 
             NetworkClient? client = ClientList.FirstOrDefault(client => client.Id == message.TargetId);
             if (client == null) throw new Exception("Invalid target!");
-
-			
+		
 			SendMessage(message,client.Stream);
             DebugMessage(message,1);
 
@@ -433,17 +445,6 @@ namespace ServerFramework {
             // RETURNS client id if success (minus number if error (each value is one type of error))
             Log($"*HANDSHAKE START* Version:{version} Name:{userName}");
             client.UserName = userName;
-
-            if (ClientMethods == null) {
-                ClientMethods = new List<object[]>() {};
-                foreach (object[] method in (object[])parameters[2]) {
-                    Type? type = Type.GetType((string)method[1]);
-                    if (type == null) continue;
-                    ClientMethods.Add(new object[] {(string)method[0], type});
-                }
-                Log($"Added ({ClientMethods.Count()}) client methods!");
-            }
-            
             
 
             NetworkMessage handshakeMessage = new NetworkMessage {
@@ -462,9 +463,19 @@ namespace ServerFramework {
                 return;
             }
 
+            if (ClientMethods == null) {
+                ClientMethods = new List<object[]>() {};
+                foreach (object[] method in (object[])parameters[2]) {
+                    Type? type = Type.GetType((string)method[1]);
+                    if (type == null) continue;
+                    ClientMethods.Add(new object[] {(string)method[0], type});
+                }
+                Log($"Added ({ClientMethods.Count()}) client methods!");
+            }
+
             // Check if username already in use
             if (!Settings.AllowSameUsername) {
-                NetworkClient? usedClient = ClientList.First(x => x.UserName.ToLower() == userName.ToLower());
+                NetworkClient? usedClient = ClientList.First(x => x.HandshakeDone && x.UserName.ToLower() == userName.ToLower());
                 if (usedClient != null) {
                     Log($"Username alread in use!");
                     handshakeMessage.Parameters = new object[] {-3};

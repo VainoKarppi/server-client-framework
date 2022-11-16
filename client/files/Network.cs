@@ -206,14 +206,6 @@ namespace ClientFramework {
 						continue;
 					}
 
-
-					List<object> paramList = new List<object>();
-                    paramList.Add(Client);
-					if (!(message.Parameters is null)) {
-                        paramList.Add(message.Parameters);
-                    }
-                    object[] parameters = paramList.ToArray();
-
 					// GET METHOD INFO
 					int methodId;
                     MethodInfo? method;
@@ -226,6 +218,16 @@ namespace ClientFramework {
                         if (method == default) throw new Exception($"Method {message.MethodName} was not found from Registered Methods!");
                     }
                     
+					// DESERIALISE PARAMETERS AND ADD CLIENT AS FIRST PARAMETER
+                    object[]? parameters = null;
+                    if (method?.GetParameters().Count() > 0) {
+                        List<object> paramList = new List<object>();
+                        paramList.Add(Client);
+                        if (!(message.Parameters is null)) {
+                            paramList.Add(message.Parameters);
+                        }
+                        parameters = paramList.ToArray();  
+                    }
 
 					switch (message.MessageType)
 					{
@@ -376,7 +378,7 @@ namespace ClientFramework {
             Client.UserName = userName;
 			Log($"Starting HANDSHAKE with server, with version: {version}, with name: {userName}");
 
-			object[] methodsToSend = ClientMethods.Select(x => new object[] {x.Name, x.ReturnType.ToString()}).ToArray();
+			object[] methodsToSend = ClientMethods.Select(x => new object[] {x.Name, x.ReturnType.ToString(), x.GetParameters().Count()}).ToArray();
 			NetworkMessage handshakeMessage = new NetworkMessage {
 				MessageType = (int?)MessageTypes.RequestData,
 				TargetId = 1,
