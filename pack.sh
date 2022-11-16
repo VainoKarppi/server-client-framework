@@ -14,6 +14,8 @@ rm Class1.cs
 version=$(cat ..//version)
 echo $version
 
+sed -i '/<PropertyGroup>/,/<\/PropertyGroup>/ s/<\/PropertyGroup>/   <Version>'$version'<\/Version>\n<\/PropertyGroup>/' server-client-framework.csproj
+
 dotnet pack -p:PackageVersion=$version
 
 fileName=server-client-framework.$version.nupkg

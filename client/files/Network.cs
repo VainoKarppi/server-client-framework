@@ -371,8 +371,9 @@ namespace ClientFramework {
 			return returnMessage;
 		}
 		private static int Handshake(string userName) {
-			int version = Network.Version;
-			Client.UserName = userName;
+			string? version = Assembly.GetExecutingAssembly().GetName().Version?.ToString();
+			if (version == null) version = "1.0.0.0";
+            Client.UserName = userName;
 			Log($"Starting HANDSHAKE with server, with version: {version}, with name: {userName}");
 
 			object[] methodsToSend = ClientMethods.Select(x => new object[] {x.Name, x.ReturnType.ToString()}).ToArray();
@@ -397,7 +398,8 @@ namespace ClientFramework {
 
 			int _clientID = (int)returnedParams[0];
 			if (_clientID < 0) {
-				if (_clientID == -2) throw new Exception("Version mismatch!");
+                string data = (string)returnedParams[1];
+                if (_clientID == -2) throw new Exception($"Version mismatch! You have: {version}, server has: {data}");
 				if (_clientID == -3) throw new Exception("Username already in use!");
 				throw new Exception($"Handshake failed. Code:{_clientID}");
 			}

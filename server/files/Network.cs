@@ -425,7 +425,7 @@ namespace ServerFramework {
 
         private static void HandshakeClient(NetworkClient client, object[] parameters) {
             
-            int version = (int)parameters[0];
+            string? version = parameters[0].ToString();
             string userName = (string)parameters[1];
             // RETURNS client id if success (minus number if error (each value is one type of error))
             Log($"*HANDSHAKE START* Version:{version} Name:{userName}");
@@ -451,8 +451,10 @@ namespace ServerFramework {
             };
 
             //TODO add major and minor checking
-            if (version != Network.Version) {
-                Log($"User {userName} has wrong version! Should be: {Network.Version} has: {version}");
+            string? progVersion = Assembly.GetExecutingAssembly().GetName().Version?.ToString();
+            if (progVersion != null && version != progVersion) {
+                Log($"User {userName} has wrong version! Should be: {progVersion} has: {version}");
+                handshakeMessage.Parameters = new object[] {-2,progVersion};
                 Network.SendData(handshakeMessage);
                 return;
             }

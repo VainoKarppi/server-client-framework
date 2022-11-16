@@ -41,6 +41,9 @@ public class Program {
         Console.Title = "SERVER";
         Console.WriteLine("Type 'help' for commands!");
 
+        var version = Assembly.GetExecutingAssembly().GetName().Version;
+        Console.WriteLine(version);
+
         int methodsAdded = Network.RegisterMethod( typeof(ServerMethods) );
         Console.WriteLine($"{methodsAdded} Methods registered!");
 
