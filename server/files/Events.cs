@@ -14,21 +14,21 @@ namespace ServerFramework {
         }
     }
     public class OnClientConnectEvent : BaseEventClass {
-        public int? Id { get; set; }
+        public int? ClientID { get; set; }
         public string? UserName { get; set; }
         public bool? Success { get; set; } = true;
         public OnClientConnectEvent (int id, string username, bool success = false) {
-            Id = id;
+            ClientID = id;
             UserName = username;
             Success = success;
         }
     }
     public class OnClientDisconnectEvent : BaseEventClass {
-        public int? Id { get; set; }
+        public int? ClientID { get; set; }
         public string? UserName { get; set; }
         public bool? Success { get; set; }
         public OnClientDisconnectEvent (int id, string username, bool success = false) {
-            Id = id;
+            ClientID = id;
             UserName = username;
             Success = success;
         }
@@ -51,16 +51,50 @@ namespace ServerFramework {
             Message = message;
         }
     }
+    public class OnHandShakeStartEvent : BaseEventClass {
+        public string? ClientVersion { get; set; }
+        public string? ServerVersion { get; set; }
+        public string? UserName { get; set; }
+        /// <summary>
+        /// Client ID not available on client event!
+        /// </summary>
+        public int? ClientID { get; set; }
+        public OnHandShakeStartEvent (string? version, string? serverVersion, string username, int? id) {
+            ClientID = id;
+            ClientVersion = version;
+            ServerVersion = serverVersion;
+            UserName = username;
+        }
+    }
+    public class OnHandShakeEndEvent : BaseEventClass {
+        public string? ClientVersion { get; set; }
+        public string? ServerVersion { get; set; }
+        public string? UserName { get; set; }
+        public bool Success { get; set; }
+        public int ClientID { get; set; }
+        /// <summary>
+        /// 0 = not defined, 1 = server issue, not defined, 2 = version mismatch, 3 = username already in use
+        /// </summary>
+        public int StatusCode { get; set;  }
+        public OnHandShakeEndEvent (string? version, string? serverVersion, string username, int id, bool success = false, int code = 0) {
+            Success = success;
+            ClientVersion = version;
+            ServerVersion = serverVersion;
+            UserName = username;
+            StatusCode = code;
+            ClientID = id;
+        }
+    }
 
 
 
     public class NetworkEvents {
-        public static NetworkEvents? eventsListener { get; set; }
+        public static NetworkEvents eventsListener { get; set; } = new NetworkEvents();
         public async void ExecuteEvent(dynamic? classData, bool useBlocked = false) {
             Thread eventThread = new Thread(() => {
                 try {
                     string? eventName = (classData is JsonElement) ? ((JsonElement)classData).GetProperty("EventName").GetString() : classData?.EventName;
-                    if (eventName == null) throw new NullReferenceException(eventName);
+                    if (eventName == null) throw new Exception("INVALID EVENT. Not found!");
 
                     switch (eventName.ToLower()) {
                         case "onclientconnectevent":
@@ -83,12 +117,20 @@ namespace ServerFramework {
                             if (classData is JsonElement) classData = ((JsonElement)classData).Deserialize<Network.NetworkMessage>();
                             OnMessageReceived(classData);
                             break;
+                        case "onhandshakestartevent":
+                            if (classData is JsonElement) classData = ((JsonElement)classData).Deserialize<OnHandShakeStartEvent>();
+                            OnHandShakeStart(classData);
+                            break;
+                        case "onhandshakeendevent":
+                            if (classData is JsonElement) classData = ((JsonElement)classData).Deserialize<OnHandShakeEndEvent>();
+                            OnHandShakeEnd(classData);
+                            break;
                         default:
-                            Console.WriteLine(JsonSerializer.Deserialize<object>(classData));
+                            Logger.Log(JsonSerializer.Deserialize<object>(classData));
                             throw new NotImplementedException();
                     }
                 } catch (Exception ex) {
-                    Console.WriteLine(ex.Message);
+                    Logger.Log(ex.Message);
                 }
             });
             if (!useBlocked) eventThread.Start();
@@ -119,6 +161,16 @@ namespace ServerFramework {
         public event EventHandler<OnMessageReceivedEvent>? MessageReceived;
         protected virtual void OnMessageReceived(OnMessageReceivedEvent classData) {
             MessageReceived?.Invoke(this, classData);
+        }
+
+        public event EventHandler<OnHandShakeStartEvent>? HandshakeStart;
+        protected virtual void OnHandShakeStart(OnHandShakeStartEvent classData) {
+            HandshakeStart?.Invoke(this, classData);
+        }
+
+        public event EventHandler<OnHandShakeEndEvent>? HandshakeEnd;
+        protected virtual void OnHandShakeEnd(OnHandShakeEndEvent classData) {
+            HandshakeEnd?.Invoke(this, classData);
         }
     }
 }

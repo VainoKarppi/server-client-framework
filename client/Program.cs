@@ -28,9 +28,14 @@ namespace ClientFramework {
         public static void OnMessageReceived(object sender, OnMessageReceivedEvent eventData){
             Console.WriteLine($"*EVENT* MSG RECEIVED: {eventData.Message.MethodName}");
         }
+        public static void OnHandShakeStart(object sender, OnHandShakeStartEvent eventData){
+            Console.WriteLine($"*EVENT* HANDSHAKE STARTED: version:{eventData.ClientVersion}, username:{eventData.UserName}");
+        }
+        public static void OnHandShakeEnd(object sender, OnHandShakeEndEvent eventData){
+            Console.WriteLine($"*EVENT* HANDSHAKE ENDED: Success:{eventData.Success}, Code:{eventData.StatusCode}");
+            //StatusCode: 0 = not defined, 1 = server issue, not defined, 2 = version mismatch, 3 = username already in use
+        }
         public static void Main(string[] args) {
-            NetworkEvents.eventsListener = new NetworkEvents();
-
             // Client Only Events
             NetworkEvents.eventsListener.Connect += OnConnected;
             NetworkEvents.eventsListener.Disconnect += OnDisconnected;
@@ -41,6 +46,8 @@ namespace ClientFramework {
             NetworkEvents.eventsListener.ServerShutdown += OnServerShutdown;
             NetworkEvents.eventsListener.MessageSent += OnMessageSent;
             NetworkEvents.eventsListener.MessageReceived += OnMessageReceived;
+            NetworkEvents.eventsListener.HandshakeStart += OnHandShakeStart;
+            NetworkEvents.eventsListener.HandshakeEnd += OnHandShakeEnd;
 
             Network.RegisterMethod(typeof(ClientFramework.ClientMethods));
 
@@ -61,6 +68,7 @@ namespace ClientFramework {
                             break;
                         case "toggledebug":
                             Logger.Debug = !Logger.Debug;
+                            Console.WriteLine($"Debug is now: {Logger.Debug}");
                             break;
                         case "clear":
                             Console.Clear();

@@ -65,12 +65,12 @@ namespace ClientFramework {
         }
         public static void GetClientMethods() {
             Console.WriteLine();
-            foreach (var item in Network.ClientMethods) Console.WriteLine($"{item.Name} : ({item.ReturnType})");
+            foreach (var item in Network.ClientMethods) Console.WriteLine($"{item.Name} ReturnType:({item.ReturnType})  ParamCount:({item.GetParameters().Count()})");
         }
         public static void GetServerMethods() {
             if (Network.ServerMethods == null) throw new Exception("Server Methods not Initialized yet! (Gets populated when when connected to server)");
             Console.WriteLine();
-            foreach (var item in Network.ServerMethods) Console.WriteLine($"{item[0]} : ({item[1]})");
+            foreach (var item in Network.ServerMethods) Console.WriteLine($"{item[0]} ReturnType:({item[1]})  ParamCount:({((Type[])item[2]).Count()})");
         }
         public static void RequestData() {
             if (!Network.IsConnected())
@@ -90,7 +90,7 @@ namespace ClientFramework {
             }
 
             Network.NetworkMessage message = new Network.NetworkMessage {
-                Parameters = "123",
+                Parameters = new object[] {123,"TEST"},
                 MethodName = method,
                 TargetId = Int32.Parse(target)
             };

@@ -18,10 +18,10 @@ public class Test {
 public class Program {
 
     public static void OnClientConnected(object sender, OnClientConnectEvent eventData){
-        Console.WriteLine($"*EVENT* CLIENT CONNECTED! ({eventData.UserName} ID:{eventData.Id} SUCCESS:{eventData.Success})");
+        Console.WriteLine($"*EVENT* CLIENT CONNECTED! ({eventData.UserName} ID:{eventData.ClientID} SUCCESS:{eventData.Success})");
     }
     public static void OnClientDisconnect(object sender, OnClientDisconnectEvent eventData){
-        Console.WriteLine($"*EVENT* CLIENT DISCONNECTED! ({eventData.UserName} ID:{eventData.Id} SUCCESS:{eventData.Success})");
+        Console.WriteLine($"*EVENT* CLIENT DISCONNECTED! ({eventData.UserName} ID:{eventData.ClientID} SUCCESS:{eventData.Success})");
     }
     public static void OnServerShutdown(object sender, OnServerShutdownEvent eventData){
         Console.WriteLine($"*EVENT* SERVER STOPPED! SUCCESS:{eventData.Success}");
@@ -31,6 +31,13 @@ public class Program {
     }
     public static void OnMessageReceived(object sender, OnMessageReceivedEvent eventData){
         Console.WriteLine($"*EVENT* MSG RECEIVED: {eventData.Message.MethodName}");
+    }
+    public static void OnHandShakeStart(object sender, OnHandShakeStartEvent eventData){
+        Console.WriteLine($"*EVENT* HANDSHAKE STARTED: version:{eventData.ClientVersion}, username:{eventData.UserName}");
+    }
+    public static void OnHandShakeEnd(object sender, OnHandShakeEndEvent eventData){
+        Console.WriteLine($"*EVENT* HANDSHAKE ENDED: Success:{eventData.Success}, Code:{eventData.StatusCode}");
+        //StatusCode: 0 = not defined, 1 = server issue, not defined, 2 = version mismatch, 3 = username already in use
     }
 
 
@@ -43,18 +50,16 @@ public class Program {
 
         Settings.AllowSameUsername = false;
 
-        var version = Assembly.GetExecutingAssembly().GetName().Version;
-        Console.WriteLine(version);
-
         int methodsAdded = Network.RegisterMethod( typeof(ServerMethods) );
         Console.WriteLine($"{methodsAdded} Methods registered!");
 
-        NetworkEvents.eventsListener = new NetworkEvents();
         NetworkEvents.eventsListener.ClientConnected += OnClientConnected;
         NetworkEvents.eventsListener.ClientDisconnect += OnClientDisconnect;
         NetworkEvents.eventsListener.ServerShutdown += OnServerShutdown;
         NetworkEvents.eventsListener.MessageSent += OnMessageSent;
         NetworkEvents.eventsListener.MessageReceived += OnMessageReceived;
+        NetworkEvents.eventsListener.HandshakeStart += OnHandShakeStart;
+        NetworkEvents.eventsListener.HandshakeEnd += OnHandShakeEnd;
 
         Console.WriteLine("Type 'help' for commands!");
     
@@ -73,6 +78,7 @@ public class Program {
                     
                     case "toggledebug":
                         Logger.Debug = !Logger.Debug;
+                        Console.WriteLine($"Debug is now: {Logger.Debug}");
                         break;
 
                     case "clear":

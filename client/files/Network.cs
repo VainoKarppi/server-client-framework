@@ -47,6 +47,9 @@ namespace ClientFramework {
 			public bool isHandshake { get; set; } = false;
 			// Used to detect for handshake. Else send error for not connected to server!
 		}
+		/// <summary>
+        /// [string:"MethodName", Type:methodType, Type[]:parameter types]
+        /// </summary>
 		public static List<object[]>? ServerMethods;
 		public static List<MethodInfo> ClientMethods = new List<MethodInfo>();
  		private static List<string> PrivateMethods = new List<string>() {};
@@ -218,14 +221,24 @@ namespace ClientFramework {
                         if (method == default) throw new Exception($"Method {message.MethodName} was not found from Registered Methods!");
                     }
                     
-					// DESERIALISE PARAMETERS AND ADD CLIENT AS FIRST PARAMETER
+                    // GET PARAMETERS AND ADD CLIENT AS FIRST PARAMETER
                     object[]? parameters = null;
-                    if (method?.GetParameters().Count() > 0) {
+                    ParameterInfo[]? parameterInfo = method?.GetParameters();
+                    if (parameterInfo?.Count() > 0) {
                         List<object> paramList = new List<object>();
-                        paramList.Add(Client);
-                        if (!(message.Parameters is null)) {
-                            paramList.Add(message.Parameters);
-                        }
+                        ParameterInfo first = parameterInfo[0];
+                        if (first.ParameterType == typeof(NetworkMessage)) paramList.Add(message);
+
+						if (message.Parameters != null) {
+							if (message.Parameters is Array) {
+								foreach (var item in message.Parameters) {
+									if (method?.GetParameters().Count() == paramList.Count()) break; // Not all parameters can fill in
+									paramList.Add(item);
+								}
+							} else {
+								paramList.Add(message.Parameters);
+							}
+						}
                         parameters = paramList.ToArray();  
                     }
 
@@ -373,17 +386,26 @@ namespace ClientFramework {
 			return returnMessage;
 		}
 		private static int Handshake(string userName) {
-			string? version = Assembly.GetExecutingAssembly().GetName().Version?.ToString();
-			if (version == null) version = "1.0.0.0";
-            Client.UserName = userName;
-			Log($"Starting HANDSHAKE with server, with version: {version}, with name: {userName}");
+			Client.UserName = userName;
 
-			object[] methodsToSend = ClientMethods.Select(x => new object[] {x.Name, x.ReturnType.ToString(), x.GetParameters().Count()}).ToArray();
+			string? clientVersion = Assembly.GetExecutingAssembly().GetName().Version?.ToString();
+			if (clientVersion == null) clientVersion = "1.0.0.0";
+
+			Log($"Starting HANDSHAKE with server, with version: {clientVersion}, with name: {userName}");
+
+			object[] methodsToSend = ClientMethods.Select(x => new object[] {
+				x.Name,
+				x.ReturnType.ToString(),
+				x.GetParameters().
+					Where(y => y.ParameterType != typeof(NetworkMessage) && y.ParameterType != typeof(NetworkClient)).
+					Select(z => z.ParameterType.ToString()).ToArray()
+			}).ToArray();
+			
 			NetworkMessage handshakeMessage = new NetworkMessage {
 				MessageType = (int?)MessageTypes.RequestData,
 				TargetId = 1,
 				isHandshake = true,
-				Parameters = new object[] {version,userName,methodsToSend},
+				Parameters = new object[] {clientVersion,userName,methodsToSend},
 				Sender = -1
 			};
 
@@ -399,8 +421,14 @@ namespace ClientFramework {
 			object[] returnedParams = DeserializeParameters(returnMessage.Parameters);
 
 			int _clientID = (int)returnedParams[0];
+			string? serverVersion = (string)returnedParams[1];
+
+			NetworkEvents? listener = NetworkEvents.eventsListener;
+			listener?.ExecuteEvent(new OnHandShakeStartEvent(clientVersion,null,userName,0),true);
+
 			if (_clientID < 0) {
-                if (_clientID == -2) throw new Exception($"Version mismatch! You have: {version}, server has: {(string)returnedParams[1]}");
+				listener?.ExecuteEvent(new OnHandShakeEndEvent(clientVersion,serverVersion,userName,-1,false,_clientID * 1));
+                if (_clientID == -2) throw new Exception($"Version mismatch! You have: {clientVersion}, server has: {serverVersion}");
 				if (_clientID == -3) throw new Exception("Username already in use!");
 				throw new Exception($"Handshake failed. Code:{_clientID}");
 			}
@@ -408,16 +436,21 @@ namespace ClientFramework {
 			Client.Id = _clientID;
 			Client.UserName = userName;
 			
-			object[] methods = (object[])returnedParams[1];
+			object[] methods = (object[])returnedParams[2];
 			ServerMethods = new List<object[]>();
 			foreach (object[] method in methods) {
                 Type? type = Type.GetType((string)method[1]);
 				if (type == null) continue;
-                ServerMethods.Add(new object[]{(string)method[0], type});
+				object[] paramTypes = (object[])method[2];
+                ServerMethods.Add(new object[]{
+					(string)method[0],
+					type,
+					paramTypes.Select(x => Type.GetType((string)x)).ToArray<Type?>()
+				});
 			}
 			Log($"DEBUG: Added ({ServerMethods.Count()}) SERVER methods to list!");
 			
-			object[] clients = (object[])returnedParams[2];
+			object[] clients = (object[])returnedParams[3];
 			foreach (object[] clientData in clients) {
 				OtherClients.Add(new OtherClient((int)clientData[0], (string)clientData[1]));
 			}
@@ -433,8 +466,7 @@ namespace ClientFramework {
 
 			Client.HandshakeDone = true;
 
-
-			NetworkEvents? listener = NetworkEvents.eventsListener;
+			listener?.ExecuteEvent(new OnHandShakeEndEvent(clientVersion,null,userName,_clientID,true),true);
 			listener?.ExecuteEvent(new OnConnectEvent(_clientID,userName,true));
 
 			return _clientID;	
@@ -497,14 +529,10 @@ namespace ClientFramework {
 
 
         private static void DebugMessage(NetworkMessage message,int mode = 0) {
-			Log();
             Log("===============DEBUG MESSAGE===============");
             string type = "UNKNOWN";
             if (mode == 1) type = "OUTBOUND";
             else if (mode == 2) type = "INBOUND";
-			Log();
-            Log(JsonSerializer.Serialize<object>(message));
-            Log();
             Log($"TYPE: {type}");
             Log($"TIME: {DateTime.Now.Millisecond}");
             Log($"MessageType:{message.MessageType}");
@@ -517,7 +545,6 @@ namespace ClientFramework {
             Log($"Key:{message.Key}");
             Log($"Sender:{message.Sender}");
             Log("===============DEBUG MESSAGE===============");
-			Log();
         }
 	
 

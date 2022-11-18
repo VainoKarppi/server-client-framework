@@ -26,6 +26,16 @@ public class ServerMethods {
         Console.WriteLine($"MSG:{testMessage} CLIENT: {client.Client.RemoteEndPoint} ID:{client.Id}");
         return 123;
     }
+    public static int TestTwo(NetworkClient client, string testMessage, int intt)
+    {
+        Console.WriteLine($"TestTwo:{testMessage} : {intt}");
+        return 123;
+    }
+    public static int TestZero()
+    {
+        Console.WriteLine($"MSG: no params");
+        return 123;
+    }
     public static void TestVoid(NetworkClient client, dynamic testMessage)
     {
         Console.WriteLine($"This is a VOID method: {testMessage}");

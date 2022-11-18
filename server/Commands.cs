@@ -60,16 +60,14 @@ namespace ServerFramework {
         public static void GetClientMethods() {
             if (Network.ClientMethods == null) throw new Exception("Client Methods not Initialized yet! (Gets populated when first client joins)");
             Console.WriteLine();
-            foreach (var item in Network.ClientMethods) Console.WriteLine($"{item[0]} : ({item[1]})");
+            foreach (var item in Network.ClientMethods) Console.WriteLine($"{item[0]} ReturnType:({item[1]})  ParamCount:({((Type[])item[2]).Count()})");
         }
         public static void GetServerMethods() {
             Console.WriteLine();
-            foreach (var item in Network.ServerMethods) Console.WriteLine($"{item.Name} : ({item.ReturnType})");    
+            foreach (var item in Network.ServerMethods) Console.WriteLine($"{item.Name} ReturnType:({item.ReturnType})  ParamCount:({item.GetParameters().Count()})");   
         }
         public static void SendEvent() {
-            Network.NetworkEvent eventData = new Network.NetworkEvent {
-                EventClass = new OnServerShutdownEvent(true)
-            };
+            Network.NetworkEvent eventData = new Network.NetworkEvent(new OnServerShutdownEvent(true));
             Network.SendEvent(eventData);
         }
         public static void RequestData() {

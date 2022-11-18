@@ -40,13 +40,12 @@ public static class Logger {
     }
 
     public static void Log(object? text = null) {
-        string time = DateTime.Now.ToString("ss:FF");
-        if (time.Length < 11) {
-            string last = time.Substring(time.Length - 1,1);
-            time = time.Remove(time.Length - 1);
-            time = time + ("0" + last);
+        string time = DateTime.Now.ToString("HH:mm: ss:FF");
+        time = time.Remove(5,1);
+        while (time.Length != 12) {
+            time += "0";
         }
-        text = text == null ? null : $"{time} | {text}";
+        text = text == null ? "             |" : $"{time} | {text}";
 
         if (Debug) Console.WriteLine(text);
 
