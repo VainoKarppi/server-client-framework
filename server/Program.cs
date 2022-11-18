@@ -40,7 +40,7 @@ public class Program {
         Console.WriteLine($"*EVENT* HANDSHAKE STARTED: version:{eventData.ClientVersion}, username:{eventData.UserName}");
     }
     public static void OnHandShakeEnd(object sender, OnHandShakeEndEvent eventData){
-        Console.WriteLine($"*EVENT* HANDSHAKE ENDED: Success:{eventData.Success}, Code:{eventData.StatusCode}");
+        Console.WriteLine($"*EVENT* HANDSHAKE ENDED: Success:{eventData.Success}, Code:{eventData.ErrorCode}");
         //StatusCode: 0 = not defined, 1 = server issue, not defined, 2 = version mismatch, 3 = username already in use
     }
 

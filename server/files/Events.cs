@@ -82,13 +82,13 @@ namespace ServerFramework {
         /// <summary>
         /// 0 = not defined, 1 = server issue, not defined, 2 = version mismatch, 3 = username already in use
         /// </summary>
-        public int StatusCode { get; set;  }
+        public int ErrorCode { get; set;  }
         public OnHandShakeEndEvent (string? version, string? serverVersion, string username, int id, bool success = false, int code = 0) {
             Success = success;
             ClientVersion = version;
             ServerVersion = serverVersion;
             UserName = username;
-            StatusCode = code;
+            ErrorCode = code;
             ClientID = id;
         }
     }
