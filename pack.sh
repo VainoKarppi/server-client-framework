@@ -20,10 +20,12 @@ dotnet pack -p:PackageVersion=$version
 
 fileName=server-client-framework.$version.nupkg
 
-mv bin//Debug//$fileName ..//$fileName
+#mv bin//Debug//$fileName ..//$fileName
+
+scp bin//Debug//$fileName pi@karppi2.asuscomm.com:/home/pi/shared/NuGet/server-client-framework/
 
 cd ..
 rm -r server-client-framework/
 
 
-scp $fileName pi@karppi2.asuscomm.com:/home/pi/shared/NuGet/server-client-framework/
+#scp $fileName pi@karppi2.asuscomm.com:/home/pi/shared/NuGet/server-client-framework/

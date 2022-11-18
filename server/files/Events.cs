@@ -5,7 +5,6 @@ using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
 
-
 namespace ServerFramework {
     public class BaseEventClass {
         public string? EventName { get; set; }
@@ -37,6 +36,14 @@ namespace ServerFramework {
         public bool Success { get; set; } = false;
         public OnServerShutdownEvent (bool success) {
             Success = success;
+        }
+    }
+    public class OnServerStartEvent : BaseEventClass {
+        public bool Success { get; set; } = false;
+        public string? Version { get; set; }
+        public OnServerStartEvent (bool success, string? version) {
+            Success = success;
+            Version = version;
         }
     }
     public class OnMessageSentEvent : BaseEventClass {
@@ -90,8 +97,8 @@ namespace ServerFramework {
 
     public class NetworkEvents {
         public static NetworkEvents eventsListener { get; set; } = new NetworkEvents();
-        public async void ExecuteEvent(dynamic? classData, bool useBlocked = false) {
-            Thread eventThread = new Thread(() => {
+        internal void ExecuteEvent(dynamic? classData, bool useBlocked = false) {
+            Action action = (() => {
                 try {
                     string? eventName = (classData is JsonElement) ? ((JsonElement)classData).GetProperty("EventName").GetString() : classData?.EventName;
                     if (eventName == null) throw new Exception("INVALID EVENT. Not found!");
@@ -108,6 +115,10 @@ namespace ServerFramework {
                         case "onservershutdownevent":
                             if (classData is JsonElement) classData = ((JsonElement)classData).Deserialize<OnServerShutdownEvent>();
                             OnServerShutdown(classData);
+                            break;
+                        case "onserverstartevent":
+                            if (classData is JsonElement) classData = ((JsonElement)classData).Deserialize<OnServerStartEvent>();
+                            OnServerStart(classData);
                             break;
                         case "onmessagesentevent":
                             if (classData is JsonElement) classData = ((JsonElement)classData).Deserialize<Network.NetworkMessage>();
@@ -133,8 +144,13 @@ namespace ServerFramework {
                     Logger.Log(ex.Message);
                 }
             });
-            if (!useBlocked) eventThread.Start();
-            else await Task.Factory.StartNew(() => {eventThread.Start();});
+            if (useBlocked) {
+                action.Invoke();
+            } else {
+                new Thread(() => {
+                    action.Invoke();
+                }).Start();
+            }
         }
 
 
@@ -146,6 +162,14 @@ namespace ServerFramework {
         public event EventHandler<OnClientDisconnectEvent>? ClientDisconnect;
         protected virtual void OnClientDisconnect(OnClientDisconnectEvent classData) {
             ClientDisconnect?.Invoke(this, classData);
+        }
+
+        /// <summary>
+        /// Uses blocking. Once events are finished server continues to start
+        /// </summary>
+        public event EventHandler<OnServerStartEvent>? ServerStart;
+        protected virtual void OnServerStart(OnServerStartEvent classData) {
+            ServerStart?.Invoke(this, classData);
         }
 
         public event EventHandler<OnServerShutdownEvent>? ServerShutdown;

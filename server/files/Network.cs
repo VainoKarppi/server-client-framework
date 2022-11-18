@@ -34,7 +34,7 @@ namespace ServerFramework {
         private static TcpListener? ServerListener;
         private static readonly object _lock = new object();
         public static readonly List<NetworkClient> ClientList = new List<NetworkClient>();
-        public static bool ServerRunning { get; set; }
+        public static bool ServerRunning { get; set; } = false;
         private enum MessageTypes : int {SendData, RequestData, ResponseData, ServerEvent, ClientEvent}
         public class NetworkEvent {
             public int MessageType { get; set; } = (int)MessageTypes.ServerEvent;
@@ -111,12 +111,15 @@ namespace ServerFramework {
                 
                 ServerListener = new TcpListener(IPAddress.Any, serverPort);
                 ServerListener.Start();
-                ServerRunning = true;
 
                 string? serverVersion = Assembly.GetExecutingAssembly().GetName().Version?.ToString();
                 if (serverVersion == null) serverVersion = "1.0.0.0";
 
+                NetworkEvents? listener = NetworkEvents.eventsListener;
+                listener.ExecuteEvent(new OnServerStartEvent(true, serverVersion), true);
+
                 Log("Running server at port: " + ServerListener.LocalEndpoint?.ToString()?.Split(':')[1] + ". ServerVersion: " + serverVersion);
+                ServerRunning = true;
 
                 int _clientID = 2; // (0 = All clients, 1 = server, 2 and above for specific clients)
                 while (ServerRunning) {
@@ -439,7 +442,7 @@ namespace ServerFramework {
                     if (!success) Log(ex.Message);
 
                     Log($"Client {_client.Id} disconnected! (SUCCESS: {success})");
-                    
+
                     OnClientDisconnectEvent disconnectEvent = new OnClientDisconnectEvent(_client.Id,_client.UserName,success);
                     SendEvent(new NetworkEvent(disconnectEvent));
 
@@ -466,7 +469,7 @@ namespace ServerFramework {
             if (serverVersion == null) serverVersion = "1.0.0.0";
 
             NetworkEvents? listener = NetworkEvents.eventsListener;
-            listener?.ExecuteEvent(new OnHandShakeStartEvent(clientVersion,serverVersion,userName,client.Id));
+            listener?.ExecuteEvent(new OnHandShakeStartEvent(clientVersion,serverVersion,userName,client.Id),true);
             
             // RETURNS client id if success (minus number if error (each value is one type of error))
             Log($"*HANDSHAKE START* ClientVersion:{clientVersion} Name:{userName}");

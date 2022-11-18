@@ -23,6 +23,10 @@ public class Program {
     public static void OnClientDisconnect(object sender, OnClientDisconnectEvent eventData){
         Console.WriteLine($"*EVENT* CLIENT DISCONNECTED! ({eventData.UserName} ID:{eventData.ClientID} SUCCESS:{eventData.Success})");
     }
+    public static void OnServerStart(object sender, OnServerStartEvent eventData){
+        Console.WriteLine($"*EVENT* SERVER STARTED! SUCCESS:{eventData.Success}");
+        Thread.Sleep(1000);
+    }
     public static void OnServerShutdown(object sender, OnServerShutdownEvent eventData){
         Console.WriteLine($"*EVENT* SERVER STOPPED! SUCCESS:{eventData.Success}");
     }
@@ -56,6 +60,7 @@ public class Program {
         NetworkEvents.eventsListener.ClientConnected += OnClientConnected;
         NetworkEvents.eventsListener.ClientDisconnect += OnClientDisconnect;
         NetworkEvents.eventsListener.ServerShutdown += OnServerShutdown;
+        NetworkEvents.eventsListener.ServerStart += OnServerStart;
         NetworkEvents.eventsListener.MessageSent += OnMessageSent;
         NetworkEvents.eventsListener.MessageReceived += OnMessageReceived;
         NetworkEvents.eventsListener.HandshakeStart += OnHandShakeStart;

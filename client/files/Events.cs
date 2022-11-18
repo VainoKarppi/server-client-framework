@@ -109,11 +109,11 @@ namespace ClientFramework {
 
     public class NetworkEvents {
         public static NetworkEvents eventsListener { get; set; } = new NetworkEvents();
-        internal async void ExecuteEvent(dynamic? classData, bool useBlocked = false) {
-            Thread eventThread = new Thread(() => {
+        internal void ExecuteEvent(dynamic? classData, bool useBlocked = false) {
+            Action action = (() => {
                 try {
                     string? eventName = (classData is JsonElement) ? ((JsonElement)classData).GetProperty("EventName").GetString() : classData?.EventName;
-                    if (eventName == null) throw new NullReferenceException(eventName);
+                    if (eventName == null) throw new Exception("INVALID EVENT. Not found!");
 
                     switch (eventName.ToLower()) {
                         case "onclientconnectevent":
@@ -160,8 +160,13 @@ namespace ClientFramework {
                     Console.WriteLine(ex.Message);
                 }
             });
-            if (!useBlocked) eventThread.Start();
-            else await Task.Factory.StartNew(() => {eventThread.Start();});
+            if (useBlocked) {
+                action.Invoke();
+            } else {
+                new Thread(() => {
+                    action.Invoke();
+                }).Start();
+            }
         }
 
 

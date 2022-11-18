@@ -12,3 +12,14 @@ Check for each parameter and make sure the type is same as on receiver
 
 Remove from JsonSerializer and use bytes instead: // sender, target, type, is class, key, methodname?
 And then use JsonSerializer for parameters only (not required either, since we have parse parameters array)
+
+
+whyen other client connects this gets wrong ID on that client event
+
+users shown multiple times
+
+
+fix usage for same username (remove user from user list)
+
+
+fix event on client when other client disconnects
