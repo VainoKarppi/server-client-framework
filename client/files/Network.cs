@@ -410,6 +410,8 @@ namespace ClientFramework {
 			};
 
 			SendMessage(handshakeMessage,Client.GetStream());
+
+			// TODO Add timeout
 			byte[] bytes = ReadMessageBytes(Client.GetStream());
 			if (bytes.Count() == 0) {
 				Client.Client.Close();

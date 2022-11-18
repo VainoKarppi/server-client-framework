@@ -40,3 +40,5 @@ testReader/publish/*
 testReader/publish
 
 *.nupkg
+
+server-client-framework
