@@ -43,7 +43,10 @@ public static class Logger {
         string time = DateTime.Now.ToString("HH:mm: ss:FF");
         time = time.Remove(5,1);
         while (time.Length != 12) {
-            time += "0";
+            if (time.Length == 8)
+                time += ".";
+            else
+                time += "0";
         }
         text = text == null ? "             |" : $"{time} | {text}";
 
