@@ -3,7 +3,6 @@
 Add More events
 
 
-
 CLIENT & SERVER: When other client disconnects leave that in other clients list, but set connected to false
 
 
@@ -14,14 +13,5 @@ Remove from JsonSerializer and use bytes instead: // sender, target, type, is cl
 And then use JsonSerializer for parameters only (not required either, since we have parse parameters array)
 
 
-whyen other client connects this gets wrong ID on that client event
-
-users shown multiple times
-
-
-fix usage for same username (remove user from user list)
-
-
-fix event on client when other client disconnects
 
 TODO send client parameters only if requested by server

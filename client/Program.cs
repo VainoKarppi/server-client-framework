@@ -87,7 +87,8 @@ namespace ClientFramework {
                             string? name = Console.ReadLine();
                             if (string.IsNullOrEmpty(name)) {
                                 Random rd = new Random();
-                                name = ("RANDOMUSER" + rd.Next(1,10).ToString());
+                                name = "test";
+                                //name = ("RANDOMUSER" + rd.Next(1,10).ToString());
                             }
                             Network.Connect(ip,Int32.Parse(port),name);
                             break;

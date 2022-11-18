@@ -77,9 +77,9 @@ namespace ClientFramework {
 			public string UserName { get; set; } = "error (NoName)";
 			public bool Connected { get; set; } = true;
 			public OtherClient(int id, string name, bool connected = true) {
-				this.Id = id;
-				this.UserName = name;
-				this.Connected = connected;
+				Id = id;
+				UserName = name;
+				Connected = connected;
 			}
 		}
 
@@ -137,7 +137,7 @@ namespace ClientFramework {
 			
 			// Request client ID and do handshake
 			int _id = Network.Handshake(userName);
-			if (_id < 0) return;
+			if (_id < 2) return;
 			Log($"HANDSHAKE DONE: ID={_id}");
 
 			// Continue in new thread
@@ -431,7 +431,7 @@ namespace ClientFramework {
 			if (_clientID < 0) {
 				listener?.ExecuteEvent(new OnHandShakeEndEvent(clientVersion,serverVersion,userName,-1,false,_clientID * 1));
                 if (_clientID == -2) throw new Exception($"Version mismatch! You have: {clientVersion}, server has: {serverVersion}");
-				if (_clientID == -3) throw new Exception("Username already in use!");
+				if (_clientID == -3) throw new Exception($"Username:{userName} already in use!");
 				throw new Exception($"Handshake failed. Code:{_clientID}");
 			}
 

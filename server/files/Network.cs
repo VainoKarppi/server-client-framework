@@ -41,7 +41,7 @@ namespace ServerFramework {
             public int[]? Targets { get; set; }
 			public dynamic? EventClass { get; set; }
             public NetworkEvent(dynamic eventClass) {
-                this.EventClass = EventClass;
+                EventClass = EventClass;
             }
             public NetworkEvent() {}
         }
@@ -199,7 +199,7 @@ namespace ServerFramework {
             message.Targets = null; // Dont send targets over net
             foreach (int id in targets) {
                 NetworkClient? client = ClientList.FirstOrDefault(c => c.Id == id);
-                if (client == null) continue;
+                if (client == null || client == default) continue;
                 SendMessage(message,client.Stream);
             }
         }
@@ -438,13 +438,16 @@ namespace ServerFramework {
 					}
                 } catch (Exception ex) {
                     ClientList.Remove(_client);
-                    bool success = (ex is IOException || ex is SocketException);
+                    bool success = ((ex is IOException || ex is SocketException) && _client.HandshakeDone);
                     if (!success) Log(ex.Message);
 
                     Log($"Client {_client.Id} disconnected! (SUCCESS: {success})");
+                    if (!_client.HandshakeDone) break;
 
                     OnClientDisconnectEvent disconnectEvent = new OnClientDisconnectEvent(_client.Id,_client.UserName,success);
-                    SendEvent(new NetworkEvent(disconnectEvent));
+                    NetworkEvent eventTemp = new NetworkEvent(disconnectEvent);
+                    eventTemp.EventClass = disconnectEvent;
+                    SendEvent(eventTemp); // TODO FIX
 
                     NetworkEvents? listener = NetworkEvents.eventsListener;
                     listener?.ExecuteEvent(disconnectEvent,true);
@@ -453,8 +456,13 @@ namespace ServerFramework {
                 }
             }
             ClientList.Remove(_client);
-            _client.Client.Shutdown(SocketShutdown.Both);
+            //_client.Client.Shutdown(SocketShutdown.Both);
             _client.Close();
+        }
+
+        private static void CloseClient(NetworkClient client, bool success = true) {
+            ClientList.Remove(client);
+            client.Close();
         }
 
         private static void HandshakeClient(NetworkClient client, object[] parameters) {
@@ -486,7 +494,7 @@ namespace ServerFramework {
                 handshakeMessage.Parameters = new object[] {-2,serverVersion};
                 Network.SendData(handshakeMessage);
                 listener?.ExecuteEvent(new OnHandShakeEndEvent(clientVersion,serverVersion,userName,client.Id,false,2));
-                return;
+                throw new Exception($"User {userName} has wrong version! Should be: {serverVersion} has: {clientVersion}");
             }
 
             //TODO Settings.AllowDifferentMethods
@@ -509,11 +517,11 @@ namespace ServerFramework {
             if (!Settings.AllowSameUsername) {
                 NetworkClient? usedClient = ClientList.FirstOrDefault(x => x.HandshakeDone && x.UserName.ToLower() == userName.ToLower());
                 if (usedClient != null) {
-                    Log($"Username alread in use!");
+                    Log($"*ERROR* Handshake, Username:{userName} already in use for Client:{usedClient.Id}!");
                     handshakeMessage.Parameters = new object[] {-3,serverVersion};
                     Network.SendData(handshakeMessage);
                     listener?.ExecuteEvent(new OnHandShakeEndEvent(clientVersion,serverVersion,userName,client.Id,false,3));
-                    return;
+                    throw new Exception($"*ERROR* Handshake, Username:{userName} already in use for Client:{usedClient.Id}!");
                 }
             }
 
@@ -553,6 +561,7 @@ namespace ServerFramework {
                     ++i;
                 }
                 listener?.ExecuteEvent(new OnHandShakeEndEvent(clientVersion,serverVersion,userName,client.Id,false,0));
+                throw new Exception($"Handshake time out for Client:{client.Id}");
             }).Start();
         }
 
@@ -715,9 +724,9 @@ namespace ServerFramework {
                 TcpClient _client = listener.AcceptTcpClient();
                 Stream = _client.GetStream();
 
-                this.Client = _client.Client;
+                Client = _client.Client;
                 
-                this.Active = true;
+                Active = true;
                 //TcpClient _client = listener.AcceptTcpClient();
                 Reader = new StreamReader(Stream);
                 Writer = new StreamWriter(Stream);
