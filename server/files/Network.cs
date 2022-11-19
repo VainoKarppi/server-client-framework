@@ -30,7 +30,6 @@ namespace ServerFramework {
         // TODO public static bool AllowDifferentMethods = false;
     }
     public class Network {
-        public const int Version = 1000;
         private static TcpListener? ServerListener;
         private static readonly object _lock = new object();
         public static readonly List<NetworkClient> ClientList = new List<NetworkClient>();
@@ -41,7 +40,7 @@ namespace ServerFramework {
             public int[]? Targets { get; set; }
 			public dynamic? EventClass { get; set; }
             public NetworkEvent(dynamic eventClass) {
-                EventClass = EventClass;
+                EventClass = eventClass;
             }
             public NetworkEvent() {}
         }
@@ -110,16 +109,17 @@ namespace ServerFramework {
                 Thread.CurrentThread.IsBackground = true;
                 
                 ServerListener = new TcpListener(IPAddress.Any, serverPort);
-                ServerListener.Start();
 
                 string? serverVersion = Assembly.GetExecutingAssembly().GetName().Version?.ToString();
                 if (serverVersion == null) serverVersion = "1.0.0.0";
 
                 NetworkEvents? listener = NetworkEvents.eventsListener;
-                listener.ExecuteEvent(new OnServerStartEvent(true, serverVersion), true);
+                listener.ExecuteEvent(new OnServerStartEvent(serverVersion,true), true);
 
                 Log("Running server at port: " + ServerListener.LocalEndpoint?.ToString()?.Split(':')[1] + ". ServerVersion: " + serverVersion);
                 ServerRunning = true;
+
+                ServerListener.Start();
 
                 int _clientID = 2; // (0 = All clients, 1 = server, 2 and above for specific clients)
                 while (ServerRunning) {
@@ -155,17 +155,19 @@ namespace ServerFramework {
             
             Log("Stopping server...");
 
-            NetworkEvent message = new NetworkEvent(new OnServerShutdownEvent(true));
-            SendEvent(message);
+            OnServerShutdownEvent shutdownEvent = new OnServerShutdownEvent(true);
+            SendEvent(new NetworkEvent(shutdownEvent));
             
+            NetworkEvents? listener = NetworkEvents.eventsListener;
+            listener.ExecuteEvent(shutdownEvent,true);
             ServerRunning = false;
-            ServerListener?.Server.Dispose();
-            ServerListener?.Server.Close();
-            ServerListener = null;
-            foreach (NetworkClient client in ClientList) {
-                client.Close();
+
+            foreach (NetworkClient client in ClientList.ToArray()) {
+                CloseClient(client);
             }
             ClientList.Clear();
+            ServerListener?.Stop();
+            ServerListener = null;
 
             Log("Server stopped!");
         }
@@ -174,7 +176,7 @@ namespace ServerFramework {
         // Request ID is used to answer to specific message
 
         public static void SendEvent(NetworkEvent message) {
-            if (!ServerRunning) throw new Exception("Server not running!");
+            if (!ServerRunning) throw new Exception("Server not running!4");
 
             // Add ALL clients to list if left as blank
             List<int> targets = new List<int>();
@@ -205,7 +207,7 @@ namespace ServerFramework {
         }
 
         private static void SendMessage(dynamic message, NetworkStream Stream) {
-            if (message is NetworkMessage && (!message.isHandshake)) {
+            if (message is NetworkMessage && (!message.isHandshake) && message.Sender != 1) {
 				NetworkEvents? listener = NetworkEvents.eventsListener;
 				listener?.ExecuteEvent(new OnMessageSentEvent(message));
 			}
@@ -437,7 +439,9 @@ namespace ServerFramework {
                         }
 					}
                 } catch (Exception ex) {
-                    ClientList.Remove(_client);
+                    if (!ServerRunning) break;
+
+                    CloseClient(_client);
                     bool success = ((ex is IOException || ex is SocketException) && _client.HandshakeDone);
                     if (!success) Log(ex.Message);
 
@@ -455,14 +459,16 @@ namespace ServerFramework {
                     break;
                 }
             }
-            ClientList.Remove(_client);
-            //_client.Client.Shutdown(SocketShutdown.Both);
-            _client.Close();
+            if (ServerRunning) CloseClient(_client);
         }
 
-        private static void CloseClient(NetworkClient client, bool success = true) {
+        private static void CloseClient(NetworkClient client) {
             ClientList.Remove(client);
+            client.Writer.Close();
+            client.Reader.Close();
+            client.Stream.Close();
             client.Close();
+            client.Dispose();
         }
 
         private static void HandshakeClient(NetworkClient client, object[] parameters) {
@@ -493,7 +499,7 @@ namespace ServerFramework {
                 Log($"User {userName} has wrong version! Should be: {serverVersion} has: {clientVersion}");
                 handshakeMessage.Parameters = new object[] {-2,serverVersion};
                 Network.SendData(handshakeMessage);
-                listener?.ExecuteEvent(new OnHandShakeEndEvent(clientVersion,serverVersion,userName,client.Id,false,2));
+                listener?.ExecuteEvent(new OnHandShakeEndEvent(clientVersion,serverVersion,userName,client.Id,false,2),true);
                 throw new Exception($"User {userName} has wrong version! Should be: {serverVersion} has: {clientVersion}");
             }
 
@@ -520,7 +526,7 @@ namespace ServerFramework {
                     Log($"*ERROR* Handshake, Username:{userName} already in use for Client:{usedClient.Id}!");
                     handshakeMessage.Parameters = new object[] {-3,serverVersion};
                     Network.SendData(handshakeMessage);
-                    listener?.ExecuteEvent(new OnHandShakeEndEvent(clientVersion,serverVersion,userName,client.Id,false,3));
+                    listener?.ExecuteEvent(new OnHandShakeEndEvent(clientVersion,serverVersion,userName,client.Id,false,3),true);
                     throw new Exception($"*ERROR* Handshake, Username:{userName} already in use for Client:{usedClient.Id}!");
                 }
             }
@@ -552,15 +558,15 @@ namespace ServerFramework {
 
             new Thread(() => {
                 int i = 0;
-                while (i < 2000) { // 1 second timer
-                    Thread.Sleep(5);
+                while (i < 1000) { // 2 second timer
+                    Thread.Sleep(2);
                     if (client.HandshakeDone) {
-                        listener?.ExecuteEvent(new OnHandShakeEndEvent(clientVersion,serverVersion,userName,client.Id,true));
+                        listener?.ExecuteEvent(new OnHandShakeEndEvent(clientVersion,serverVersion,userName,client.Id,true,null),false);
                         return;
                     }
                     ++i;
                 }
-                listener?.ExecuteEvent(new OnHandShakeEndEvent(clientVersion,serverVersion,userName,client.Id,false,0));
+                listener?.ExecuteEvent(new OnHandShakeEndEvent(clientVersion,serverVersion,userName,client.Id,false,0),true);
                 throw new Exception($"Handshake time out for Client:{client.Id}");
             }).Start();
         }
@@ -726,8 +732,6 @@ namespace ServerFramework {
 
                 Client = _client.Client;
                 
-                Active = true;
-                //TcpClient _client = listener.AcceptTcpClient();
                 Reader = new StreamReader(Stream);
                 Writer = new StreamWriter(Stream);
             }

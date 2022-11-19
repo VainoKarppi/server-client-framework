@@ -25,7 +25,7 @@ public class ClientMethods
         {
             Console.WriteLine($"MSG:{testMessage} ({testMessage.GetType()})");
         }
-        return ($"Hello MSG RESPONSE From Client: {Network.Client.UserName} ({Network.Client.Id})");
+        return ($"Hello MSG RESPONSE From Client: {Network.Client.UserName} ({Network.Client.ID})");
     }
     public static int TestInt(NetworkMessage message, dynamic testMessage)
     {

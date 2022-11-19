@@ -1,13 +1,8 @@
 
 
-Add More events
+Add More events???
 
-
-CLIENT & SERVER: When other client disconnects leave that in other clients list, but set connected to false
-
-
-
-Check for each parameter and make sure the type is same as on receiver
+Check for each parameter and make sure the type is same as on receiver method
 
 Remove from JsonSerializer and use bytes instead: // sender, target, type, is class, key, methodname?
 And then use JsonSerializer for parameters only (not required either, since we have parse parameters array)
@@ -15,3 +10,8 @@ And then use JsonSerializer for parameters only (not required either, since we h
 
 
 TODO send client parameters only if requested by server
+
+
+add warning if method takes less parameters than given in Parameters
+
+If request sent right after another Params gets duplicated

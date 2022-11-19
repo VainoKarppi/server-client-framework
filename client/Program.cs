@@ -7,26 +7,28 @@ using System.Reflection;
 namespace ClientFramework {
     public class Program {
         
-        public static void OnConnected(object sender, OnConnectEvent eventData){
-            Console.WriteLine($"*EVENT* YOU CONNECTED! ({eventData.UserName} ID:{eventData.Id} SUCCESS:{eventData.Success})");
-        }
-        public static void OnDisconnected(object sender, OnDisconnectEvent eventData){
-            Console.WriteLine($"*EVENT* YOU DISCONNECTED FROM SERVER! ({eventData.UserName} ID:{eventData.Id} SUCCESS:{eventData.Success})");
-        }
         public static void OnClientConnected(object sender, OnClientConnectEvent eventData){
-            Console.WriteLine($"*EVENT* CLIENT CONNECTED! ({eventData.UserName} ID:{eventData.Id})");
+            if (eventData.ClientID == Network.Client.ID) {
+                Console.WriteLine($"*EVENT* YOU CONNECTED! ({eventData.UserName} ID:{eventData.ClientID} SUCCESS:{eventData.Success})");
+                return;
+            }
+            Console.WriteLine($"*EVENT* CLIENT CONNECTED! ({eventData.UserName} ID:{eventData.ClientID})");
         }
         public static void OnClientDisconnected(object sender, OnClientDisconnectEvent eventData){
-            Console.WriteLine($"*EVENT* CLIENT DISCONNECTED! ({eventData.UserName} ID:{eventData.Id} SUCCESS:{eventData.Success})");
+            if (eventData.ClientID == Network.Client.ID) {
+                Console.WriteLine($"*EVENT* YOU DISCONNECTED! ({eventData.UserName} ID:{eventData.ClientID} SUCCESS:{eventData.Success})");
+                return;
+            }
+            Console.WriteLine($"*EVENT* CLIENT DISCONNECTED! ({eventData.UserName} ID:{eventData.ClientID} SUCCESS:{eventData.Success})");
         }
         public static void OnServerShutdown(object sender, OnServerShutdownEvent eventData){
             Console.WriteLine($"*EVENT* SERVER STOPPED! SUCCESS:{eventData.Success}");
         }
         public static void OnMessageSent(object sender, OnMessageSentEvent eventData){
-            Console.WriteLine($"*EVENT* MSG SENT: {eventData.Message.MethodName}");
+            Console.WriteLine($"*EVENT* MSG SENT: {eventData.Message?.MethodName}");
         }
         public static void OnMessageReceived(object sender, OnMessageReceivedEvent eventData){
-            Console.WriteLine($"*EVENT* MSG RECEIVED: {eventData.Message.MethodName}");
+            Console.WriteLine($"*EVENT* MSG RECEIVED: {eventData.Message?.MethodName}");
         }
         public static void OnHandShakeStart(object sender, OnHandShakeStartEvent eventData){
             Console.WriteLine($"*EVENT* HANDSHAKE STARTED: version:{eventData.ClientVersion}, username:{eventData.UserName}");
@@ -36,11 +38,8 @@ namespace ClientFramework {
             //StatusCode: 0 = not defined, 1 = server issue, not defined, 2 = version mismatch, 3 = username already in use
         }
         public static void Main(string[] args) {
-            // Client Only Events
-            NetworkEvents.eventsListener.Connect += OnConnected;
-            NetworkEvents.eventsListener.Disconnect += OnDisconnected;
+            Logger.Debug = true;
 
-            // Public Events
             NetworkEvents.eventsListener.ClientConnected += OnClientConnected;
             NetworkEvents.eventsListener.ClientDisconnect += OnClientDisconnected;
             NetworkEvents.eventsListener.ServerShutdown += OnServerShutdown;
@@ -113,7 +112,7 @@ namespace ClientFramework {
                             Commands.RequestDataType();
                             break;
                         case "status":
-                            Console.WriteLine(Network.IsConnected() ? "Connected to server! ID:" + Network.Client.Id.ToString() : "NOT connected to server!");
+                            Console.WriteLine(Network.IsConnected() ? "Connected to server! ID:" + Network.Client.ID.ToString() : "NOT connected to server!");
                             break;
                         default:
                             Console.WriteLine("Unknown command!\nType 'help' for commands!");

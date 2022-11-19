@@ -25,7 +25,6 @@ public class Program {
     }
     public static void OnServerStart(object sender, OnServerStartEvent eventData){
         Console.WriteLine($"*EVENT* SERVER STARTED! SUCCESS:{eventData.Success}");
-        Thread.Sleep(1000);
     }
     public static void OnServerShutdown(object sender, OnServerShutdownEvent eventData){
         Console.WriteLine($"*EVENT* SERVER STOPPED! SUCCESS:{eventData.Success}");
@@ -52,7 +51,8 @@ public class Program {
         Console.Title = "SERVER";
         Console.WriteLine("Type 'help' for commands!");
 
-        Settings.AllowSameUsername = false;
+        Logger.Debug = true;
+        //Settings.AllowSameUsername = false;
 
         int methodsAdded = Network.RegisterMethod( typeof(ServerMethods) );
         Console.WriteLine($"{methodsAdded} Methods registered!");

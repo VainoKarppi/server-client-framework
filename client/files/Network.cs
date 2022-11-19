@@ -21,7 +21,6 @@ using static ClientFramework.Logger;
 
 namespace ClientFramework {
     public class Network {
-		public const int Version = 1000;
 		public class NetworkEvent {
             public int MessageType { get; set; } = (int)MessageTypes.ServerEvent;
             public int[]? Targets { get; set; }
@@ -42,7 +41,7 @@ namespace ClientFramework {
 			// Array of parameters passed to method that is going to be executed
 			public int Key { get; set; } = new Random().Next(100,int.MaxValue);
 			// Key for getting the response for specific request
-			public int? Sender { get; set; } = Client.Id;
+			public int? Sender { get; set; } = Client.ID;
 			// Id of the sender. Can be null in case handshake is not completed
 			public bool isHandshake { get; set; } = false;
 			// Used to detect for handshake. Else send error for not connected to server!
@@ -63,7 +62,7 @@ namespace ClientFramework {
 			public NetworkStream? Stream { get; set; }
 			public StreamReader? Reader { get; set; }
         	public StreamWriter? Writer { get; set; }
-			public int Id { get; set;}
+			public int? ID { get; set;}
 			public bool HandshakeDone { get; set; } = false;
 			public string UserName { get; set; } = "error (NoName)";
 		}
@@ -74,9 +73,9 @@ namespace ClientFramework {
         /// </summary>
 		public class OtherClient {
 			public int? Id { get; set;}
-			public string UserName { get; set; } = "error (NoName)";
+			public string? UserName { get; set; } = "error (NoName)";
 			public bool Connected { get; set; } = true;
-			public OtherClient(int id, string name, bool connected = true) {
+			public OtherClient(int? id, string? name, bool connected = true) {
 				Id = id;
 				UserName = name;
 				Connected = connected;
@@ -158,7 +157,7 @@ namespace ClientFramework {
 			Client.Client.Close();
 
 			NetworkEvents? listener = NetworkEvents.eventsListener;
-			listener?.ExecuteEvent(new OnDisconnectEvent(Client.Id,Client.UserName,true));
+			listener?.ExecuteEvent(new OnClientDisconnectEvent(Client.ID,Client.UserName,true));
 		}
 
 		private static void SendEvent(NetworkEvent message) {
@@ -171,10 +170,11 @@ namespace ClientFramework {
 				while (Client.Connected) {
 					byte[] bytes = ReadMessageBytes(Client.GetStream());
 					if (bytes.Count() == 0) {
-						if (Client.Connected) throw new Exception("ERROR BYTES!");
-						Client.Close();
-						break;
-					}
+						if (Client.Available != 0) throw new EndOfStreamException("Server closed connection!");
+                        Client.Stream?.Close();
+                        Client.Close();
+                        break;
+                    }
 					
 					var utf8Reader = new Utf8JsonReader(bytes);
                     dynamic messageTemp = JsonSerializer.Deserialize<dynamic>(ref utf8Reader)!;
@@ -188,7 +188,25 @@ namespace ClientFramework {
 					// HANDLE EVENT
 					NetworkEvents? listener = NetworkEvents.eventsListener;
 					if (type == (int)MessageTypes.ServerEvent) {
-						dynamic eventClass = ((JsonElement)messageTemp).GetProperty("EventClass");
+						dynamic? eventClass = ((JsonElement)messageTemp).GetProperty("EventClass");
+                        string? eventName = (eventClass is JsonElement) ? ((JsonElement)eventClass).GetProperty("EventName").GetString() : eventClass?.EventName;
+						if (eventName?.ToLower() == "onclientconnectevent") {
+							int? id = ((JsonElement)eventClass).GetProperty("ClientID").GetInt32();
+							string? name = ((JsonElement)eventClass).GetProperty("UserName").GetString();
+							bool? success = ((JsonElement)eventClass).GetProperty("Success").GetBoolean();
+							if (id == null || name == null) continue;
+
+							OtherClients.Add(new OtherClient(id,name));
+							eventClass = new OnClientConnectEvent(id,name,success);
+                        }
+						if (eventName?.ToLower() == "onclientdisconnectevent") {
+							int? id = ((JsonElement)eventClass).GetProperty("ClientID").GetInt32();
+							string? name = ((JsonElement)eventClass).GetProperty("UserName").GetString();
+							bool? success = ((JsonElement)eventClass).GetProperty("Success").GetBoolean();
+						    OtherClients.RemoveAll(x => x.Id == id);
+							if (id == null || name == null) continue;
+							eventClass = new OnClientDisconnectEvent(id,name,success);
+                        }
 						listener?.ExecuteEvent(eventClass);
 						continue;
 					}
@@ -266,14 +284,16 @@ namespace ClientFramework {
 					}
 				}
 			} catch (Exception ex) {
+				Client.Close();
 				if (!Client.HandshakeDone) {
 					return;
 				}
 				Log(ex.Message);
-
-				if (ex.InnerException is SocketException) {
-					if (Client.Id != default) Log("Server has crashed!");
-				}
+                NetworkEvents? listener = NetworkEvents.eventsListener;
+                if (ex.InnerException is SocketException || ex is EndOfStreamException) {
+                    OnServerShutdownEvent eventShutdown = new OnServerShutdownEvent(false);
+                    listener.ExecuteEvent(eventShutdown,true);
+                }
 				Log("Disconnected from the server!");
 				Client.Dispose();
 			}
@@ -287,7 +307,7 @@ namespace ClientFramework {
         /// <exception cref="Exception"></exception>
 		public static void SendData(NetworkMessage message) {
             if (!IsConnected()) throw new Exception("Not connected to server");
-			if (message.TargetId == Client.Id) throw new Exception("Cannot send data to self! (client)");	
+			if (message.TargetId == Client.ID) throw new Exception("Cannot send data to self! (client)");	
 			if (message.MessageType == null) message.MessageType = (int?)MessageTypes.SendData;
 
 			if (message.TargetId != 1) {
@@ -301,7 +321,9 @@ namespace ClientFramework {
 			SendMessage(message,Client.GetStream());
 			DebugMessage(message,1);
         }
-
+		public static async void SendDataAsync(NetworkMessage message) {
+            await Task.Run(() => { SendData(message); });
+		}
 
 
 		/// <summary>
@@ -310,9 +332,9 @@ namespace ClientFramework {
         /// <param name="message"></param>
         /// <returns></returns>
         /// <exception cref="Exception"></exception>
-		public static dynamic RequestData(NetworkMessage message) {
-			if (!IsConnected()) throw new Exception("Not connected to server");
-			if (message.TargetId == Client.Id) throw new Exception("Cannot request data from self!");
+		public static dynamic RequestData(NetworkMessage message) {;
+            if (!IsConnected()) throw new Exception("Not connected to server");
+			if (message.TargetId == Client.ID) throw new Exception("Cannot request data from self!");
 			if (message.TargetId != 1) {
 				if ((OtherClients.SingleOrDefault(x => x.Id == message.TargetId)) == default) throw new Exception("Invalid target ID. ID not listed in clients list!");
 		
@@ -344,6 +366,18 @@ namespace ClientFramework {
                 return returned;
 			}
 			return (T)returnMessage;
+		}
+		public static async Task<dynamic> RequestDataAsync<T>(NetworkMessage message) {
+			dynamic returnMessage = await RequestData(message);
+			if (returnMessage is JsonElement) {
+                var returned = ((JsonElement)returnMessage[1]).Deserialize<T>();
+				if (returned == null) throw new NullReferenceException();
+                return returned;
+			}
+			return (T)returnMessage;
+		}
+		public static async Task<dynamic> RequestDataAsync(NetworkMessage message) {
+			return await RequestData(message);
 		}
 
 		private static void SendMessage(dynamic message, NetworkStream Stream) {
@@ -435,7 +469,7 @@ namespace ClientFramework {
 				throw new Exception($"Handshake failed. Code:{_clientID}");
 			}
 
-			Client.Id = _clientID;
+			Client.ID = _clientID;
 			Client.UserName = userName;
 			
 			object[] methods = (object[])returnedParams[2];
@@ -462,14 +496,14 @@ namespace ClientFramework {
 				MessageType = (int?)MessageTypes.SendData,
 				TargetId = 1,
 				isHandshake = true,
-				Sender = Client.Id
+				Sender = Client.ID
 			};
 			SendMessage(handshakeMessageSuccess,Client.GetStream());
 
 			Client.HandshakeDone = true;
 
 			listener?.ExecuteEvent(new OnHandShakeEndEvent(clientVersion,null,userName,_clientID,true),true);
-			listener?.ExecuteEvent(new OnConnectEvent(_clientID,userName,true));
+			listener?.ExecuteEvent(new OnClientConnectEvent(_clientID,userName,true));
 
 			return _clientID;	
 		}
@@ -482,18 +516,18 @@ namespace ClientFramework {
                 if (useClass) return parameters;
             } catch {}
             
-			List<object> newParams = new List<object>();
+			List<object> newParams = new List<object>(){};
 			if (!(parameters is Array)) {
 				newParams.Add(parameters.GetType().ToString());
 				newParams.Add(parameters);
 			} else {
 				newParams.Add(parameters.GetType().ToString());
-				foreach (object parameter in parameters) {
+				foreach (var parameter in parameters) {
 					newParams.Add(parameter.GetType().ToString());
 					newParams.Add(parameter);
 				}
 			}
-			return newParams.ToArray();
+            return newParams.ToArray();
 		}
 		private static dynamic? DeserializeParameters(dynamic parameterData,bool isClass = false) {
             if(parameterData is null) return null;
