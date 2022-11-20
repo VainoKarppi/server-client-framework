@@ -15,3 +15,7 @@ TODO send client parameters only if requested by server
 add warning if method takes less parameters than given in Parameters
 
 If request sent right after another Params gets duplicated
+
+handshaketimeout to crash whole server
+
+Client 6 disconnected! (SUCCESS: False) -> Exec handshake failed if handshake not done

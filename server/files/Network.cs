@@ -34,7 +34,7 @@ namespace ServerFramework {
         private static readonly object _lock = new object();
         public static readonly List<NetworkClient> ClientList = new List<NetworkClient>();
         public static bool ServerRunning { get; set; } = false;
-        private enum MessageTypes : int {SendData, RequestData, ResponseData, ServerEvent, ClientEvent}
+        public enum MessageTypes : int {SendData, RequestData, ResponseData, ServerEvent, ClientEvent}
         public class NetworkEvent {
             public int MessageType { get; set; } = (int)MessageTypes.ServerEvent;
             public int[]? Targets { get; set; }
@@ -46,21 +46,22 @@ namespace ServerFramework {
         }
         
 		public class NetworkMessage {
-			public int? MessageType { get; set; } = 0;
+			public int? MessageType { get; internal set; } = 0;
 			// One of the tpes in "MessageTypes"
 			public int? TargetId { get; set; } = 0;
 			// 0 = everyone, 1 = server, 2 = client 1...
             public string? MethodName { get; set; }
 			// Minus numbers are for internal use!
 			public dynamic? Parameters { get; set; }
-            public bool UseClass { get; set; } = false;
+            public bool UseClass { get; internal set; } = false;
 			// Array of parameters passed to method that is going to be executed
-			public int Key { get; set; } = new Random().Next(100,int.MaxValue);
+			public int Key { get; internal set; } = new Random().Next(100,int.MaxValue);
 			// Key for getting the response for specific request (0-100) = event id
-			public int? Sender { get; set; } = 1;
+			public int? Sender { get; internal set; } = 1;
 			// Id of the sender. Can be null in case handshake is not completed
-			public bool isHandshake { get; set; } = false;
+			public bool isHandshake { get; internal set; } = false;
 			// Used to detect for handshake. Else send error for not connected to server!
+            public dynamic? OriginalParams { get; internal set; }
 		}
 
         /// <summary>
@@ -213,7 +214,8 @@ namespace ServerFramework {
 			}
 			if (message is NetworkMessage && !(message.Parameters is null) && message.Sender == 1) {
                 bool useClass = false;
-                message.Parameters = SerializeParameters(message.Parameters,ref useClass);
+                if (message.OriginalParams == null) message.OriginalParams = message.Parameters; // TODO find better way
+                message.Parameters = SerializeParameters(message.OriginalParams,ref useClass);
                 message.UseClass = useClass;
             }
 
@@ -558,7 +560,7 @@ namespace ServerFramework {
 
             new Thread(() => {
                 int i = 0;
-                while (i < 1000) { // 2 second timer
+                while (i < 200) { // 2 second timer
                     Thread.Sleep(2);
                     if (client.HandshakeDone) {
                         listener?.ExecuteEvent(new OnHandShakeEndEvent(clientVersion,serverVersion,userName,client.Id,true,null),false);
@@ -567,7 +569,8 @@ namespace ServerFramework {
                     ++i;
                 }
                 listener?.ExecuteEvent(new OnHandShakeEndEvent(clientVersion,serverVersion,userName,client.Id,false,0),true);
-                throw new Exception($"Handshake time out for Client:{client.Id}");
+                Log($"Handshake time out for Client:{client.Id}");
+                CloseClient(client);
             }).Start();
         }
 

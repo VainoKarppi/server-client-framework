@@ -94,7 +94,7 @@ namespace ClientFramework {
                 MethodName = method,
                 TargetId = Int32.Parse(target)
             };
-            dynamic e = Network.RequestData(message);
+
             dynamic a = Network.RequestData(message);
             
             if (a is Array)

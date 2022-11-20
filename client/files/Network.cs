@@ -27,29 +27,29 @@ namespace ClientFramework {
 			public dynamic? EventClass { get; set; }
         }
 		
-		private enum MessageTypes : int {SendData, RequestData, ResponseData, ServerEvent, ClientEvent}
-		public class NetworkMessage
-		{
-			public int? MessageType { get; set; }
-			// One of the tpes in "MessageTypes"
-			public int? TargetId { get; set; } = 1;
-			// 0 = everyone, 1 = server, 2 = client 1...
-			// Minus numbers are for internal use!
-			public string? MethodName { get; set; }
-			public dynamic? Parameters { get; set; }
-			public bool UseClass { get; set; } = false;
-			// Array of parameters passed to method that is going to be executed
-			public int Key { get; set; } = new Random().Next(100,int.MaxValue);
-			// Key for getting the response for specific request
-			public int? Sender { get; set; } = Client.ID;
-			// Id of the sender. Can be null in case handshake is not completed
-			public bool isHandshake { get; set; } = false;
-			// Used to detect for handshake. Else send error for not connected to server!
-		}
-		/// <summary>
+		public enum MessageTypes : int {SendData, RequestData, ResponseData, ServerEvent, ClientEvent}
+        public class NetworkMessage
+        {
+            public int? MessageType { get; internal set; } = (int)MessageTypes.SendData;
+            // One of the tpes in "MessageTypes"
+            public int? TargetId { get; set; } = 1;
+            // 0 = everyone, 1 = server, 2 = client 1...
+            // Minus numbers are for internal use!
+            public string? MethodName { get; set; }
+            public dynamic? Parameters { get; set; }
+            public bool UseClass { get; internal set; } = false;
+            // Array of parameters passed to method that is going to be executed
+            public int Key { get; internal set; } = new Random().Next(100, int.MaxValue);
+            // Key for getting the response for specific request
+            public int? Sender { get; internal set; } = Client.ID;
+            // Id of the sender. Can be null in case handshake is not completed
+            public bool isHandshake { get; internal set; } = false;
+            public dynamic? OriginalParams { get; internal set; }
+        }
+        /// <summary>
         /// [string:"MethodName", Type:methodType, Type[]:parameter types]
         /// </summary>
-		public static List<object[]>? ServerMethods;
+        public static List<object[]>? ServerMethods;
 		public static List<MethodInfo> ClientMethods = new List<MethodInfo>();
  		private static List<string> PrivateMethods = new List<string>() {};
 		// To be read from handshake (register on server)
@@ -388,7 +388,8 @@ namespace ClientFramework {
 			
 			if (message is NetworkMessage && !(message.Parameters is null)) {
                 bool useClass = false;
-                message.Parameters = SerializeParameters(message.Parameters,ref useClass);
+				if (message.OriginalParams == null) message.OriginalParams = message.Parameters; // TODO find better way
+                message.Parameters = SerializeParameters(message.OriginalParams,ref useClass);
                 message.UseClass = useClass;
             }
 			byte[] msg = JsonSerializer.SerializeToUtf8Bytes(message);
