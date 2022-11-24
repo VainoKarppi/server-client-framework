@@ -30,16 +30,19 @@ public class OnClientDisconnectEvent : OnClientConnectEvent {
         Success = success;
     }
 }
-public class OnServerStartEvent : BaseEventClass {
-    public bool? Success { get; set; } = false;
-    public string? Version { get; set; }
-    public OnServerStartEvent (string? version, bool? success = false) {
-        Success = success;
-        Version = version;
+
+#if SERVER
+    /// <summary>Gets never executed on client</summary>
+    public class OnServerStartEvent : OnServerShutdownEvent {
+        public OnServerStartEvent (bool? success = false) : base (success) {
+            Success = success;
+        }
     }
-}
+#endif
+
 public class OnServerShutdownEvent : BaseEventClass {
     public bool? Success { get; set; } = false;
+    public string? Version { get; set; } = Network.ServerVersion;
     public OnServerShutdownEvent (bool? success = false) {
         Success = success;
     }
@@ -57,14 +60,13 @@ public class OnMessageReceivedEvent : OnMessageSentEvent {
 }
 public class OnHandShakeStartEvent : BaseEventClass {
     public string? ClientVersion { get; set; }
-    public string? ServerVersion { get; set; }
+    public string? ServerVersion { get; set; } = Network.ServerVersion;
     public string? UserName { get; set; }
     /// <summary>Client ID not available on client event!</summary>
     public int? ClientID { get; set; }
-    public OnHandShakeStartEvent (string? clientVersion, string? serverVersion, string? username, int? id) {
+    public OnHandShakeStartEvent (string? clientVersion, string? username, int? id) {
         ClientID = id;
         ClientVersion = clientVersion;
-        ServerVersion = serverVersion;
         UserName = username;
     }
 }
@@ -72,10 +74,9 @@ public class OnHandShakeEndEvent : OnHandShakeStartEvent {
     /// <summary>0 = not defined, 1 = server issue, not defined, 2 = version mismatch, 3 = username already in use</summary>
     public int? ErrorCode { get; set;  }
     public bool? Success { get; set; }
-    public OnHandShakeEndEvent (string? clientVersion, string? serverVersion, string? username, int? id, bool? success = false, int? code = 0) : base(clientVersion,serverVersion,username,id) {
+    public OnHandShakeEndEvent (string? clientVersion, string? username, int? id, bool? success = false, int? code = 0) : base(clientVersion,username,id) {
         Success = success;
         ClientVersion = clientVersion;
-        ServerVersion = serverVersion;
         UserName = username;
         ErrorCode = code;
         ClientID = id;
@@ -100,11 +101,12 @@ public class NetworkEvents {
                         if (classData is JsonElement) classData = ((JsonElement)classData).Deserialize<OnClientDisconnectEvent>();
                         OnClientDisconnect(classData);
                         break;
-
+                    #if SERVER
                     case "onserverstartevent":
                         if (classData is JsonElement) classData = ((JsonElement)classData).Deserialize<OnServerStartEvent>();
                         OnServerStart(classData);
                         break;
+                    #endif
                     case "onservershutdownevent":
                         if (classData is JsonElement) classData = ((JsonElement)classData).Deserialize<OnServerShutdownEvent>();
                         OnServerShutdown(classData);
@@ -133,7 +135,7 @@ public class NetworkEvents {
                         throw new NotImplementedException();
                 }
             } catch (Exception ex) {
-                Logger.Log(ex.Message);
+                Logger.Log(ex);
             }
         });
         if (useBlocked) {
@@ -155,10 +157,11 @@ public class NetworkEvents {
     protected virtual void OnClientDisconnect(OnClientDisconnectEvent classData) => ClientDisconnect?.Invoke(this, classData);
 
 
-
+    #if SERVER
     /// <summary> Uses blocking. Once events are finished server continues to start</summary>
     public event EventHandler<OnServerStartEvent>? ServerStart;
     protected virtual void OnServerStart(OnServerStartEvent classData) => ServerStart?.Invoke(this, classData);
+    #endif
 
     /// <summary> Uses blocking. Once events are finished server continues to stop</summary>
     public event EventHandler<OnServerShutdownEvent>? ServerShutdown;

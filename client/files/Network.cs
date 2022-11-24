@@ -21,6 +21,7 @@ using static ClientFramework.Logger;
 
 namespace ClientFramework {
     public class Network {
+		public static readonly string? ServerVersion;
 		public class NetworkEvent {
             public int MessageType { get; set; } = (int)MessageTypes.ServerEvent;
             public int[]? Targets { get; set; }
@@ -462,14 +463,14 @@ namespace ClientFramework {
 			object[] returnedParams = DeserializeParameters(returnMessage.Parameters);
 
 			int _clientID = (int)returnedParams[0];
-			string? serverVersion = (string)returnedParams[1];
+			string? ServerVersion = (string)returnedParams[1];
 
 			NetworkEvents? listener = NetworkEvents.eventsListener;
-			listener?.ExecuteEvent(new OnHandShakeStartEvent(clientVersion,null,userName,0),true);
+			listener?.ExecuteEvent(new OnHandShakeStartEvent(clientVersion,userName,0),true);
 
 			if (_clientID < 0) {
-				listener?.ExecuteEvent(new OnHandShakeEndEvent(clientVersion,serverVersion,userName,-1,false,_clientID * 1));
-                if (_clientID == -2) throw new Exception($"Version mismatch! You have: {clientVersion}, server has: {serverVersion}");
+				listener?.ExecuteEvent(new OnHandShakeEndEvent(clientVersion,userName,-1,false,_clientID * 1));
+                if (_clientID == -2) throw new Exception($"Version mismatch! You have: {clientVersion}, server has: {ServerVersion}");
 				if (_clientID == -3) throw new Exception($"Username:{userName} already in use!");
 				throw new Exception($"Handshake failed. Code:{_clientID}");
 			}
@@ -507,7 +508,7 @@ namespace ClientFramework {
 
 			Client.HandshakeDone = true;
 
-			listener?.ExecuteEvent(new OnHandShakeEndEvent(clientVersion,null,userName,_clientID,true),true);
+			listener?.ExecuteEvent(new OnHandShakeEndEvent(clientVersion,userName,_clientID,true),true);
 			listener?.ExecuteEvent(new OnClientConnectEvent(_clientID,userName,true));
 
 			return _clientID;	

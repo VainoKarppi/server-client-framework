@@ -1,3 +1,5 @@
+#define SERVER
+
 using System.Reflection.Metadata;
 using System.Data;
 using System.Collections;
@@ -15,7 +17,9 @@ using System.Threading;
 
 using static ServerFramework.Logger;
 
+
 namespace ServerFramework {
+    
     public class Settings {
         /// <summary>
         /// Checks if username is already in use on one of the clients. If in use and set to false, error will occur
@@ -30,6 +34,7 @@ namespace ServerFramework {
         // TODO public static bool AllowDifferentMethods = false;
     }
     public class Network {
+        public static readonly string? ServerVersion;
         private static TcpListener? ServerListener;
         private static readonly object _lock = new object();
         public static readonly List<NetworkClient> ClientList = new List<NetworkClient>();
@@ -111,13 +116,13 @@ namespace ServerFramework {
                 
                 ServerListener = new TcpListener(IPAddress.Any, serverPort);
 
-                string? serverVersion = Assembly.GetExecutingAssembly().GetName().Version?.ToString();
-                if (serverVersion == null) serverVersion = "1.0.0.0";
+                string? ServerVersion = Assembly.GetExecutingAssembly().GetName().Version?.ToString();
+                if (ServerVersion == null) ServerVersion = "1.0.0.0";
 
                 NetworkEvents? listener = NetworkEvents.eventsListener;
-                listener.ExecuteEvent(new OnServerStartEvent(serverVersion,true), true);
+                listener.ExecuteEvent(new OnServerStartEvent(true), true);
 
-                Log("Running server at port: " + ServerListener.LocalEndpoint?.ToString()?.Split(':')[1] + ". ServerVersion: " + serverVersion);
+                Log("Running server at port: " + ServerListener.LocalEndpoint?.ToString()?.Split(':')[1] + ". ServerVersion: " + ServerVersion);
                 ServerRunning = true;
 
                 ServerListener.Start();
@@ -485,7 +490,7 @@ namespace ServerFramework {
             if (serverVersion == null) serverVersion = "1.0.0.0";
 
             NetworkEvents? listener = NetworkEvents.eventsListener;
-            listener?.ExecuteEvent(new OnHandShakeStartEvent(clientVersion,serverVersion,userName,client.Id),true);
+            listener?.ExecuteEvent(new OnHandShakeStartEvent(clientVersion,userName,client.Id),true);
             
             // RETURNS client id if success (minus number if error (each value is one type of error))
             Log($"*HANDSHAKE START* ClientVersion:{clientVersion} Name:{userName}");
@@ -501,7 +506,7 @@ namespace ServerFramework {
                 Log($"User {userName} has wrong version! Should be: {serverVersion} has: {clientVersion}");
                 handshakeMessage.Parameters = new object[] {-2,serverVersion};
                 Network.SendData(handshakeMessage);
-                listener?.ExecuteEvent(new OnHandShakeEndEvent(clientVersion,serverVersion,userName,client.Id,false,2),true);
+                listener?.ExecuteEvent(new OnHandShakeEndEvent(clientVersion,userName,client.Id,false,2),true);
                 throw new Exception($"User {userName} has wrong version! Should be: {serverVersion} has: {clientVersion}");
             }
 
@@ -528,7 +533,7 @@ namespace ServerFramework {
                     Log($"*ERROR* Handshake, Username:{userName} already in use for Client:{usedClient.Id}!");
                     handshakeMessage.Parameters = new object[] {-3,serverVersion};
                     Network.SendData(handshakeMessage);
-                    listener?.ExecuteEvent(new OnHandShakeEndEvent(clientVersion,serverVersion,userName,client.Id,false,3),true);
+                    listener?.ExecuteEvent(new OnHandShakeEndEvent(clientVersion,userName,client.Id,false,3),true);
                     throw new Exception($"*ERROR* Handshake, Username:{userName} already in use for Client:{usedClient.Id}!");
                 }
             }
@@ -563,12 +568,12 @@ namespace ServerFramework {
                 while (i < 200) { // 2 second timer
                     Thread.Sleep(2);
                     if (client.HandshakeDone) {
-                        listener?.ExecuteEvent(new OnHandShakeEndEvent(clientVersion,serverVersion,userName,client.Id,true,null),false);
+                        listener?.ExecuteEvent(new OnHandShakeEndEvent(clientVersion,userName,client.Id,true,null),false);
                         return;
                     }
                     ++i;
                 }
-                listener?.ExecuteEvent(new OnHandShakeEndEvent(clientVersion,serverVersion,userName,client.Id,false,0),true);
+                listener?.ExecuteEvent(new OnHandShakeEndEvent(clientVersion,userName,client.Id,false,0),true);
                 Log($"Handshake time out for Client:{client.Id}");
                 CloseClient(client);
             }).Start();
