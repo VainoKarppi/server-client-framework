@@ -354,11 +354,11 @@ namespace ClientFramework {
 		
 				var found = ClientMethods.FirstOrDefault(x => x.Name.ToString().ToLower() == message.MethodName?.ToLower());
 				if (found == default) throw new Exception($"Method {message.MethodName} not listed in CLIENT'S methods list");
-				if (found.ReturnType == typeof(void)) throw new Exception($"Method {message.MethodName} doesn't have a return value! (Uses void)");	
+				if (found.ReturnType == typeof(void)) throw new ArgumentException($"Method {message.MethodName} doesn't have a return value! (Uses void) Set message.Parameters to null before requesting data!");	
 			} else {
 				var found = ServerMethods?.FirstOrDefault(x => x[0].ToString()?.ToLower() == message.MethodName?.ToLower());
 				if (found == default) throw new Exception($"Method {message.MethodName} not listed in SERVER'S methods list");
-				if (((Type)found[1]) == typeof(void)) throw new Exception($"Method {message.MethodName} doesn't have a return value! (Uses void)");			
+				if (((Type)found[1]) == typeof(void)) throw new ArgumentException($"Method {message.MethodName} doesn't have a return value! (Uses void) Set message.Parameters to null before requesting data!");			
 			}
 			message.MessageType = (int?)MessageTypes.RequestData;
 			SendMessage(message,Client.GetStream());
