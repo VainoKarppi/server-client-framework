@@ -30,10 +30,10 @@ public class Program {
         Console.WriteLine($"*EVENT* SERVER STOPPED! SUCCESS:{eventData.Success}");
     }
     public static void OnMessageSent(object sender, OnMessageSentEvent eventData){
-        Console.WriteLine($"*EVENT* MSG SENT: {eventData.Message.MethodName}");
+        Console.WriteLine($"*EVENT* MSG SENT: {eventData.Message?.MethodName}");
     }
     public static void OnMessageReceived(object sender, OnMessageReceivedEvent eventData){
-        Console.WriteLine($"*EVENT* MSG RECEIVED: {eventData.Message.MethodName}");
+        Console.WriteLine($"*EVENT* MSG RECEIVED: {eventData.Message?.MethodName}");
     }
     public static void OnHandShakeStart(object sender, OnHandShakeStartEvent eventData){
         Console.WriteLine($"*EVENT* HANDSHAKE STARTED: version:{eventData.ClientVersion}, username:{eventData.UserName}");
