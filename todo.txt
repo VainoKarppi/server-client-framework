@@ -2,20 +2,14 @@
 
 Add More events???
 
-Check for each parameter and make sure the type is same as on receiver method
+Check for each parameter and make sure the type is same as on receiver method and check amount
 
 Remove from JsonSerializer and use bytes instead: // sender, target, type, is class, key, methodname?
 And then use JsonSerializer for parameters only (not required either, since we have parse parameters array)
 
 
 
-TODO send client parameters only if requested by server
+TODO send client METHODS only if requested by server
 
 
-add warning if method takes less parameters than given in Parameters
-
-If request sent right after another Params gets duplicated
-
-handshaketimeout to crash whole server
-
-Client 6 disconnected! (SUCCESS: False) -> Exec handshake failed if handshake not done
+handle handshake timeout better

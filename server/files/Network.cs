@@ -46,22 +46,22 @@ namespace ServerFramework {
         }
         
 		public class NetworkMessage {
-			public int? MessageType { get; internal set; } = 0;
+			public int? MessageType { get; set; } = 0;
 			// One of the tpes in "MessageTypes"
 			public int? TargetId { get; set; } = 0;
 			// 0 = everyone, 1 = server, 2 = client 1...
             public string? MethodName { get; set; }
 			// Minus numbers are for internal use!
 			public dynamic? Parameters { get; set; }
-            public bool UseClass { get; internal set; } = false;
+            public bool UseClass { get; set; } = false;
 			// Array of parameters passed to method that is going to be executed
-			public int Key { get; internal set; } = new Random().Next(100,int.MaxValue);
+			public int Key { get; set; } = new Random().Next(100,int.MaxValue);
 			// Key for getting the response for specific request (0-100) = event id
-			public int? Sender { get; internal set; } = 1;
+			public int? Sender { get; set; } = 1;
 			// Id of the sender. Can be null in case handshake is not completed
-			public bool isHandshake { get; internal set; } = false;
+			public bool isHandshake { get; set; } = false;
 			// Used to detect for handshake. Else send error for not connected to server!
-            public dynamic? OriginalParams { get; internal set; }
+            internal dynamic? OriginalParams { get; set; }
 		}
 
         /// <summary>
@@ -447,8 +447,8 @@ namespace ServerFramework {
                     bool success = ((ex is IOException || ex is SocketException) && _client.HandshakeDone);
                     if (!success) Log(ex.Message);
 
-                    Log($"Client {_client.Id} disconnected! (SUCCESS: {success})");
                     if (!_client.HandshakeDone) break;
+                    Log($"Client {_client.Id} disconnected! (SUCCESS: {success})");
 
                     OnClientDisconnectEvent disconnectEvent = new OnClientDisconnectEvent(_client.Id,_client.UserName,success);
                     NetworkEvent eventTemp = new NetworkEvent(disconnectEvent);
@@ -640,6 +640,7 @@ namespace ServerFramework {
             Log($"TargetId:{message.TargetId}");
             Log($"MethodName:{message.MethodName}");
             Log($"IsClass:{message.UseClass}");
+            Log($"Handshake:{message.isHandshake}");
             Log();
             Log(JsonSerializer.Serialize<object>(message.Parameters));
             Log();

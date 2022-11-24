@@ -30,21 +30,21 @@ namespace ClientFramework {
 		public enum MessageTypes : int {SendData, RequestData, ResponseData, ServerEvent, ClientEvent}
         public class NetworkMessage
         {
-            public int? MessageType { get; internal set; } = (int)MessageTypes.SendData;
+            public int? MessageType { get; set; } = (int)MessageTypes.SendData;
             // One of the tpes in "MessageTypes"
-            public int? TargetId { get; set; } = 1;
+            public int? TargetId { get; set; } = 0;
             // 0 = everyone, 1 = server, 2 = client 1...
             // Minus numbers are for internal use!
             public string? MethodName { get; set; }
             public dynamic? Parameters { get; set; }
-            public bool UseClass { get; internal set; } = false;
+            public bool UseClass { get; set; } = false;
             // Array of parameters passed to method that is going to be executed
-            public int Key { get; internal set; } = new Random().Next(100, int.MaxValue);
+            public int Key { get; set; } = new Random().Next(100, int.MaxValue);
             // Key for getting the response for specific request
-            public int? Sender { get; internal set; } = Client.ID;
+            public int? Sender { get; set; } = Client.ID;
             // Id of the sender. Can be null in case handshake is not completed
-            public bool isHandshake { get; internal set; } = false;
-            public dynamic? OriginalParams { get; internal set; }
+            public bool isHandshake { get; set; } = false;
+            internal dynamic? OriginalParams { get; set; }
         }
         /// <summary>
         /// [string:"MethodName", Type:methodType, Type[]:parameter types]
@@ -445,11 +445,15 @@ namespace ClientFramework {
 			};
 
 			SendMessage(handshakeMessage,Client.GetStream());
+            DebugMessage(handshakeMessage);
 
-			// TODO Add timeout
-			byte[] bytes = ReadMessageBytes(Client.GetStream());
+            // TODO Add timeout
+            byte[] bytes = ReadMessageBytes(Client.GetStream());
 			if (bytes.Count() == 0) {
-				Client.Client.Close();
+                Client.Writer?.Close();
+                Client.Reader?.Close();
+                Client.Stream?.Close();
+                Client.Client.Close();
 				throw new Exception("ERROR HANDSHAKE! UNKNOWN REASON (SERVER)");
 			}
 			
@@ -576,6 +580,7 @@ namespace ClientFramework {
             Log($"TargetId:{message.TargetId}");
             Log($"MethodName:{message.MethodName}");
 			Log($"IsClass:{message.UseClass}");
+			Log($"Handshake:{message.isHandshake}");
             Log();
             Log(JsonSerializer.Serialize<object>(message.Parameters));
             Log();
