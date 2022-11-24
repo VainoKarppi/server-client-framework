@@ -33,7 +33,7 @@ namespace ClientFramework {
 
             int i = 1;
             foreach (Network.OtherClient _client in Network.OtherClients) {
-                Console.WriteLine($"    ({i}) ID={_client.Id} Name={_client.UserName}");
+                Console.WriteLine($"    ({i}) ID={_client.ID} Name={_client.UserName}");
                 i++;
             }
         }
@@ -70,7 +70,7 @@ namespace ClientFramework {
         public static void GetServerMethods() {
             if (Network.ServerMethods == null) throw new Exception("Server Methods not Initialized yet! (Gets populated when when connected to server)");
             Console.WriteLine();
-            foreach (var item in Network.ServerMethods) Console.WriteLine($"{item[0]} ReturnType:({item[1]})  ParamCount:({((Type[])item[2]).Count()})");
+            foreach (var item in Network.ServerMethods) Console.WriteLine($"{item.Name} ReturnType:({item.ReturnType})  ParamCount:({(item.Parameters)?.Count()})");
         }
         public static void RequestData() {
             if (!Network.IsConnected())

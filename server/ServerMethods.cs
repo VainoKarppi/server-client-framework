@@ -17,13 +17,13 @@ public class ServerMethods {
     {
         Console.WriteLine(
             $"MSG:{testMessage} ({testMessage.GetType()}) " +
-            $"CLIENT: {client.Client.RemoteEndPoint} ID:{client.Id}"
+            $"CLIENT: {client.Client.RemoteEndPoint} ID:{client.ID}"
         );
         return "Hello MSG RESPONSE From SERVER!";
     }
     public static int TestInt(NetworkClient client, dynamic testMessage)
     {
-        Console.WriteLine($"MSG:{testMessage} CLIENT: {client.Client.RemoteEndPoint} ID:{client.Id}");
+        Console.WriteLine($"MSG:{testMessage} CLIENT: {client.Client.RemoteEndPoint} ID:{client.ID}");
         return 123;
     }
     public static int TestTwo(NetworkClient client, string testMessage, int intt)
@@ -42,7 +42,7 @@ public class ServerMethods {
     }
     public static dynamic TestType(NetworkClient client, dynamic testMessage)
     {
-        Console.WriteLine($"MSG:{testMessage} CLIENT: {client.Client.RemoteEndPoint} ID:{client.Id}");
+        Console.WriteLine($"MSG:{testMessage} CLIENT: {client.Client.RemoteEndPoint} ID:{client.ID}");
         TestClass test = new TestClass();
         test.StringTest = "TESTI";
         test.Test = true;
@@ -63,7 +63,7 @@ public class ServerMethods {
         foreach (NetworkClient toAdd in ClientList)
         {
             if (!toAdd.Connected) continue;
-            list.Add(new object[] { toAdd.Id, toAdd.UserName });
+            list.Add(new object[] { toAdd.ID, toAdd.UserName });
         }
         return list.ToArray();
     }

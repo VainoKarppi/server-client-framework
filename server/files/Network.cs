@@ -16,82 +16,119 @@ using System.Text.Json;
 using System.Threading;
 
 using static ServerFramework.Logger;
-
+using static ServerFramework.NetworkEvents;
 
 namespace ServerFramework {
-    
+    /// <summary>Settings for the framework to be used</summary>
     public class Settings {
-        /// <summary>
-        /// Checks if username is already in use on one of the clients. If in use and set to false, error will occur
-        /// </summary>
+        /// <summary>Checks if username is already in use on one of the clients. If in use and set to false, error will occur</summary>
         public static bool AllowSameUsername = true;
 
-        /// <summary>
-        /// If true all clients can have their own methods.
-        /// Otherwise the first client that joins is used as a "base" for methods and if other clients have more or less methods, this will occur error
-        /// </summary>
-        // Download and upload to all clients their methods and return types and parameter types
-        // TODO public static bool AllowDifferentMethods = false;
+        /**
+        * <summary>
+        * NOT IMPLEMENTED YET!!!
+        * If true all clients can have their own methods.
+        * Otherwise the first client that joins is used as a "base" for methods and if other clients have more or less methods, this will occur error</summary>*/
+        public static bool AllowDifferentMethods = false;//TODO Download and upload to all clients their methods and return types and parameter types 
     }
+    /// <summary></summary>
     public class Network {
+        /// <summary>Verion of the server. example: "1.0.0.0"</summary>
         public static readonly string? ServerVersion;
         private static TcpListener? ServerListener;
         private static readonly object _lock = new object();
+        /// <summary>List of the connected clients on server. WARNING Handshake might not be completed yet!</summary>
         public static readonly List<NetworkClient> ClientList = new List<NetworkClient>();
-        public static bool ServerRunning { get; set; } = false;
-        public enum MessageTypes : int {SendData, RequestData, ResponseData, ServerEvent, ClientEvent}
+        /// <summary>Check if the server is running.</summary>
+        public static bool ServerRunning { get; internal set; } = false;
+        /// <summary>Message types to be used in NetworkMessage and NetworkEvent</summary>
+        public enum MessageTypes : int {
+            /// <summary>Used for fire and forget</summary>
+            SendData,
+            /// <summary>Used for requesting data from target</summary>
+            RequestData
+        }
+
+        /// <summary>Create new instance of a Network Event to be executed on client(s)</summary>
         public class NetworkEvent {
-            public int MessageType { get; set; } = (int)MessageTypes.ServerEvent;
+            internal int MessageType { get; set; } = 10;
             /// <summary>Array of targets. Use negative int to remove from list. {0 = everyone} {-2 = everyone else expect client 2} {-5,-6,...}</summary>
             public int[]? Targets { get; set; } = new int[] { 0 };
+            ///<summary>Class instance of event to be sent. T:ServerFramework.NetworkEvents</summary>
             public dynamic? EventClass { get; set; }
+            ///<summary>NetworkEvent to be invoked on client</summary>
             public NetworkEvent(dynamic eventClass) {
                 EventClass = eventClass;
             }
+            ///<summary>Empty NetworkEvent to be invoked on client. Requires at least EventClass</summary>
             public NetworkEvent() {}
         }
         
+        ///<summary>Network message that contains the data that was sent or received</summary>
 		public class NetworkMessage {
             internal int? Hash;
+            ///<summary>Type of the message (use MessageTypes)</summary>
             public int? MessageType { get; set; } = 0;
-			// One of the tpes in "MessageTypes"
+            ///<summary>Target ID who to send the message to. (0 = everyone, 1 = server, 2 = clientID, -2 = Everyone excpect client 2)</summary>
 			public int? TargetId { get; set; } = 0;
-			// 0 = everyone, 1 = server, 2 = client 1...
+			///<summary>Name of the registered method on receivers end</summary>
             public string? MethodName { get; set; }
-			// Minus numbers are for internal use!
+			///<summary>Parameters to be send into the method</summary>
 			public dynamic? Parameters { get; set; }
-            public bool UseClass { get; set; } = false;
+            internal bool UseClass { get; set; } = false;
 			// Array of parameters passed to method that is going to be executed
-			public int Key { get; set; } = new Random().Next(100,int.MaxValue);
-			// Key for getting the response for specific request (0-100) = event id
-			public int? Sender { get; set; } = 1;
+			internal int Key { get; set; } = new Random().Next(100,int.MaxValue);
+			///<summary>ID of the client who sent the message</summary>
+			public int? Sender { get; internal set; } = 1;
 			// Id of the sender. Can be null in case handshake is not completed
-			public bool isHandshake { get; set; } = false;
+			internal bool isHandshake { get; set; } = false;
 			// Used to detect for handshake. Else send error for not connected to server!
             internal dynamic? OriginalParams { get; set; }
+            /// <summary>Builds a new NetworkMessage that can be sent to wanted target using SendData or RequestData</summary>
             public NetworkMessage() {
-                Hash = this.GetHashCode();
+                Hash = this.GetHashCode(); // TODO Check if same as on client
+            }
+            /// <summary>Builds a new NetworkMessage that can be sent to wanted target using SendData or RequestData</summary>
+            public NetworkMessage(string methodName, int targetID, dynamic? parameters = null) {
+                this.MethodName = methodName;
+                this.TargetId = targetID;
+                this.Parameters = parameters;
+                this.Hash = this.GetHashCode(); // TODO Check if same as on client
             }
 		}
 
-        /// <summary>
-        /// Returns list of available methods on client. Array of arrays. First object is string of the method name. Second object is the returned data type
-        /// </summary>
-        public static List<object[]>? ClientMethods;
+        /// <summary>Method info that is available on client.</summary>
+        public class NetworkMethodInfo {
+            /// <summary>Method name</summary>
+            public string? Name { get; internal set; }
+            /// <summary>Return type of the method</summary>
+            public Type? ReturnType { get; internal set; }
+            /// <summary>Parameter types in the method</summary>
+            public Type[]? Parameters { get; internal set; }
+            internal NetworkMethodInfo(string? name, Type? type, Type[]? paramTypes) {
+                this.Name = name;
+                this.ReturnType = type;
+                this.Parameters = paramTypes;
+            }
+        }
+        ///<summary>List of the methods available on client ( Registered using "M:ServerFramework.Network.RegisterMethod")</summary>
+        public static readonly List<NetworkMethodInfo> ClientMethods = new List<NetworkMethodInfo>();
+        ///<summary>List of the methods available on server ( Registered using "M:ServerFramework.Network.RegisterMethod")</summary>
+        public static readonly List<MethodInfo> ServerMethods = new List<MethodInfo>();
+        private static bool ClientMethodsInitialized = false;
         private static List<string> PrivateMethods = new List<string>();
 		private static Dictionary<int,dynamic> Results = new Dictionary<int,dynamic>();
-        public static List<MethodInfo> ServerMethods = new List<MethodInfo>();
+        
 
         /// <summary>
-        /// Registers method to be invoked. Can be class or single method.
-        /// 
+        /// Register method to available methods to be invoked. When client uses SendData or RequestData
         /// </summary>
         /// <param name="className"></param>
         /// <param name="methodName"></param>
-        /// <returns>INT : Number of methods registered</returns>
+        /// <returns>INT : Amount of the registered methods</returns>
         public static int RegisterMethod(Type className, string? methodName = null) {
             try {
-                if (ServerRunning) throw new Exception("Cannot register new methods while server is running!");
+                if (ServerRunning) throw new InvalidOperationException("Cannot register new methods while server is running!");
                 if (methodName == null) {
                     MethodInfo[] methods = className.GetMethods(BindingFlags.Static | BindingFlags.Public);
                     int i = 0;
@@ -112,9 +149,16 @@ namespace ServerFramework {
             } catch { return -1; }
         }
 
-        public static void StartServer(int serverPort) {
+
+
+        /// <summary>
+        /// Starts the server thread
+        /// </summary>
+        /// <param name="serverPort"></param>
+        /// <exception cref="InvalidOperationException"></exception>
+        public static void StartServer(int serverPort = 5001) {
             if (ServerRunning)
-                throw new Exception("Server already running!");
+                throw new InvalidOperationException("Server already running!");
 
             new Thread(() => {
                 Thread.CurrentThread.IsBackground = true;
@@ -137,7 +181,7 @@ namespace ServerFramework {
                     try {
                         // Start accepting clients
                         NetworkClient _client = new NetworkClient(ServerListener);
-                        _client.Id = _clientID;
+                        _client.ID = _clientID;
                         // Make sure the connection is already not created
                         if(ClientList.Contains(_client)) {
                             _client.Close();
@@ -160,9 +204,13 @@ namespace ServerFramework {
                 }
             }).Start();
         }
+        /// <summary>
+        /// Stop server and send event invoke to clients about successfull server stop
+        /// </summary>
+        /// <exception cref="InvalidOperationException"></exception>
         public static void StopServer() {
             if (!ServerRunning)
-                throw new Exception("Server not running!");
+                throw new InvalidOperationException("Server not running!");
             
             Log("Stopping server...");
 
@@ -184,10 +232,14 @@ namespace ServerFramework {
         }
 
 
-        // Request ID is used to answer to specific message
-
+        
+        /// <summary>
+        /// Invoke a event on receivers end.
+        /// </summary>
+        /// <param name="message"></param>
+        /// <exception cref="InvalidOperationException"></exception>
         public static void SendEvent(NetworkEvent message) {
-            if (!ServerRunning) throw new Exception("Server not running!4");
+            if (!ServerRunning) throw new InvalidOperationException("Server not running!");
 
             // Add ALL clients to list if left as blank
             List<int> targets = new List<int>();
@@ -199,10 +251,10 @@ namespace ServerFramework {
                 int target = message.Targets[0];
                 if (target < 0) {
                     foreach (NetworkClient client in ClientList) {
-                        if (target * -1 != client.Id) targets.Add(client.Id);
+                        if (target * -1 != client.ID) targets.Add(client.ID);
                     }
                 } else {
-                    foreach (NetworkClient client in ClientList) targets.Add(client.Id);
+                    foreach (NetworkClient client in ClientList) targets.Add(client.ID);
                 }
             } else {
                 targets = message.Targets.ToList();
@@ -214,12 +266,11 @@ namespace ServerFramework {
             // Send to single or multiple users
             message.Targets = null; // Dont send targets over net
             foreach (int id in targets) {
-                NetworkClient? client = ClientList.FirstOrDefault(c => c.Id == id);
+                NetworkClient? client = ClientList.FirstOrDefault(c => c.ID == id);
                 if (client == null || client == default) continue;
                 SendMessage(message,client.Stream);
             }
         }
-
         private static void SendMessage(dynamic message, NetworkStream Stream) {
             if (message is NetworkMessage && (!message.isHandshake) && message.Sender != 1) {
 				NetworkEvents? listener = NetworkEvents.eventsListener;
@@ -246,20 +297,28 @@ namespace ServerFramework {
 			return bytes;
 		}
         
+        
+        
+        /// <summary>
+        /// Invoke a method on receivers end. This uses fire and forget mode. (No data to be returned)
+        /// </summary>
+        /// <param name="message"></param>
+        /// <exception cref="InvalidOperationException"></exception>
+        /// <exception cref="Exception"></exception>
         public static void SendData(NetworkMessage message) {
-            if (!ServerRunning) throw new Exception("Server not running!");
-			if (message.TargetId == 1) throw new Exception("Cannot send data to self (server)!");
+            if (!ServerRunning) throw new InvalidOperationException("Server not running!");
+			if (message.TargetId == 1) throw new InvalidOperationException("Cannot send data to self (server)!");
 			
 			if (message.MessageType == null) message.MessageType = (int?)MessageTypes.SendData;
 
-            if (message.MessageType != (int)MessageTypes.ResponseData) {
-                var found = ClientMethods?.FirstOrDefault(x => x[0].ToString()?.ToLower() == message.MethodName?.ToLower());
+            if (message.MessageType != 11) {
+                var found = ClientMethods?.FirstOrDefault(x => x.Name?.ToLower() == message.MethodName?.ToLower());
 				if (found == default) throw new Exception($"Method {message.MethodName} not listed in CLIENT'S methods list");
             }
             
             // Send to single ro multiple users
             if (message.TargetId > 0) {
-                NetworkClient? client = ClientList.FirstOrDefault(c => c.Id == message.TargetId);
+                NetworkClient? client = ClientList.FirstOrDefault(c => c.ID == message.TargetId);
                 if (client == null) throw new Exception("Invalid target!");
                 SendMessage(message,client.Stream);
                 int mode = message.Sender == 1?1:3;
@@ -267,7 +326,7 @@ namespace ServerFramework {
             } else {
                 int i = 0;
                 foreach (NetworkClient client in ClientList) {
-                    if (message.Sender == client.Id) continue;
+                    if (message.Sender == client.ID) continue;
                     SendMessage(message,client.Stream);
                     i++;
                 }
@@ -291,18 +350,27 @@ namespace ServerFramework {
 			}
 			return returnMessage;
 		}
-
+        
+        
+        
+        /// <summary>
+        /// Request data from target by invoking its method.
+        /// </summary>
+        /// <param name="message"></param>
+        /// <returns></returns>
+        /// <exception cref="InvalidOperationException"></exception>
+        /// <exception cref="Exception"></exception>
 		public static dynamic RequestData(NetworkMessage message) {
-			if (!ServerRunning) throw new Exception("Server Not running!");
+			if (!ServerRunning) throw new InvalidOperationException("Server not running!");
             if (message.TargetId == 1) throw new Exception("Cannot request data from self!");
-            if (message.MessageType != (int)MessageTypes.ResponseData) {
-                var found = ClientMethods?.FirstOrDefault(x => x[0].ToString()?.ToLower() == message.MethodName?.ToLower());
+            if (message.MessageType != 11) {
+                var found = ClientMethods?.FirstOrDefault(x => x.Name?.ToLower() == message.MethodName?.ToLower());
 				if (found == default) throw new Exception($"Method {message.MethodName} not listed in CLIENT'S methods list");
-				if (((Type)found[1]) == typeof(void)) throw new Exception($"Method {message.MethodName} doesn't have a return value! (Uses void)");	
+				if (found.ReturnType == typeof(void)) throw new Exception($"Method {message.MethodName} doesn't have a return value! (Uses void)");	
             }
 			message.MessageType = (int?)MessageTypes.RequestData;
 
-            NetworkClient? client = ClientList.FirstOrDefault(client => client.Id == message.TargetId);
+            NetworkClient? client = ClientList.FirstOrDefault(client => client.ID == message.TargetId);
             if (client == null) throw new Exception("Invalid target!");
 		
 			SendMessage(message,client.Stream);
@@ -310,6 +378,18 @@ namespace ServerFramework {
 
 			return RequestDataResult(message);
 		}
+        
+        
+        
+        /// <summary>
+        /// Request data from target by invoking its method and parse to wanted type. (Can be class instance)
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="message"></param>
+        /// <returns></returns>
+        /// <exception cref="NullReferenceException"></exception>
+        /// <exception cref="InvalidOperationException"></exception>
+        /// <exception cref="Exception"></exception>
 		public static dynamic RequestData<T>(NetworkMessage message) {
 			dynamic returnMessage = RequestData(message);
 			if (returnMessage is JsonElement) {
@@ -318,6 +398,40 @@ namespace ServerFramework {
                 return returned;
 			}
 			return (T)returnMessage;
+		}
+       
+       
+       
+        /// <summary>
+        /// Request data from target by invoking its method and parse to wanted type. (Can be class instance) using ASYNC
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="message"></param>
+        /// <returns></returns>
+        /// <exception cref="NullReferenceException"></exception>
+        /// <exception cref="InvalidOperationException"></exception>
+        /// <exception cref="Exception"></exception>
+        public static async Task<dynamic> RequestDataAsync<T>(NetworkMessage message) {
+			dynamic returnMessage = await RequestData(message);
+			if (returnMessage is JsonElement) {
+                var returned = ((JsonElement)returnMessage[1]).Deserialize<T>();
+				if (returned == null) throw new NullReferenceException();
+                return returned;
+			}
+			return (T)returnMessage;
+		}
+		
+        
+        
+        /// <summary>
+        /// Request data from target by invoking its method using ASYNC
+        /// </summary>
+        /// <param name="message"></param>
+        /// <returns></returns>
+        /// <exception cref="InvalidOperationException"></exception>
+        /// <exception cref="Exception"></exception>
+        public static async Task<dynamic> RequestDataAsync(NetworkMessage message) {
+			return await RequestData(message);
 		}
 
         // One thread for one user
@@ -328,7 +442,7 @@ namespace ServerFramework {
                     byte[] bytes = ReadMessageBytes(_client.Stream);
 					
                     if (bytes.Count() == 0) {
-                        throw new Exception($"ERROR BYTES IN CLIENT: {_client.Id} RECEIVE DATA THREAD!");
+                        throw new Exception($"ERROR BYTES IN CLIENT: {_client.ID} RECEIVE DATA THREAD!");
                     };
                     
                     var utf8Reader = new Utf8JsonReader(bytes);
@@ -341,7 +455,7 @@ namespace ServerFramework {
 
                     NetworkEvents? listener = NetworkEvents.eventsListener;
 
-                    if (type == (int)MessageTypes.ServerEvent) {
+                    if (type == 10) {
 						var eventBytes = new Utf8JsonReader(bytes);
 						NetworkEvent? eventMessage = JsonSerializer.Deserialize<NetworkEvent>(ref eventBytes)!;
                         if (eventMessage.Targets != null && eventMessage.Targets.Any((new int[] {0,1}).Contains)) {
@@ -373,17 +487,17 @@ namespace ServerFramework {
                                 Thread.Sleep(5);
 
                                 NetworkEvent eventMessage = new NetworkEvent {
-                                    Targets = new int[] {_client.Id * -1},
-                                    EventClass = new OnClientConnectEvent(_client.Id,_client.UserName,true)
+                                    Targets = new int[] {_client.ID * -1},
+                                    EventClass = new OnClientConnectEvent(_client.ID,_client.UserName,true)
                                 };
                                 SendEvent(eventMessage);
                                 
                                 listener?.ExecuteEvent(eventMessage?.EventClass);
 
-                                Log($"*SUCCESS* Handshake done! ({_client.Id})");
+                                Log($"*SUCCESS* Handshake done! ({_client.ID})");
                             } else {
                                 _client.Close();
-                                Log($"*FAILED* Handshake failed! ({_client.Id})");
+                                Log($"*FAILED* Handshake failed! ({_client.ID})");
                             }
                         } else {
                             HandshakeClient(_client,message.Parameters);
@@ -394,7 +508,7 @@ namespace ServerFramework {
                     listener?.ExecuteEvent(new OnMessageReceivedEvent(message));
 
                     // Dump result to array and continue
-					if (message.MessageType == (int)MessageTypes.ResponseData) {
+					if (message.MessageType == 11) {
                         Results.Add(message.Key,message.Parameters);
 						continue;
 					}
@@ -436,7 +550,7 @@ namespace ServerFramework {
 					switch (message.MessageType) {
                         case (int)MessageTypes.RequestData: { // Invoke Method and send response back to client
                             NetworkMessage responseMessage = new NetworkMessage {
-                                MessageType = (int)MessageTypes.ResponseData,
+                                MessageType = 11,
                                 MethodName = message.MethodName,
                                 TargetId = message.Sender,
                                 Key = message.Key
@@ -465,9 +579,9 @@ namespace ServerFramework {
                     if (!success) Log(ex.Message);
 
                     if (!_client.HandshakeDone) break;
-                    Log($"Client {_client.Id} disconnected! (SUCCESS: {success})");
+                    Log($"Client {_client.ID} disconnected! (SUCCESS: {success})");
 
-                    OnClientDisconnectEvent disconnectEvent = new OnClientDisconnectEvent(_client.Id,_client.UserName,success);
+                    OnClientDisconnectEvent disconnectEvent = new OnClientDisconnectEvent(_client.ID,_client.UserName,success);
                     NetworkEvent eventTemp = new NetworkEvent(disconnectEvent);
                     eventTemp.EventClass = disconnectEvent;
                     SendEvent(eventTemp); // TODO FIX
@@ -481,7 +595,11 @@ namespace ServerFramework {
             if (ServerRunning) CloseClient(_client);
         }
 
-        private static void CloseClient(NetworkClient client) {
+        /// <summary>
+        /// Close connection of client. Invokes OnClientDisconnectedEvent
+        /// </summary>
+        /// <param name="client"></param>
+        public static void CloseClient(NetworkClient client) {
             ClientList.Remove(client);
             client.Writer.Close();
             client.Reader.Close();
@@ -502,15 +620,15 @@ namespace ServerFramework {
             if (serverVersion == null) serverVersion = "1.0.0.0";
 
             NetworkEvents? listener = NetworkEvents.eventsListener;
-            listener?.ExecuteEvent(new OnHandShakeStartEvent(clientVersion,userName,client.Id),true);
+            listener?.ExecuteEvent(new OnHandShakeStartEvent(clientVersion,userName,client.ID),true);
             
             // RETURNS client id if success (minus number if error (each value is one type of error))
             Log($"*HANDSHAKE START* ClientVersion:{clientVersion} Name:{userName}");
 
             NetworkMessage handshakeMessage = new NetworkMessage {
-                MessageType = (int)MessageTypes.ResponseData,
+                MessageType = 11,
                 isHandshake = true,
-                TargetId = client.Id
+                TargetId = client.ID
             };
 
             //TODO add major and minor checking
@@ -518,22 +636,27 @@ namespace ServerFramework {
                 Log($"User {userName} has wrong version! Should be: {serverVersion} has: {clientVersion}");
                 handshakeMessage.Parameters = new object[] {-2,serverVersion};
                 Network.SendData(handshakeMessage);
-                listener?.ExecuteEvent(new OnHandShakeEndEvent(clientVersion,userName,client.Id,false,2),true);
+                listener?.ExecuteEvent(new OnHandShakeEndEvent(clientVersion,userName,client.ID,false,2),true);
                 throw new Exception($"User {userName} has wrong version! Should be: {serverVersion} has: {clientVersion}");
             }
 
             //TODO Settings.AllowDifferentMethods
-            if (ClientMethods == null) {
-                ClientMethods = new List<object[]>() {};
+            if (!ClientMethodsInitialized) {
+                ClientMethodsInitialized = true;
                 foreach (object[] method in (object[])parameters[2]) {
                     Type? type = Type.GetType((string)method[1]);
                     if (type == null) continue;
-                    object[] paramTypes = (object[])method[2];
-                    ClientMethods.Add(new object[] {
+                    object[]? paramTypes = (object[])method[2];
+                    List<Type> typeList = new List<Type> {};
+                    foreach (string paramType in paramTypes) {
+                        Type? typeThis = Type.GetType(paramType);
+                        if (typeThis != null) typeList.Add(typeThis);
+                    }
+                    ClientMethods.Add(new NetworkMethodInfo(
                         (string)method[0],
                         type,
-                        paramTypes.Select(x => Type.GetType((string)x)).ToArray<Type?>()
-                    });
+                        typeList.ToArray<Type>()
+                    ));
                 }
                 Log($"Added ({ClientMethods.Count()}) client methods!");
             }
@@ -542,24 +665,24 @@ namespace ServerFramework {
             if (!Settings.AllowSameUsername) {
                 NetworkClient? usedClient = ClientList.FirstOrDefault(x => x.HandshakeDone && x.UserName.ToLower() == userName.ToLower());
                 if (usedClient != null) {
-                    Log($"*ERROR* Handshake, Username:{userName} already in use for Client:{usedClient.Id}!");
+                    Log($"*ERROR* Handshake, Username:{userName} already in use for Client:{usedClient.ID}!");
                     handshakeMessage.Parameters = new object[] {-3,serverVersion};
                     Network.SendData(handshakeMessage);
-                    listener?.ExecuteEvent(new OnHandShakeEndEvent(clientVersion,userName,client.Id,false,3),true);
-                    throw new Exception($"*ERROR* Handshake, Username:{userName} already in use for Client:{usedClient.Id}!");
+                    listener?.ExecuteEvent(new OnHandShakeEndEvent(clientVersion,userName,client.ID,false,3),true);
+                    throw new Exception($"*ERROR* Handshake, Username:{userName} already in use for Client:{usedClient.ID}!");
                 }
             }
 
             List<object[]> clientlist = new List<object[]>(){};
             foreach (NetworkClient toAdd in Network.ClientList) {
-                if (!toAdd.Connected || toAdd.Id == client.Id) continue;
-                clientlist.Add(new object[] {toAdd.Id,toAdd.UserName});
+                if (!toAdd.Connected || toAdd.ID == client.ID) continue;
+                clientlist.Add(new object[] {toAdd.ID,toAdd.UserName});
             }
 
             List<int> targetList = new List<int>() {};
             foreach (NetworkClient toAdd in Network.ClientList) {
-                if (!toAdd.Connected || toAdd.Id == client.Id) continue;
-                targetList.Add(toAdd.Id);
+                if (!toAdd.Connected || toAdd.ID == client.ID) continue;
+                targetList.Add(toAdd.ID);
             }
 
             // Params = [type,type.type]
@@ -571,7 +694,7 @@ namespace ServerFramework {
                     Select(z => z.ParameterType.ToString()).ToArray()
             }).ToArray();
 
-            handshakeMessage.Parameters = new object[] {client.Id,serverVersion,methodsToSend,clientlist.ToArray()};
+            handshakeMessage.Parameters = new object[] {client.ID,serverVersion,methodsToSend,clientlist.ToArray()};
 
             Network.SendData(handshakeMessage);
 
@@ -580,13 +703,13 @@ namespace ServerFramework {
                 while (i < 200) { // 2 second timer
                     Thread.Sleep(2);
                     if (client.HandshakeDone) {
-                        listener?.ExecuteEvent(new OnHandShakeEndEvent(clientVersion,userName,client.Id,true,null),false);
+                        listener?.ExecuteEvent(new OnHandShakeEndEvent(clientVersion,userName,client.ID,true,null),false);
                         return;
                     }
                     ++i;
                 }
-                listener?.ExecuteEvent(new OnHandShakeEndEvent(clientVersion,userName,client.Id,false,0),true);
-                Log($"Handshake time out for Client:{client.Id}");
+                listener?.ExecuteEvent(new OnHandShakeEndEvent(clientVersion,userName,client.ID,false,0),true);
+                Log($"Handshake time out for Client:{client.ID}");
                 CloseClient(client);
             }).Start();
         }
@@ -739,14 +862,18 @@ namespace ServerFramework {
 			return input.Substring(start, length);
 		}
 
+        /// <summary>Client instance that holds the client info.</summary>
         public class NetworkClient : TcpClient {
-            public NetworkStream Stream { get; set; }
-            public StreamReader Reader { get; set; }
-            public StreamWriter Writer { get; set; }
-            public int Id { get; set; }
-            public string UserName { get; set; } = "error (NoName)";
-            public bool HandshakeDone { get; set; } = false;
-            public NetworkClient(TcpListener listener)
+            internal NetworkStream Stream { get; set; }
+            internal StreamReader Reader { get; set; }
+            internal StreamWriter Writer { get; set; }
+            /// <summary>ID of the Client</summary>
+            public int ID { get; internal set; }
+            /// <summary>Username of the client</summary>
+            public string UserName { get; internal set; } = "error (NoName)";
+            /// <summary>BOOL if the handshake has been completed.</summary>
+            public bool HandshakeDone { get; internal set; } = false;
+            internal NetworkClient(TcpListener listener)
             {   
                 TcpClient _client = listener.AcceptTcpClient();
                 Stream = _client.GetStream();

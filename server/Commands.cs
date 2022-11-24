@@ -6,6 +6,8 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 
+using static ServerFramework.NetworkEvents;
+
 namespace ServerFramework {
     public class Commands {
         public static void Help() {
@@ -31,7 +33,7 @@ namespace ServerFramework {
             foreach (Network.NetworkClient? client in Network.ClientList) {
                 EndPoint? endPoint = client.Client.RemoteEndPoint;
                 string? remoteIP = (endPoint as IPEndPoint)?.Address?.ToString();
-                Console.WriteLine("    User: " + client.UserName + " - (" + remoteIP + ") : ID=" + client.Id.ToString());
+                Console.WriteLine("    User: " + client.UserName + " - (" + remoteIP + ") : ID=" + client.ID.ToString());
             }
         }
         public static void SendData() {
@@ -60,7 +62,7 @@ namespace ServerFramework {
         public static void GetClientMethods() {
             if (Network.ClientMethods == null) throw new Exception("Client Methods not Initialized yet! (Gets populated when first client joins)");
             Console.WriteLine();
-            foreach (var item in Network.ClientMethods) Console.WriteLine($"{item[0]} ReturnType:({item[1]})  ParamCount:({((Type[])item[2]).Count()})");
+            foreach (var item in Network.ClientMethods) Console.WriteLine($"{item.Name} ReturnType:({item.ReturnType})  ParamCount:({(item.Parameters)?.Count()})");
         }
         public static void GetServerMethods() {
             Console.WriteLine();

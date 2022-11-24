@@ -8,6 +8,8 @@ using System.Reflection;
 using System.Text;
 using System.Threading;
 
+using static ServerFramework.NetworkEvents;
+
 namespace ServerFramework;
 
 public class Test {

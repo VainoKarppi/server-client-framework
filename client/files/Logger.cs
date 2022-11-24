@@ -2,8 +2,11 @@ using System.Reflection;
 
 namespace ClientFramework;
 
+/// <summary>Create new instance of Logger</summary>
 public static class Logger {
+    /// <summary>Toggle writing to external .log file. (Creates a Logs folder in executing assembly path)</summary>
     public static bool Enabled = true;
+    /// <summary>Toggle writing to console</summary>
     public static bool Debug = true;
     private static Thread? writerThread;
     private static List<object?> Texts = new List<object?>();
@@ -39,7 +42,7 @@ public static class Logger {
         writerThread = null;
     }
 
-    public static void Log(object? text = null) {
+    internal static void Log(object? text = null) {
         string time = DateTime.Now.ToString("HH:mm: ss:FF");
         time = time.Remove(5,1);
         while (time.Length != 12) {

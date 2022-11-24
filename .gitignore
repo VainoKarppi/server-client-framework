@@ -11,10 +11,6 @@ client/bin/**
 client/obj/*
 client/obj
 
-testReader/bin/**
-testReader/bin/*
-testReader/bin
-
 server/obj/**
 server/obj/*
 server/obj
@@ -22,10 +18,6 @@ server/obj
 client/obj/**
 client/obj/*
 client/obj
-
-testReader/obj/**
-testReader/obj/*
-testReader/obj
 
 server/publish/**
 server/publish/*
@@ -35,10 +27,10 @@ client/publish/**
 client/publish/*
 client/publish
 
-testReader/publish/**
-testReader/publish/*
-testReader/publish
+test
 
 *.nupkg
+*.dll
 
 server-client-framework
+server-client-framework-TEMP

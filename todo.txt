@@ -13,3 +13,10 @@ TODO send client METHODS only if requested by server
 
 
 handle handshake timeout better
+
+
+ClientMethodInfo parameter. Check if required or optional (Request data from client and vice verse)
+
+REWORK OF THE WHOLE CLASS STRUCTURES
+
+TODO make sure the socket is using serverframework

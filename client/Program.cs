@@ -3,6 +3,7 @@ using System;
 using System.Net.Mime;
 using System.Reflection;
 
+using static ClientFramework.NetworkEvents;
 
 namespace ClientFramework {
     public class Program {

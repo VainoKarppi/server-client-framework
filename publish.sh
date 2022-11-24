@@ -1,5 +1,7 @@
-mkdir server-client-framework
-cd server-client-framework
+rm -r server-client-framework-TEMP/
+
+mkdir server-client-framework-TEMP
+cd server-client-framework-TEMP
 
 dotnet new classlib
 
@@ -25,7 +27,7 @@ fileName=server-client-framework.$version.nupkg
 scp bin//Debug//$fileName pi@karppi2.asuscomm.com:/home/pi/shared/NuGet/server-client-framework/
 
 cd ..
-rm -r server-client-framework/
+rm -r server-client-framework-TEMP/
 
 
 #scp $fileName pi@karppi2.asuscomm.com:/home/pi/shared/NuGet/server-client-framework/
