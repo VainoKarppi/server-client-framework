@@ -42,8 +42,8 @@ namespace ServerFramework {
         public enum MessageTypes : int {SendData, RequestData, ResponseData, ServerEvent, ClientEvent}
         public class NetworkEvent {
             public int MessageType { get; set; } = (int)MessageTypes.ServerEvent;
-            public int[]? Targets { get; set; }
-			public dynamic? EventClass { get; set; }
+            public int[]? Targets { get; set; } = new int[] { 0 };
+            public dynamic? EventClass { get; set; }
             public NetworkEvent(dynamic eventClass) {
                 EventClass = eventClass;
             }
@@ -51,7 +51,8 @@ namespace ServerFramework {
         }
         
 		public class NetworkMessage {
-			public int? MessageType { get; set; } = 0;
+            internal int? Hash;
+            public int? MessageType { get; set; } = 0;
 			// One of the tpes in "MessageTypes"
 			public int? TargetId { get; set; } = 0;
 			// 0 = everyone, 1 = server, 2 = client 1...
@@ -67,6 +68,9 @@ namespace ServerFramework {
 			public bool isHandshake { get; set; } = false;
 			// Used to detect for handshake. Else send error for not connected to server!
             internal dynamic? OriginalParams { get; set; }
+            public NetworkMessage() {
+                Hash = this.GetHashCode();
+            }
 		}
 
         /// <summary>
@@ -186,10 +190,10 @@ namespace ServerFramework {
 
             // Add ALL clients to list if left as blank
             List<int> targets = new List<int>();
-            if (message.Targets == default) message.Targets = new int[] {0};
+            if (message.Targets == null) message.Targets = new int[] {0};
 
             // Exclusive targeting [-2] = everyone else expect client 2
-            
+
             if (message.Targets.Count() == 1) {
                 int target = message.Targets[0];
                 if (target < 0) {
@@ -201,6 +205,9 @@ namespace ServerFramework {
                 }
             } else {
                 targets = message.Targets.ToList();
+                foreach (int target in message.Targets) { // [-4,-5,...]
+                    if (target < 0 && targets.Contains(target * -1)) targets.Remove(target);
+                }
             }
 
             // Send to single or multiple users
@@ -331,9 +338,14 @@ namespace ServerFramework {
 					if (!Int32.TryParse(property, out type)) continue;
 					if (type < 0) continue;
 
+                    NetworkEvents? listener = NetworkEvents.eventsListener;
+
                     if (type == (int)MessageTypes.ServerEvent) {
 						var eventBytes = new Utf8JsonReader(bytes);
 						NetworkEvent? eventMessage = JsonSerializer.Deserialize<NetworkEvent>(ref eventBytes)!;
+                        if (eventMessage.Targets != null && eventMessage.Targets.Any((new int[] {0,1}).Contains)) {
+                            listener?.ExecuteEvent(eventMessage.EventClass);
+                        }
 						SendEvent(eventMessage);
 						continue;
 					}
@@ -349,8 +361,6 @@ namespace ServerFramework {
 					DebugMessage(message,2);
 
 					message.Parameters = DeserializeParameters(message.Parameters,message.UseClass);
-
-                    NetworkEvents? listener = NetworkEvents.eventsListener;
                     
                     // HANDLE HANDSHAKE
                     if (message.isHandshake) {
