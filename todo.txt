@@ -20,3 +20,4 @@ ClientMethodInfo parameter. Check if required or optional (Request data from cli
 REWORK OF THE WHOLE CLASS STRUCTURES
 
 TODO make sure the socket is using serverframework
+TODO create shared folder of shared methods with SERVER defines

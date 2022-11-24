@@ -12,30 +12,39 @@ public static class Logger {
     private static List<object?> Texts = new List<object?>();
     private static string? logFile;
     private static void WriterThread() {
-        string LogFolder = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + @"\Logs";
-        if (!Directory.Exists(LogFolder))
-            Directory.CreateDirectory(LogFolder);
+        try
+        {
+            string LogFolder = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + @"\Logs";
+            if (!Directory.Exists(LogFolder))
+                Directory.CreateDirectory(LogFolder);
 
-        if (logFile == null)
-            logFile = LogFolder + @"\Log_" + DateTime.Now.ToString("yyyy-MM-dd-H_mm_ss") + ".txt";
+            if (logFile == null)
+                logFile = LogFolder + @"\Log_" + DateTime.Now.ToString("yyyy-MM-dd-H_mm_ss") + ".txt";
 
-        StreamWriter writer = new StreamWriter(logFile, true);
-        while (writerThread != null) {
-            if (Texts.Count() > 0) {
-                try {
-                    foreach (object? text in Texts.ToList()) {
-                        writer.WriteLine(text?.ToString());
-                        Texts.Remove(text);
+            StreamWriter writer = new StreamWriter(logFile, true);
+            while (writerThread != null)
+            {
+                if (Texts.Count() > 0)
+                {
+                    try
+                    {
+                        foreach (object? text in Texts.ToList())
+                        {
+                            writer.WriteLine(text?.ToString());
+                            Texts.Remove(text);
+                        }
+                        writer.Flush();
                     }
-                    writer.Flush();
-                } catch (Exception ex) {
-                    Texts.Add(ex.Message);
+                    catch (Exception ex)
+                    {
+                        Texts.Add(ex.Message);
+                    }
                 }
+                //Thread.Sleep(5);
             }
-            //Thread.Sleep(5);
-        }
-        writer.Flush();
-        writer.Close();
+            writer.Flush();
+            writer.Close();
+        } catch {}
     }
 
     private static void CloseWriter() {

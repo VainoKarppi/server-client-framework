@@ -32,5 +32,4 @@ test
 *.nupkg
 *.dll
 
-server-client-framework
-server-client-framework-TEMP
+server-client-framework.*

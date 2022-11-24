@@ -25,7 +25,7 @@ namespace ClientFramework {
 		public static readonly string? ServerVersion;
 		/// <summary>Create new instance of a Network Event to be executed on client(s)</summary>
 		public class NetworkEvent {
-            internal int MessageType { get; set; } = 10;
+            public int MessageType { get; set; } = 10;
             /// <summary>Array of targets. Use negative int to remove from list. {0 = everyone} {-2 = everyone else expect client 2} {-5,-6,...}</summary>
             public int[]? Targets { get; set; } = new int[] { 0 };
             ///<summary>Class instance of event to be sent. T:ServerFramework.NetworkEvents</summary>
@@ -57,15 +57,15 @@ namespace ClientFramework {
             public string? MethodName { get; set; }
 			///<summary>Parameters to be send into the method</summary>
 			public dynamic? Parameters { get; set; }
-            internal bool UseClass { get; set; } = false;
+            public bool UseClass { get; set; } = false;
 			// Array of parameters passed to method that is going to be executed
-			internal int Key { get; set; } = new Random().Next(100,int.MaxValue);
+			public int Key { get; set; } = new Random().Next(100,int.MaxValue);
 			///<summary>ID of the client who sent the message</summary>
-			public int? Sender { get; internal set; } = 1;
+			public int? Sender { get; set; } = 1;
 			// Id of the sender. Can be null in case handshake is not completed
-			internal bool isHandshake { get; set; } = false;
+			public bool isHandshake { get; set; } = false;
 			// Used to detect for handshake. Else send error for not connected to server!
-            internal dynamic? OriginalParams { get; set; }
+            public dynamic? OriginalParams { get; set; }
             /// <summary>Builds a new NetworkMessage that can be sent to wanted target using SendData or RequestData</summary>
             public NetworkMessage() {
                 Hash = this.GetHashCode(); // TODO Check if same as on client
@@ -239,7 +239,6 @@ namespace ClientFramework {
                         Client.Close();
                         break;
                     }
-					
 					var utf8Reader = new Utf8JsonReader(bytes);
                     dynamic messageTemp = JsonSerializer.Deserialize<dynamic>(ref utf8Reader)!;
 					string property = ((JsonElement)messageTemp).GetProperty("MessageType").ToString();
@@ -247,21 +246,20 @@ namespace ClientFramework {
 					int type = -1;
 					if (!Int32.TryParse(property, out type)) continue;
 					if (type < 0) continue;
-
 					
 					// HANDLE EVENT
 					NetworkEvents? listener = NetworkEvents.eventsListener;
 					if (type == 10) {
-						dynamic? eventClass = ((JsonElement)messageTemp).GetProperty("EventClass");
+                        dynamic? eventClass = ((JsonElement)messageTemp).GetProperty("EventClass");
                         string? eventName = (eventClass is JsonElement) ? ((JsonElement)eventClass).GetProperty("EventName").GetString() : eventClass?.EventName;
 						if (eventName?.ToLower() == "onclientconnectevent") {
-							int? id = ((JsonElement)eventClass).GetProperty("ClientID").GetInt32();
+                            int? id = ((JsonElement)eventClass).GetProperty("ClientID").GetInt32();
 							string? name = ((JsonElement)eventClass).GetProperty("UserName").GetString();
 							bool? success = ((JsonElement)eventClass).GetProperty("Success").GetBoolean();
 							if (id == null || name == null) continue;
 
-							OtherClients.Add(new OtherClient(id,name));
 							eventClass = new OnClientConnectEvent(id,name,success);
+                            if (id != Client.ID) OtherClients.Add(new OtherClient(id, name));
                         }
 						if (eventName?.ToLower() == "onclientdisconnectevent") {
 							int? id = ((JsonElement)eventClass).GetProperty("ClientID").GetInt32();
@@ -617,7 +615,6 @@ namespace ClientFramework {
 			Client.HandshakeDone = true;
 
 			listener?.ExecuteEvent(new OnHandShakeEndEvent(clientVersion,userName,_clientID,true),true);
-			listener?.ExecuteEvent(new OnClientConnectEvent(_clientID,userName,true));
 
 			return _clientID;	
 		}

@@ -1,7 +1,12 @@
-rm -r server-client-framework-TEMP/
+version=$(cat ./version)
+echo $version
 
-mkdir server-client-framework-TEMP
-cd server-client-framework-TEMP
+name=$"server-client-framework.$version"
+
+rm -r $name/
+
+mkdir $name
+cd $name
 
 dotnet new classlib
 
@@ -10,18 +15,19 @@ cp -R ..//server//files server
 
 rm Class1.cs
 
-version=$(cat ..//version)
-echo $version
 
+sed -i '/<PropertyGroup>/,/<\/PropertyGroup>/ s/<\/PropertyGroup>/  <AssemblyVersion>'$version'<\/AssemblyVersion>\n<\/PropertyGroup>/' $name.csproj
+sed -i '/<PropertyGroup>/,/<\/PropertyGroup>/ s/<\/PropertyGroup>/    <Version>'$version'<\/Version>\n<\/PropertyGroup>/' $name.csproj
+sed -i '/<PropertyGroup>/,/<\/PropertyGroup>/ s/<\/PropertyGroup>/    <FileVersion>'$version'<\/FileVersion>\n<\/PropertyGroup>/' $name.csproj
+sed -i '/<PropertyGroup>/,/<\/PropertyGroup>/ s/<\/PropertyGroup>/    <GenerateDocumentationFile>true<\/GenerateDocumentationFile>\n<\/PropertyGroup>/' $name.csproj
 
-sed -i '/<PropertyGroup>/,/<\/PropertyGroup>/ s/<\/PropertyGroup>/  <AssemblyVersion>'$version'<\/AssemblyVersion>\n<\/PropertyGroup>/' server-client-framework.csproj
-sed -i '/<PropertyGroup>/,/<\/PropertyGroup>/ s/<\/PropertyGroup>/    <Version>'$version'<\/Version>\n<\/PropertyGroup>/' server-client-framework.csproj
-sed -i '/<PropertyGroup>/,/<\/PropertyGroup>/ s/<\/PropertyGroup>/    <FileVersion>'$version'<\/FileVersion>\n<\/PropertyGroup>/' server-client-framework.csproj
-sed -i '/<PropertyGroup>/,/<\/PropertyGroup>/ s/<\/PropertyGroup>/    <GenerateDocumentationFile>true<\/GenerateDocumentationFile>\n<\/PropertyGroup>/' server-client-framework.csproj
+dotnet publish -c Release -o ..//$name
 
-dotnet publish -c Release
-
-mv bin//Release//net7.0//publish ..//server-client-framework
+rm $name.csproj
+rm -r bin
+rm -r obj
+rm -r client
+rm -r server
 
 cd ..
-rm -r server-client-framework-TEMP/
+#rm -r $name/

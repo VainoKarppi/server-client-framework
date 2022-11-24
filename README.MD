@@ -8,7 +8,16 @@ This framework is divided to two different namespaces. One for server framework 
 <h2>Setup using DLL reference</h2>
 To get started create new folder project using:
 <code>dotnet new console</code>
-Once completed add reference
+Once completed add reference to .dll in .csproj
+
+<code>
+<ItemGroup>
+    <Reference Include="server-client-framework">
+        <HintPath>.\server-client-framework.x.x.x.x\server-client-framework.x.x.x.x.dll</HintPath>
+    </Reference>
+</ItemGroup>
+</code>
+Where X is the version!
 
 <h2>Setup using NuGet package</h2>
 TODO
