@@ -13,11 +13,11 @@ public class TestClass {
     public dynamic? Data { get; set; }
 }
 public class ServerMethods {
-    public static string Test(NetworkClient client, dynamic testMessage)
+    public static string Test(NetworkClient client, NetworkMessage message, dynamic testMessage)
     {
         Console.WriteLine(
             $"MSG:{testMessage} ({testMessage.GetType()}) " +
-            $"CLIENT: {client.Client.RemoteEndPoint} ID:{client.ID}"
+            $"NetworkMessage: {message.Hash} ID:{client.ID}"
         );
         return "Hello MSG RESPONSE From SERVER!";
     }

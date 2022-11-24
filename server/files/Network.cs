@@ -41,6 +41,7 @@ namespace ServerFramework {
         public static readonly List<NetworkClient> ClientList = new List<NetworkClient>();
         /// <summary>Check if the server is running.</summary>
         public static bool ServerRunning { get; internal set; } = false;
+        private static int? ClientID = 1;
         /// <summary>Message types to be used in NetworkMessage and NetworkEvent</summary>
         public enum MessageTypes : int {
             /// <summary>Used for fire and forget</summary>
@@ -79,7 +80,7 @@ namespace ServerFramework {
 			// Array of parameters passed to method that is going to be executed
 			public int Key { get; set; } = new Random().Next(100,int.MaxValue);
 			///<summary>ID of the client who sent the message</summary>
-			public int? Sender { get; set; } = 1;
+			public int? Sender { get; set; } = ClientID;
 			// Id of the sender. Can be null in case handshake is not completed
 			public bool isHandshake { get; set; } = false;
 			// Used to detect for handshake. Else send error for not connected to server!

@@ -11,7 +11,7 @@ To get started create new folder project using:<br>
 
 <code>dotnet new console -n MyServerProject</code>
 
-Next recompile the project using ```buildDLL.sh``` or <u>DOWNLOAD</u> one from:<h3>[HERE](https://github.com/Razer223/server-client-framework/releases/tag/test)</h3>
+Next recompile the project using ```buildDLL.sh``` or <b>DOWNLOAD</b> one from:<h3>[DOWNLOAD HERE](https://github.com/Razer223/server-client-framework/releases/tag/test)</h3>
 
 <br>
 Extract the .zip inside your project folder. The .DLL should be inside:<br>
@@ -33,32 +33,98 @@ Once completed add reference to .dll in .csproj.
 ```
 Where X is the version.
 
-
-
-<h2>Setup using NuGet package</h2>
-TODO
-<code></code>
+Now the reference is done and we can proceed to create our application!
 
 <br>
-<h2>Server Framework</h2>
+<h2>Setup using NuGet package</h2>
+--TODO
+
+<br><br><br>
+<h2>Server Framework Example</h2>
 
 ```C#
 using ServerFramework;
+using static ServerFramework.Network;
+
+Network.RegisterMethod( typeof(ServerMethods) ); // SEE CLASS EXAMPLE BELOW!
 
 Network.StartServer();
 
-Network.RegisterMethod( typeof(ClientMethods) ); // SEE EXAMPLE BELOW!
+// ("methodName", target, parameter(s))
+// target: 0 = everyone on server (icludes server), 1 = server, 2 = client with id: 2, -4 = everyone else expect client 4 
+NetworkMessage message = new NetworkMesssage("testclient",1,"this is a parameter");
+var returnedData = Network.RequestData(message); // "testclient" method returns string! (see client example)
+Console.WriteLine($"{returnedData} ({returnedData.GetType()})");
+
+
+public class ServerMethods {
+    public static string TestServer(string testMessage) {
+        Console.WriteLine($"MSG:{testMessage}");
+        return "Hello MSG RESPONSE From SERVER!";
+    }
+    // BOTH NetworkClient AND NetworkMessage are OPTIONAL!
+    // NetworkClient is available only on server!
+    public static int TestIntServer(NetworkClient client, NetworkMessage message, string testMessage) {
+        Console.WriteLine($"MSG:{testMessage} ID:{client.ID} MSG:{message.Hash}");
+        return -1;
+    }
+    // Get data using class
+    public static TestClass GetClassData(NetworkClient client, object[] parameters) {
+        foreach (var item in parameters) Console.WriteLine($"{item} Type:{item.GetType()}");
+        return new TestClass(true, "testClass", 12.5);
+    }
+}
+
+// Has to be exactly the same as on CLIENT!
+public class TestClass {
+    public bool Test { get; set; }
+    public string? Text { get; set; }
+    public dynamic? Data { get; set; }
+    public TestClass(bool test, string? text, dynamic? anything = null) {
+        this.Test = true;
+        this.Text = text;
+        this.Data = anything;
+    }
+}
 ```
 
-<br>
-<h2>Client Framework</h2>
+<br><br><br>
+<h2>Client Framework Example</h2>
 
 ```C#
 using ClientFramework;
+using static ClientFramework.Network;
+
+
+Network.RegisterMethod( typeof(ClientMethods) ); // SEE CLASS EXAMPLE BELOW!
 
 Network.Connect();
 
-Network.RegisterMethod( typeof(ClientMethods) ); // SEE EXAMPLE BELOW!
+// "GetClassData" that is registered on server
+NetworkMessage message = new NetworkMesssage("GetClassData",1,new object[] {123,true,"test"});
+TestClass returnedClass = Network.RequestData<TestClass>(message); // Make pointer for TestClass Type
+Console.WriteLine($"{returnedClass.Text} ({(returnedClass.Data?).GetType()})");
+
+
+public class ClientMethods {
+    // NetworkMessage is optional!
+    public static string TestClient(NetworkMessage message, dynamic testData) {
+        Console.WriteLine($"MSG:{testData} type:({testData.GetType()})");
+        return "Hello MSG RESPONSE From CLIENT!";
+    }
+}
+
+// Has to be exactly the same as on SERVER!
+public class TestClass {
+    public bool Test { get; set; }
+    public string? Text { get; set; }
+    public dynamic? Data { get; set; }
+    public TestClass(bool test, string? text, dynamic? anything = null) {
+        this.Test = true;
+        this.Text = text;
+        this.Data = anything;
+    }
+}
 ```
 
 <br>

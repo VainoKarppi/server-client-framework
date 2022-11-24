@@ -23,8 +23,9 @@ namespace ClientFramework {
     public class Network {
 		/// <summary>Verion of the server. example: "1.0.0.0". Gets its value after successfull handshake</summary>
 		public static readonly string? ServerVersion;
-		/// <summary>Create new instance of a Network Event to be executed on client(s)</summary>
-		public class NetworkEvent {
+        private static int? ClientID;
+        /// <summary>Create new instance of a Network Event to be executed on client(s)</summary>
+        public class NetworkEvent {
             public int MessageType { get; set; } = 10;
             /// <summary>Array of targets. Use negative int to remove from list. {0 = everyone} {-2 = everyone else expect client 2} {-5,-6,...}</summary>
             public int[]? Targets { get; set; } = new int[] { 0 };
@@ -61,7 +62,7 @@ namespace ClientFramework {
 			// Array of parameters passed to method that is going to be executed
 			public int Key { get; set; } = new Random().Next(100,int.MaxValue);
 			///<summary>ID of the client who sent the message</summary>
-			public int? Sender { get; set; } = 1;
+			public int? Sender { get; set; } = ClientID;
 			// Id of the sender. Can be null in case handshake is not completed
 			public bool isHandshake { get; set; } = false;
 			// Used to detect for handshake. Else send error for not connected to server!
@@ -188,7 +189,7 @@ namespace ClientFramework {
 			// Request client ID and do handshake
 			int _id = Network.Handshake(userName);
 			if (_id < 2) return;
-			Log($"HANDSHAKE DONE: ID={_id}");
+			Log($"*DEBUG* HANDSHAKE DONE: ID={_id}");
 
 			// Continue in new thread
 			Thread thread = new Thread(ReceiveDataThread);
@@ -543,8 +544,7 @@ namespace ClientFramework {
 				MessageType = (int?)MessageTypes.RequestData,
 				TargetId = 1,
 				isHandshake = true,
-				Parameters = new object[] {clientVersion,userName,methodsToSend},
-				Sender = -1
+				Parameters = new object[] {clientVersion,userName,methodsToSend}
 			};
 
 			SendMessage(handshakeMessage,Client.GetStream());
@@ -577,7 +577,8 @@ namespace ClientFramework {
 				throw new Exception($"Handshake failed. Code:{_clientID}");
 			}
 
-			Client.ID = _clientID;
+            ClientID = _clientID;
+            Client.ID = _clientID;
 			Client.UserName = userName;
 			
 			object[] methods = (object[])returnedParams[2];
@@ -596,13 +597,13 @@ namespace ClientFramework {
 					typeList.ToArray<Type>()
 				));
 			}
-			Log($"DEBUG: Added ({ServerMethods.Count()}) SERVER methods to list!");
+			Log($"*DEBUG* Added ({ServerMethods.Count()}) SERVER methods to list!");
 			
 			object[] clients = (object[])returnedParams[3];
 			foreach (object[] clientData in clients) {
 				OtherClients.Add(new OtherClient((int)clientData[0], (string)clientData[1]));
 			}
-			Log($"DEBUG: Added ({OtherClients.Count()}) other clients to list!");
+			Log($"*DEBUG* Added ({OtherClients.Count()}) other clients to list!");
 
 			NetworkMessage handshakeMessageSuccess = new NetworkMessage {
 				MessageType = (int?)MessageTypes.SendData,
