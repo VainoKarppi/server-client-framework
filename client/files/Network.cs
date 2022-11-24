@@ -24,13 +24,19 @@ namespace ClientFramework {
 		public static readonly string? ServerVersion;
 		public class NetworkEvent {
             public int MessageType { get; set; } = (int)MessageTypes.ServerEvent;
-            public int[]? Targets { get; set; }
-			public dynamic? EventClass { get; set; }
+            /// <summary>Array of targets. Use negative int to remove from list. {0 = everyone} {-2 = everyone else expect client 2} {-5,-6,...}</summary>
+			public int[] Targets { get; set; } = new int[] { 0 };
+            public dynamic? EventClass { get; set; }
+			public NetworkEvent(dynamic eventClass) {
+                EventClass = eventClass;
+            }
+            public NetworkEvent() {}
         }
 		
 		public enum MessageTypes : int {SendData, RequestData, ResponseData, ServerEvent, ClientEvent}
         public class NetworkMessage
         {
+            internal int? Hash;
             public int? MessageType { get; set; } = (int)MessageTypes.SendData;
             // One of the tpes in "MessageTypes"
             public int? TargetId { get; set; } = 0;
@@ -46,6 +52,9 @@ namespace ClientFramework {
             // Id of the sender. Can be null in case handshake is not completed
             public bool isHandshake { get; set; } = false;
             internal dynamic? OriginalParams { get; set; }
+			public NetworkMessage() {
+                Hash = this.GetHashCode();
+            }
         }
         /// <summary>
         /// [string:"MethodName", Type:methodType, Type[]:parameter types]
@@ -164,6 +173,10 @@ namespace ClientFramework {
 		private static void SendEvent(NetworkEvent message) {
             if (!Client.HandshakeDone) throw new Exception("Server not running!");
 
+			// Add ALL clients to list if left as blank
+            List<int> targets = new List<int>();
+            if (message.Targets == null) message.Targets = new int[] {0};
+			if (Client.ID != null) message.Targets = message.Targets.Concat(new int[] {(int)Client.ID * -1}).ToArray(); // Dont send back to client
 			SendMessage(message,Client.GetStream());
         }
 		private static void ReceiveDataThread() {

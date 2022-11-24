@@ -42,6 +42,7 @@ namespace ServerFramework {
         public enum MessageTypes : int {SendData, RequestData, ResponseData, ServerEvent, ClientEvent}
         public class NetworkEvent {
             public int MessageType { get; set; } = (int)MessageTypes.ServerEvent;
+            /// <summary>Array of targets. Use negative int to remove from list. {0 = everyone} {-2 = everyone else expect client 2} {-5,-6,...}</summary>
             public int[]? Targets { get; set; } = new int[] { 0 };
             public dynamic? EventClass { get; set; }
             public NetworkEvent(dynamic eventClass) {
@@ -345,6 +346,7 @@ namespace ServerFramework {
 						NetworkEvent? eventMessage = JsonSerializer.Deserialize<NetworkEvent>(ref eventBytes)!;
                         if (eventMessage.Targets != null && eventMessage.Targets.Any((new int[] {0,1}).Contains)) {
                             listener?.ExecuteEvent(eventMessage.EventClass);
+                            if (eventMessage.Targets == new int[] {1}) continue; // No clients to send the method to
                         }
 						SendEvent(eventMessage);
 						continue;
