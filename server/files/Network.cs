@@ -42,6 +42,8 @@ namespace ServerFramework {
         /// <summary>Check if the server is running.</summary>
         public static bool ServerRunning { get; internal set; } = false;
         private static int? ClientID = 1;
+        /// <summary>Check if the current Network namespace is using server framework</summary>
+        public const bool IsServer = false;
         /// <summary>Message types to be used in NetworkMessage and NetworkEvent</summary>
         public enum MessageTypes : int {
             /// <summary>Used for fire and forget</summary>

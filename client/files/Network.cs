@@ -24,6 +24,8 @@ namespace ClientFramework {
 		/// <summary>Verion of the server. example: "1.0.0.0". Gets its value after successfull handshake</summary>
 		public static readonly string? ServerVersion;
         private static int? ClientID;
+		/// <summary>Check if the current Network namespace is using server framework</summary>
+        public const bool IsServer = false;
         /// <summary>Create new instance of a Network Event to be executed on client(s)</summary>
         public class NetworkEvent {
             public int MessageType { get; set; } = 10;

@@ -171,6 +171,25 @@ public static void OnHandShakeEnd(object sender, OnHandShakeEndEvent eventData){
     Console.WriteLine($"*EVENT* HANDSHAKE ENDED: Success:{eventData.ServerVersion}, Code:{eventData.ErrorCode}");
 }
 ```
+
+<h3>When using client framework you can test if the event was invoked for self connect using this:</h3>
+
+```C#
+public static void OnClientConnected(object sender, OnClientConnectEvent eventData){
+    if (eventData.ClientID == Network.Client.ID) {
+        Console.WriteLine($"*EVENT* YOU CONNECTED! ({eventData.UserName} ID:{eventData.ClientID} SUCCESS:{eventData.Success})");
+        return;
+    }
+    Console.WriteLine($"*EVENT* CLIENT CONNECTED! ({eventData.UserName} ID:{eventData.ClientID})");
+}
+public static void OnClientDisconnected(object sender, OnClientDisconnectEvent eventData){
+    if (eventData.ClientID == Network.Client.ID) {
+        Console.WriteLine($"*EVENT* YOU DISCONNECTED! ({eventData.UserName} ID:{eventData.ClientID} SUCCESS:{eventData.Success})");
+        return;
+    }
+    Console.WriteLine($"*EVENT* CLIENT DISCONNECTED! ({eventData.UserName} ID:{eventData.ClientID} SUCCESS:{eventData.Success})");
+}
+```
 <br>
 <h2>Recompile</h2>
 Clone this project to your local PC.
