@@ -21,3 +21,6 @@ REWORK OF THE WHOLE CLASS STRUCTURES
 
 TODO make sure the socket is using serverframework
 TODO create shared folder of shared methods with SERVER defines
+
+client.Connect();
+Wait until ClientConnectEvent has ran. use blocked?

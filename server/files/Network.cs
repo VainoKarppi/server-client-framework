@@ -59,7 +59,7 @@ namespace ServerFramework {
             public dynamic? EventClass { get; set; }
             ///<summary>NetworkEvent to be invoked on client</summary>
             public NetworkEvent(dynamic eventClass) {
-                EventClass = eventClass;
+                this.EventClass = eventClass;
             }
             ///<summary>Empty NetworkEvent to be invoked on client. Requires at least EventClass</summary>
             public NetworkEvent() {}
@@ -87,7 +87,7 @@ namespace ServerFramework {
             public dynamic? OriginalParams { get; set; }
             /// <summary>Builds a new NetworkMessage that can be sent to wanted target using SendData or RequestData</summary>
             public NetworkMessage() {
-                Hash = this.GetHashCode(); // TODO Check if same as on client
+                this.Hash = this.GetHashCode(); // TODO Check if same as on client
             }
             /// <summary>Builds a new NetworkMessage that can be sent to wanted target using SendData or RequestData</summary>
             public NetworkMessage(string methodName, int targetID, dynamic? parameters = null) {

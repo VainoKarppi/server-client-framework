@@ -49,7 +49,7 @@ namespace ClientFramework {
             NetworkEvents.eventsListener.HandshakeStart += OnHandShakeStart;
             NetworkEvents.eventsListener.HandshakeEnd += OnHandShakeEnd;
 
-            Network.RegisterMethod(typeof(ClientFramework.ClientMethods));
+            Network.RegisterMethod(typeof(ClientMethods));
 
             Console.Title = "CLIENT";
             Console.Clear();

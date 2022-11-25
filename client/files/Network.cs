@@ -33,7 +33,7 @@ namespace ClientFramework {
             public dynamic? EventClass { get; set; }
             ///<summary>NetworkEvent to be invoked on client</summary>
             public NetworkEvent(dynamic eventClass) {
-                EventClass = eventClass;
+                this.EventClass = eventClass;
             }
             ///<summary>Empty NetworkEvent to be invoked on client. Requires at least EventClass</summary>
             public NetworkEvent() {}
@@ -69,7 +69,7 @@ namespace ClientFramework {
             public dynamic? OriginalParams { get; set; }
             /// <summary>Builds a new NetworkMessage that can be sent to wanted target using SendData or RequestData</summary>
             public NetworkMessage() {
-                Hash = this.GetHashCode(); // TODO Check if same as on client
+                this.Hash = this.GetHashCode(); // TODO Check if same as on client
             }
             /// <summary>Builds a new NetworkMessage that can be sent to wanted target using SendData or RequestData</summary>
             public NetworkMessage(string methodName, int targetID, dynamic? parameters = null) {
@@ -562,6 +562,7 @@ namespace ClientFramework {
 			
 			var utf8Reader = new Utf8JsonReader(bytes);
 			NetworkMessage? returnMessage = JsonSerializer.Deserialize<NetworkMessage>(ref utf8Reader)!;
+			DebugMessage(returnMessage);
 			object[] returnedParams = DeserializeParameters(returnMessage.Parameters);
 
 			int _clientID = (int)returnedParams[0];
@@ -583,19 +584,22 @@ namespace ClientFramework {
 			
 			object[] methods = (object[])returnedParams[2];
 			foreach (object[] method in methods) {
-                Type? type = Type.GetType((string)method[1]);
-				if (type == null) continue;
-				object[] paramTypes = (object[])method[2];
-				List<Type> typeList = new List<Type> {};
-				foreach (string paramType in paramTypes) {
-					Type? typeThis = Type.GetType(paramType);
-					if (typeThis != null) typeList.Add(typeThis);
-				}
-				ServerMethods.Add(new NetworkMethodInfo(
-					(string)method[0],
-					type,
-					typeList.ToArray<Type>()
-				));
+                try {
+                    string returnType = (string)method[1];
+                    Type? type = Type.GetType(returnType);
+					if (type == null) throw new Exception($"INVALID return value type ({returnType}), found for: {(string)method[0]}");
+
+                    List<Type> typeList = new List<Type> {};
+					foreach (string paramType in (object[])method[2]) {
+						Type? typeThis = Type.GetType(paramType);
+						if (typeThis != null) typeList.Add(typeThis);
+					}
+					ServerMethods.Add(new NetworkMethodInfo(
+						(string)method[0],
+						type,
+						typeList.ToArray<Type>()
+					));
+				} catch {}
 			}
 			Log($"*DEBUG* Added ({ServerMethods.Count()}) SERVER methods to list!");
 			

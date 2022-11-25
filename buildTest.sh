@@ -1,6 +1,8 @@
 
 version=$(cat ./version)
 
+rm -r test
+
 if [ ! -d "test" ]; then
   # Take action if $DIR exists. #
   echo "Installing config files..."

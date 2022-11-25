@@ -6,13 +6,8 @@ using System.Text;
 
 using static ClientFramework.Network;
 
-namespace ClientFramework;
-public class TestClass
-{
-    public bool Test { get; set; }
-    public string? StringTest { get; set; }
-    public dynamic? Data { get; set; }
-}
+//namespace ClientFramework;
+
 public class ClientMethods
 {
     public static string Test(NetworkMessage message, dynamic testMessage)
@@ -25,7 +20,7 @@ public class ClientMethods
         {
             Console.WriteLine($"MSG:{testMessage} ({testMessage.GetType()})");
         }
-        return ($"Hello MSG RESPONSE From Client: {Network.Client.UserName} ({Network.Client.ID})");
+        return ($"Hello MSG RESPONSE From Client: {Client.UserName} ({Client.ID})");
     }
     public static int TestInt(NetworkMessage message, dynamic testMessage)
     {
@@ -35,10 +30,7 @@ public class ClientMethods
     public static dynamic TestType(NetworkMessage message, dynamic testMessage)
     {
         Console.WriteLine($"MSG:{testMessage} sender:{message.Sender}");
-        TestClass test = new TestClass();
-        test.StringTest = "TESTI";
-        test.Test = true;
-        test.Data = new string[] { "asd" };
+        TestClass test = new TestClass(true,"TEXT",123);
         return test;
     }
     public static object[] TestArray(NetworkMessage message, dynamic testMessage)
@@ -48,5 +40,28 @@ public class ClientMethods
     public static void Disconnect(NetworkMessage message)
     {
         throw new NotImplementedException();
+    }
+}
+
+public class TestClass {
+    public bool Test { get; set; }
+    public string? Text { get; set; }
+    public dynamic? Data { get; set; }
+    public TestClass() {
+
+    }
+    public TestClass(bool test, string? text, dynamic? anything = null) {
+        this.Test = true;
+        this.Text = text;
+        this.Data = anything;
+    }
+}
+
+
+class Foo
+{
+    public static void Bar()
+    {
+        Console.WriteLine("Bar");
     }
 }

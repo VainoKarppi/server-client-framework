@@ -117,7 +117,7 @@ namespace ServerFramework {
                 TargetId = Int32.Parse(target)
             };
             TestClass a = Network.RequestData<TestClass>(message);
-            Console.WriteLine($"RETURNED:{a.StringTest}");
+            Console.WriteLine($"RETURNED:{a}");
             Console.WriteLine($"RETURNED:{a.Data?[0]}");
         }
     }

@@ -66,7 +66,7 @@ public class ServerMethods {
     // NetworkClient is available only on server!
     public static int TestIntServer(NetworkClient client, NetworkMessage message, string testMessage) {
         Console.WriteLine($"MSG:{testMessage} ID:{client.ID} MSG:{message.Hash}");
-        return -1;
+        return 165;
     }
     // Get data using class
     public static TestClass GetClassData(NetworkClient client, object[] parameters) {
@@ -101,9 +101,9 @@ Network.RegisterMethod( typeof(ClientMethods) ); // SEE CLASS EXAMPLE BELOW!
 Network.Connect();
 
 // "GetClassData" that is registered on server
-NetworkMessage message = new NetworkMesssage("GetClassData",1,new object[] {123,true,"test"});
+NetworkMessage message = new NetworkMessage("GetClassData",1,new object[] {123,true,"test"});
 TestClass returnedClass = Network.RequestData<TestClass>(message); // Make pointer for TestClass Type
-Console.WriteLine($"{returnedClass.Text} ({(returnedClass.Data?).GetType()})");
+Console.WriteLine($"{returnedClass.Text} ({(returnedClass.Data)?.GetType()})");
 
 
 public class ClientMethods {
@@ -114,7 +114,7 @@ public class ClientMethods {
     }
 }
 
-// Has to be exactly the same as on SERVER!
+// Return value of: Type.GetType("TestClass"); has to be same on both client and server!!
 public class TestClass {
     public bool Test { get; set; }
     public string? Text { get; set; }
@@ -129,9 +129,10 @@ public class TestClass {
 
 <br>
 <h2>Events</h2>
-Events are executed on both server and/or client. Some events might differ depending where its being executed at. For example OnHandShakeStart doesent get ServerVersion string when event is being invoked on client.
+Events are executed on both server and/or client. Some events might differ depending where its being executed at. For example OnHandShakeStart doesn't get a ServerVersion string when event is being invoked on client.
 
 <br>
 <h2>Recompile</h2>
 Clone this project to your local PC.
-To recompile the project to classlib from the current console version use the pack.sh file!
+To recompile the project to classlib from the current console version use the <code>buildDLL.sh</code> file!
+This will create folder that has the file version as its name inside the <code>buildDLL.sh</code>  directory.

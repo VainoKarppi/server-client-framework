@@ -90,7 +90,7 @@ namespace ClientFramework {
             }
 
             Network.NetworkMessage message = new Network.NetworkMessage {
-                Parameters = 123,
+                Parameters = "123",
                 MethodName = method,
                 TargetId = Int32.Parse(target)
             };
@@ -123,12 +123,12 @@ namespace ClientFramework {
 
             Network.NetworkMessage message = new Network.NetworkMessage {
                 Parameters = "Hello REQUEST From Client",
-                MethodName = "TestType",
+                MethodName = "getclassdata",
                 TargetId = Int32.Parse(target)
             };
             TestClass? a = Network.RequestData<TestClass>(message);
-            Console.WriteLine($"RETURNED:{a.StringTest}");
-            Console.WriteLine($"RETURNED:{a.Data?[0]}");
+            Console.WriteLine($"RETURNED:{a.Text}");
+            Console.WriteLine($"RETURNED:{a.Data}");
         }
     }
 }

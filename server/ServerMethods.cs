@@ -6,65 +6,40 @@ using System.Reflection;
 using System.Text;
 using static ServerFramework.Network;
 
+
 //namespace ServerFramework;
-public class TestClass {
-    public bool Test { get; set; }
-    public string? StringTest { get; set; }
-    public dynamic? Data { get; set; }
-}
-public class ServerMethods {
-    public static string Test(NetworkClient client, NetworkMessage message, dynamic testMessage)
-    {
-        Console.WriteLine(
-            $"MSG:{testMessage} ({testMessage.GetType()}) " +
-            $"NetworkMessage: {message.Hash} ID:{client.ID}"
-        );
+public class ServerMethods
+{
+    public static string TestServer(string testMessage) {
+        Console.WriteLine($"MSG:{testMessage}");
         return "Hello MSG RESPONSE From SERVER!";
     }
-    public static int TestInt(NetworkClient client, dynamic testMessage)
-    {
-        Console.WriteLine($"MSG:{testMessage} CLIENT: {client.Client.RemoteEndPoint} ID:{client.ID}");
-        return 123;
+    // BOTH NetworkClient AND NetworkMessage are OPTIONAL!
+    // NetworkClient is available only on server!
+    public static int TestIntServer(NetworkClient client, NetworkMessage message, string testMessage) {
+        Console.WriteLine($"MSG:{testMessage} ID:{client.ID} MSG:{message.Hash}");
+        return 165;
     }
-    public static int TestTwo(NetworkClient client, string testMessage, int intt)
-    {
-        Console.WriteLine($"TestTwo:{testMessage} : {intt}");
-        return 123;
+    // Get data using class
+    public static TestClass GetClassData(NetworkClient client, string testMessage) {
+        return new TestClass(true, "testClass", 12.5);
     }
-    public static int TestZero()
-    {
-        Console.WriteLine($"MSG: no params");
-        return 123;
-    }
-    public static void TestVoid(NetworkClient client, dynamic testMessage)
-    {
-        Console.WriteLine($"This is a VOID method: {testMessage}");
-    }
-    public static dynamic TestType(NetworkClient client, dynamic testMessage)
-    {
-        Console.WriteLine($"MSG:{testMessage} CLIENT: {client.Client.RemoteEndPoint} ID:{client.ID}");
-        TestClass test = new TestClass();
-        test.StringTest = "TESTI";
-        test.Test = true;
-        test.Data = new string[] { "asd" };
-        return test;
-    }
+}
 
-    public static object[] TestArray(NetworkClient client, dynamic parameters)
+// Has to be exactly the same as on CLIENT!
+public class TestClass
+{
+    public bool Test { get; set; }
+    public string? Text { get; set; }
+    public dynamic? Data { get; set; }
+    public TestClass()
     {
-        return new object[] { "test", true, 1213 };
+
     }
-
-
-
-    public static object[] ConnectedClients(NetworkClient client, dynamic parameters)
+    public TestClass(bool test, string? text, dynamic? anything = null)
     {
-        List<object[]> list = new List<object[]>();
-        foreach (NetworkClient toAdd in ClientList)
-        {
-            if (!toAdd.Connected) continue;
-            list.Add(new object[] { toAdd.ID, toAdd.UserName });
-        }
-        return list.ToArray();
+        this.Test = true;
+        this.Text = text;
+        this.Data = anything;
     }
 }
