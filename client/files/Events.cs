@@ -1,4 +1,4 @@
-﻿#define CLIENT
+﻿
 
 using System;
 using System.Collections.Generic;
@@ -7,11 +7,15 @@ using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
 
+#if SERVER
+namespace ServerFramework;
+#else
 namespace ClientFramework;
+#endif
 
 /// <summary>Events for the Network system</summary>
 public class NetworkEvents {
-    /// <summary>Create new OnHandShakeEndEvent event</summary>
+    /// <summary>Create new BaseEventClass event</summary>
     public class BaseEventClass {
         /// <summary>Event name. Same as class name</summary>
         public string? EventName { get; internal set; }
@@ -20,7 +24,7 @@ public class NetworkEvents {
             EventName = this.GetType().UnderlyingSystemType.Name;
         }
     }
-    /// <summary>Create new OnHandShakeEndEvent event</summary>
+    /// <summary>Create new OnClientConnectEvent event</summary>
     public class OnClientConnectEvent : BaseEventClass {
         /// <summary>ID Of the client that connected</summary>
         public int? ClientID { get; set; }
@@ -35,7 +39,7 @@ public class NetworkEvents {
             this.Success = success;
         }
     }
-    /// <summary>Create new OnHandShakeEndEvent event</summary>
+    /// <summary>Create new OnClientDisconnectEvent event</summary>
     public class OnClientDisconnectEvent : OnClientConnectEvent {
         /// <summary></summary>
         public OnClientDisconnectEvent (int? id, string? username, bool? success = false) : base(id,username,success) {
@@ -47,7 +51,6 @@ public class NetworkEvents {
 
     #if SERVER
     /// <summary>Gets never executed on client</summary>
-    /// 
     public class OnServerStartEvent : OnServerShutdownEvent {
         /// <summary></summary>
         public OnServerStartEvent (bool? success = false) : base (success) {
@@ -56,7 +59,7 @@ public class NetworkEvents {
     }
     #endif
 
-    /// <summary>Create new OnHandShakeEndEvent event</summary>
+    /// <summary>Create new OnServerShutdownEvent event</summary>
     public class OnServerShutdownEvent : BaseEventClass {
         /// <summary>status if the server was closed succesfully</summary>
         public bool? Success { get; set; } = false;
@@ -67,7 +70,7 @@ public class NetworkEvents {
             this.Success = success;
         }
     }
-    /// <summary>Create new OnHandShakeEndEvent event</summary>
+    /// <summary>Create new OnMessageSentEvent event</summary>
     public class OnMessageSentEvent : BaseEventClass {
         /// <summary>Network message that was sent</summary>
         public Network.NetworkMessage? Message;
@@ -76,14 +79,14 @@ public class NetworkEvents {
             this.Message = message;
         }
     }
-    ///
+    /// <summary>Create new OnMessageReceivedEvent event</summary>
     public class OnMessageReceivedEvent : OnMessageSentEvent {
         /// <summary></summary>
         public OnMessageReceivedEvent (Network.NetworkMessage? message) : base (message) {
             this.Message = message;
         }
     }
-    /// <summary>Create new OnHandShakeEndEvent event</summary>
+    /// <summary>Create new OnHandShakeStartEvent event</summary>
     public class OnHandShakeStartEvent : BaseEventClass {
         /// <summary>Version of the client</summary>
         public string? ClientVersion { get; set; }
@@ -120,6 +123,7 @@ public class NetworkEvents {
             this.UserName = username;
             this.ErrorCode = code;
             this.ClientID = id;
+            this.ServerVersion = Network.ServerVersion;
         }
     }
 

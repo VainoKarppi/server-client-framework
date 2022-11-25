@@ -24,3 +24,5 @@ TODO create shared folder of shared methods with SERVER defines
 
 client.Connect();
 Wait until ClientConnectEvent has ran. use blocked?
+
+add server version to handshake ended

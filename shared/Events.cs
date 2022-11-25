@@ -7,8 +7,11 @@ using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
 
+#if SERVER
 namespace ServerFramework;
-
+#else
+namespace ClientFramework;
+#endif
 /// <summary>Events for the Network system</summary>
 public class NetworkEvents {
     /// <summary>Create new OnHandShakeEndEvent event</summary>
@@ -30,18 +33,18 @@ public class NetworkEvents {
         public bool? Success { get; set; } = true;
         /// <summary></summary>
         public OnClientConnectEvent (int? id, string? username, bool? success = false) {
-            ClientID = id;
-            UserName = username;
-            Success = success;
+            this.ClientID = id;
+            this.UserName = username;
+            this.Success = success;
         }
     }
     /// <summary>Create new OnHandShakeEndEvent event</summary>
     public class OnClientDisconnectEvent : OnClientConnectEvent {
         /// <summary></summary>
         public OnClientDisconnectEvent (int? id, string? username, bool? success = false) : base(id,username,success) {
-            ClientID = id;
-            UserName = username;
-            Success = success;
+            this.ClientID = id;
+            this.UserName = username;
+            this.Success = success;
         }
     }
 
@@ -51,7 +54,7 @@ public class NetworkEvents {
     public class OnServerStartEvent : OnServerShutdownEvent {
         /// <summary></summary>
         public OnServerStartEvent (bool? success = false) : base (success) {
-            Success = success;
+            this.Success = success;
         }
     }
     #endif
@@ -64,7 +67,7 @@ public class NetworkEvents {
         public string? Version { get; set; } = Network.ServerVersion;
         /// <summary></summary>
         public OnServerShutdownEvent (bool? success = false) {
-            Success = success;
+            this.Success = success;
         }
     }
     /// <summary>Create new OnHandShakeEndEvent event</summary>
@@ -73,14 +76,14 @@ public class NetworkEvents {
         public Network.NetworkMessage? Message;
         /// <summary></summary>
         public OnMessageSentEvent (Network.NetworkMessage? message) {
-            Message = message;
+            this.Message = message;
         }
     }
     ///
     public class OnMessageReceivedEvent : OnMessageSentEvent {
         /// <summary></summary>
         public OnMessageReceivedEvent (Network.NetworkMessage? message) : base (message) {
-            Message = message;
+            this.Message = message;
         }
     }
     /// <summary>Create new OnHandShakeEndEvent event</summary>
@@ -95,9 +98,9 @@ public class NetworkEvents {
         public int? ClientID { get; set; }
         /// <summary></summary>
         public OnHandShakeStartEvent (string? clientVersion, string? username, int? id) {
-            ClientID = id;
-            ClientVersion = clientVersion;
-            UserName = username;
+            this.ClientID = id;
+            this.ClientVersion = clientVersion;
+            this.UserName = username;
         }
     }
     /// <summary>Create new OnHandShakeEndEvent event</summary>
@@ -115,11 +118,11 @@ public class NetworkEvents {
         /// <param name="success"></param>
         /// <param name="code"></param>
         public OnHandShakeEndEvent (string? clientVersion, string? username, int? id, bool? success = false, int? code = 0) : base(clientVersion,username,id) {
-            Success = success;
-            ClientVersion = clientVersion;
-            UserName = username;
-            ErrorCode = code;
-            ClientID = id;
+            this.Success = success;
+            this.ClientVersion = clientVersion;
+            this.UserName = username;
+            this.ErrorCode = code;
+            this.ClientID = id;
         }
     }
 

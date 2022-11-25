@@ -132,6 +132,46 @@ public class TestClass {
 Events are executed on both server and/or client. Some events might differ depending where its being executed at. For example OnHandShakeStart doesn't get a ServerVersion string when event is being invoked on client.
 
 <br>
+<h3>Available events:</h3>
+
+```C#
+NetworkEvents.eventsListener.ClientConnected += OnClientConnected;
+NetworkEvents.eventsListener.ClientDisconnect += OnClientDisconnect;
+NetworkEvents.eventsListener.ServerShutdown += OnServerShutdown;
+NetworkEvents.eventsListener.ServerStart += OnServerStart;
+NetworkEvents.eventsListener.MessageSent += OnMessageSent;
+NetworkEvents.eventsListener.MessageReceived += OnMessageReceived;
+NetworkEvents.eventsListener.HandshakeStart += OnHandShakeStart;
+NetworkEvents.eventsListener.HandshakeEnd += OnHandShakeEnd;
+```
+
+```C#
+public static void OnClientConnected(object sender, OnClientConnectEvent eventData){
+    Console.WriteLine($"*EVENT* CLIENT CONNECTED! ({eventData.UserName} ID:{eventData.ClientID} SUCCESS:{eventData.Success})");
+}
+public static void OnClientDisconnect(object sender, OnClientDisconnectEvent eventData){
+    Console.WriteLine($"*EVENT* CLIENT DISCONNECTED! ({eventData.UserName} ID:{eventData.ClientID} SUCCESS:{eventData.Success})");
+}
+public static void OnServerStart(object sender, OnServerStartEvent eventData){
+    Console.WriteLine($"*EVENT* SERVER STARTED! SUCCESS:{eventData.Success}");
+}
+public static void OnServerShutdown(object sender, OnServerShutdownEvent eventData){
+    Console.WriteLine($"*EVENT* SERVER STOPPED! SUCCESS:{eventData.Success}");
+}
+public static void OnMessageSent(object sender, OnMessageSentEvent eventData){
+    Console.WriteLine($"*EVENT* MSG SENT: {eventData.Message?.MethodName}");
+}
+public static void OnMessageReceived(object sender, OnMessageReceivedEvent eventData){
+    Console.WriteLine($"*EVENT* MSG RECEIVED: {eventData.Message?.MethodName}");
+}
+public static void OnHandShakeStart(object sender, OnHandShakeStartEvent eventData){
+    Console.WriteLine($"*EVENT* HANDSHAKE STARTED: version:{eventData.ClientVersion}, username:{eventData.UserName}");
+}
+public static void OnHandShakeEnd(object sender, OnHandShakeEndEvent eventData){
+    Console.WriteLine($"*EVENT* HANDSHAKE ENDED: Success:{eventData.ServerVersion}, Code:{eventData.ErrorCode}");
+}
+```
+<br>
 <h2>Recompile</h2>
 Clone this project to your local PC.
 To recompile the project to classlib from the current console version use the <code>buildDLL.sh</code> file!
