@@ -26,3 +26,14 @@ client.Connect();
 Wait until ClientConnectEvent has ran. use blocked?
 
 add server version to handshake ended
+
+
+handshake ended has null data
+
+
+remove handshake false if not used
+remove original params from MSG
+hash not shown
+useclass = null to set false
+
+if client disconnect using X set success false

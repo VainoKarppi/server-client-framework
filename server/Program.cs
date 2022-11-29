@@ -69,7 +69,7 @@ public class Program {
 
         Console.WriteLine("Type 'help' for commands!");
     
-        Network.StartServer(5001);
+        Network.StartServer();
 
         while (true) {
             Console.WriteLine();

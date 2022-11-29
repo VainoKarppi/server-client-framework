@@ -1,6 +1,33 @@
-using System.Reflection;
 
+using System.Reflection.Metadata;
+using System.Data;
+using System.Collections;
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.IO;
+using System.Linq;
+using System.Net;
+using System.Net.Sockets;
+using System.Reflection;
+using System.Text;
+using System.Text.Json;
+using System.Threading;
+
+
+#if SERVER
+using static ServerFramework.Logger;
+using static ServerFramework.NetworkEvents;
+using static ServerFramework.Network;
 namespace ServerFramework;
+#else
+using static ClientFramework.Logger;
+using static ClientFramework.NetworkEvents;
+using static ClientFramework.Network;
+namespace ClientFramework;
+#endif
+
+
 
 /// <summary>Create new instance of Logger</summary>
 public static class Logger {
