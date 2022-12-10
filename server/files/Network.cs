@@ -65,7 +65,7 @@ public partial class Network
             string? version = Assembly.GetExecutingAssembly().GetName().Version?.ToString();
             if (version != null) ServerVersion = version; // Update version
 
-            NetworkEvents? listener = NetworkEvents.eventsListener;
+            NetworkEvents? listener = NetworkEvents.Listener;
             listener.ExecuteEvent(new OnServerStartEvent(true), true);
 
             Log("Running server at port: " + ServerListener.LocalEndpoint?.ToString()?.Split(':')[1] + ". ServerVersion: " + ServerVersion);
@@ -121,7 +121,7 @@ public partial class Network
         OnServerShutdownEvent shutdownEvent = new OnServerShutdownEvent(true);
         SendEvent(new NetworkEvent(shutdownEvent));
 
-        NetworkEvents? listener = NetworkEvents.eventsListener;
+        NetworkEvents? listener = NetworkEvents.Listener;
         listener.ExecuteEvent(shutdownEvent, true);
         ServerRunning = false;
 
@@ -246,7 +246,7 @@ public partial class Network
                 if (!Int32.TryParse(property, out type)) continue;
                 if (type < 0) continue;
 
-                NetworkEvents? listener = NetworkEvents.eventsListener;
+                NetworkEvents? listener = NetworkEvents.Listener;
 
                 if (type == 10) // NETWORK EVENT
                 {
@@ -389,7 +389,7 @@ public partial class Network
                 eventTemp.EventClass = disconnectEvent;
                 SendEvent(eventTemp);
 
-                NetworkEvents? listener = NetworkEvents.eventsListener;
+                NetworkEvents? listener = NetworkEvents.Listener;
                 listener?.ExecuteEvent(disconnectEvent, true);
 
                 break;
@@ -421,7 +421,7 @@ public partial class Network
 
         client.UserName = userName;
 
-        NetworkEvents? listener = NetworkEvents.eventsListener;
+        NetworkEvents? listener = NetworkEvents.Listener;
         listener?.ExecuteEvent(new OnHandShakeStartEvent(clientVersion, userName, client.ID), true);
 
         // RETURNS client id if success (minus number if error (each value is one type of error))

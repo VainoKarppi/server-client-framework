@@ -135,14 +135,14 @@ Events are executed on both server and/or client. Some events might differ depen
 <h3>Available events:</h3>
 
 ```C#
-NetworkEvents.eventsListener.ClientConnected += OnClientConnected;
-NetworkEvents.eventsListener.ClientDisconnect += OnClientDisconnect;
-NetworkEvents.eventsListener.ServerShutdown += OnServerShutdown;
-NetworkEvents.eventsListener.ServerStart += OnServerStart;
-NetworkEvents.eventsListener.MessageSent += OnMessageSent;
-NetworkEvents.eventsListener.MessageReceived += OnMessageReceived;
-NetworkEvents.eventsListener.HandshakeStart += OnHandShakeStart;
-NetworkEvents.eventsListener.HandshakeEnd += OnHandShakeEnd;
+NetworkEvents.Listener.ClientConnected += OnClientConnected;
+NetworkEvents.Listener.ClientDisconnect += OnClientDisconnect;
+NetworkEvents.Listener.ServerShutdown += OnServerShutdown;
+NetworkEvents.Listener.ServerStart += OnServerStart;
+NetworkEvents.Listener.MessageSent += OnMessageSent;
+NetworkEvents.Listener.MessageReceived += OnMessageReceived;
+NetworkEvents.Listener.HandshakeStart += OnHandShakeStart;
+NetworkEvents.Listener.HandshakeEnd += OnHandShakeEnd;
 ```
 
 ```C#

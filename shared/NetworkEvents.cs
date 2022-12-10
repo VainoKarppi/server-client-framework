@@ -145,7 +145,7 @@ public class NetworkEvents {
 
 
     /// <summary>Object of the events to be executed to</summary>
-    public static NetworkEvents eventsListener { get; set; } = new NetworkEvents();
+    public static NetworkEvents Listener { get; private set; } = new NetworkEvents();
     internal void ExecuteEvent(dynamic? classData, bool useBlocked = false) {
         Action action = (() => {
             try {

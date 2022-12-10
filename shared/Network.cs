@@ -318,7 +318,7 @@ public partial class Network {
     {
         if (message is NetworkMessage && (!message.isHandshake) && message.Sender != ClientID)
         {
-            NetworkEvents? listener = NetworkEvents.eventsListener;
+            NetworkEvents? listener = NetworkEvents.Listener;
             listener?.ExecuteEvent(new OnMessageSentEvent(message));
         }
         if (message is NetworkMessage && !(message.Parameters is null) && message.Sender == ClientID)

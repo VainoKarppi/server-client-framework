@@ -99,7 +99,7 @@ public partial class Network
         Client.Writer?.Close();
         Client.Client.Close();
 
-        NetworkEvents? listener = NetworkEvents.eventsListener;
+        NetworkEvents? listener = NetworkEvents.Listener;
         listener?.ExecuteEvent(new OnClientDisconnectEvent(Client.ID, Client.UserName, true));
     }
 
@@ -131,7 +131,7 @@ public partial class Network
                 if (type < 0) continue;
 
                 // HANDLE EVENT
-                NetworkEvents? listener = NetworkEvents.eventsListener;
+                NetworkEvents? listener = NetworkEvents.Listener;
                 if (type == 10)
                 {
                     dynamic? eventClass = ((JsonElement)messageTemp).GetProperty("EventClass");
@@ -251,7 +251,7 @@ public partial class Network
                 return;
             }
             Log(ex.Message);
-            NetworkEvents? listener = NetworkEvents.eventsListener;
+            NetworkEvents? listener = NetworkEvents.Listener;
             if (ex.InnerException is SocketException || ex is EndOfStreamException)
             {
                 OnServerShutdownEvent eventShutdown = new OnServerShutdownEvent(false);
@@ -379,7 +379,7 @@ public partial class Network
         int _clientID = (int)returnedParams[0];
         ServerVersion = (string)returnedParams[1];
 
-        NetworkEvents? listener = NetworkEvents.eventsListener;
+        NetworkEvents? listener = NetworkEvents.Listener;
         listener?.ExecuteEvent(new OnHandShakeStartEvent(clientVersion, userName, 0), true);
 
         if (_clientID < 0)

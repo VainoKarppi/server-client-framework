@@ -41,13 +41,13 @@ namespace ClientFramework {
         public static void Main(string[] args) {
             Logger.Debug = true;
 
-            NetworkEvents.eventsListener.ClientConnected += OnClientConnected;
-            NetworkEvents.eventsListener.ClientDisconnect += OnClientDisconnected;
-            NetworkEvents.eventsListener.ServerShutdown += OnServerShutdown;
-            NetworkEvents.eventsListener.MessageSent += OnMessageSent;
-            NetworkEvents.eventsListener.MessageReceived += OnMessageReceived;
-            NetworkEvents.eventsListener.HandshakeStart += OnHandShakeStart;
-            NetworkEvents.eventsListener.HandshakeEnd += OnHandShakeEnd;
+            NetworkEvents.Listener.ClientConnected += OnClientConnected;
+            NetworkEvents.Listener.ClientDisconnect += OnClientDisconnected;
+            NetworkEvents.Listener.ServerShutdown += OnServerShutdown;
+            NetworkEvents.Listener.MessageSent += OnMessageSent;
+            NetworkEvents.Listener.MessageReceived += OnMessageReceived;
+            NetworkEvents.Listener.HandshakeStart += OnHandShakeStart;
+            NetworkEvents.Listener.HandshakeEnd += OnHandShakeEnd;
 
             Network.RegisterMethod(typeof(ClientMethods));
 
