@@ -34,8 +34,8 @@ dotnet publish -c Release -o ..//$name
 rm $name.csproj
 rm -r bin
 rm -r obj
-#rm -r client
-#rm -r server
+rm -r client
+rm -r server
 
 cd ..
-#rm -r $name/
+rm -r $name/

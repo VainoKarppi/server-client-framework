@@ -67,7 +67,7 @@ public static class Logger {
                         Texts.Add(ex.Message);
                     }
                 }
-                //Thread.Sleep(5);
+                Thread.Sleep(5);
             }
             writer.Flush();
             writer.Close();
