@@ -52,7 +52,7 @@ public partial class Network {
 
 
     /// <summary>Verion of the server. example: "1.0.0.0". Gets its value after successfull handshake</summary>
-    public static readonly string? ServerVersion;
+    public static string ServerVersion { get; private set; } = "1.0.0.0";
 
 	/// <summary>List of the other clients connected to server</summary>
 	#if SERVER
@@ -117,7 +117,7 @@ public partial class Network {
 		///<summary>ID of the client who sent the message</summary>
 		public int? Sender { get; set; } = ClientID;
 		// Id of the sender. Can be null in case handshake is not completed
-		public bool isHandshake { get; set; } = false;
+		public bool? isHandshake { get; set; }
 		// Used to detect for handshake. Else send error for not connected to server!
 		internal dynamic? OriginalParams { get; set; }
 		/// <summary>Builds a new NetworkMessage that can be sent to wanted target using SendData or RequestData</summary>
@@ -313,24 +313,87 @@ public partial class Network {
 
 
 
-	/// <summary>
-	/// Request data from target by invoking its method using ASYNC
-	/// </summary>
-	/// <param name="message"></param>
-	/// <returns></returns>
-	/// <exception cref="InvalidOperationException"></exception>
-	/// <exception cref="Exception"></exception>
-	public static async void SendDataAsync(NetworkMessage message) {
+	// TODO do async version!!!
+    private static void SendMessage(dynamic message, NetworkStream Stream, bool waitResponse = true)
+    {
+        if (message is NetworkMessage && (!message.isHandshake) && message.Sender != ClientID)
+        {
+            NetworkEvents? listener = NetworkEvents.eventsListener;
+            listener?.ExecuteEvent(new OnMessageSentEvent(message));
+        }
+        if (message is NetworkMessage && !(message.Parameters is null) && message.Sender == ClientID)
+        {
+            bool useClass = false;
+            if (message.OriginalParams == null) message.OriginalParams = message.Parameters; // TODO find better way
+            message.Parameters = SerializeParameters(message.OriginalParams, ref useClass);
+            message.UseClass = useClass;
+        }
+		
+        // [0 = ack, 1-4 = JsonMsgLenght, 5-6 = ACK KEY, 7... actual JsonMsg]
+        List<byte> bytes = new List<byte>();
+		bytes.AddRange(JsonSerializer.SerializeToUtf8Bytes(message));
+        bytes.InsertRange(0,BitConverter.GetBytes(bytes.Count)); // 4 bytes
+        
+        // Always add extra random key (2 bytes)
+        bytes.Insert(0,Convert.ToByte(waitResponse)); // 0 = NACK : 1 = ACK
+        Random rand = new Random();
+        ushort randomKey = (ushort)rand.Next(65530);
+        bytes.InsertRange(5,BitConverter.GetBytes(randomKey));
+
+        // Send data
+        Stream.WriteAsync(bytes.ToArray(), 0, bytes.Count);
+
+        if (waitResponse) {
+            new Thread(() =>
+            {
+                int timer = 0;
+                while (timer < 100)
+                {
+                    if (Results.ContainsKey((int)randomKey)) return; // ACK received!
+                    Thread.Sleep(1); // TODO ASYNC
+                    ++timer;
+                }
+                Log($"ERROR: ACK not received for: {message} (MSG timed out!)");
+            }).Start();
+        }
+    }
+
+
+    /// <summary>
+    /// Request data from target by invoking its method using ASYNC
+    /// </summary>
+    /// <param name="message"></param>
+    /// <returns></returns>
+    /// <exception cref="InvalidOperationException"></exception>
+    /// <exception cref="Exception"></exception>
+    public static async void SendDataAsync(NetworkMessage message) {
 		await Task.Run(() => { SendData(message); });
 	}
 
 	private static byte[] ReadMessageBytes(NetworkStream Stream) {
-		byte[] lenghtBytes = new byte[2];
-		Stream.Read(lenghtBytes,0,2);
-		ushort msgLenght = BitConverter.ToUInt16(lenghtBytes,0);
-		byte[] bytes = new byte[msgLenght];
-		Stream.Read(bytes,0,msgLenght);
-		return bytes;
+        List<byte> bytes = new List<byte>();
+
+        byte[] byteInfo = new byte[7];
+		Stream.Read(byteInfo,0,7);
+
+        byte ackByte = byteInfo[0];
+        int msgLenght = BitConverter.ToInt32(byteInfo,1);
+		ushort ackKey = BitConverter.ToUInt16(byteInfo,5);
+
+        if (ackByte == 0x06) {
+            Results.Add((int)ackKey,true);
+            return new byte[] { 0x06 }; // IS ACTUAL ACK RECEIVED
+        }
+
+		byte[] msgBytes = new byte[msgLenght];
+		Stream.Read(msgBytes,0,msgLenght);
+        Stream.Flush();
+
+        if (ackByte == 0x01) { // Send ACK of msg Received
+            byte[] responseBytes = {0x06,0x00,0x00,0x00,0x00,(byte)(ackKey),(byte)(ackKey >> 8)};
+            Stream.WriteAsync(responseBytes);
+        }
+		return msgBytes;
 	}
 	private static dynamic RequestDataResult(NetworkMessage message) {
 		dynamic returnMessage;

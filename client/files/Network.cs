@@ -118,6 +118,10 @@ public partial class Network
                     Client.Close();
                     break;
                 }
+                
+                // Check if MSG is ACK
+                if (bytes.Count() == 1 && bytes[0] == 0x06) continue;      
+
                 var utf8Reader = new Utf8JsonReader(bytes);
                 dynamic messageTemp = JsonSerializer.Deserialize<dynamic>(ref utf8Reader)!;
                 string property = ((JsonElement)messageTemp).GetProperty("MessageType").ToString();
@@ -327,26 +331,6 @@ public partial class Network
 
 
 
-    private static void SendMessage(dynamic message, NetworkStream Stream)
-    {
-        if (message is NetworkMessage && (!message.isHandshake))
-        {
-            NetworkEvents? listener = NetworkEvents.eventsListener;
-            listener?.ExecuteEvent(new OnMessageSentEvent(message));
-        }
-
-        if (message is NetworkMessage && !(message.Parameters is null))
-        {
-            bool useClass = false;
-            if (message.OriginalParams == null) message.OriginalParams = message.Parameters; // TODO find better way
-            message.Parameters = SerializeParameters(message.OriginalParams, ref useClass);
-            message.UseClass = useClass;
-        }
-        byte[] msg = JsonSerializer.SerializeToUtf8Bytes(message);
-        byte[] lenght = BitConverter.GetBytes((ushort)msg.Length);
-        byte[] bytes = lenght.Concat(msg).ToArray();
-        Stream.WriteAsync(bytes, 0, bytes.Length);
-    }
 
     private static int Handshake(string userName)
     {
@@ -373,7 +357,7 @@ public partial class Network
             Parameters = new object[] { clientVersion, userName, methodsToSend }
         };
 
-        SendMessage(handshakeMessage, Client.GetStream());
+        SendMessage(handshakeMessage, Client.GetStream(),false);
         DebugMessage(handshakeMessage);
 
         // TODO Add timeout
@@ -393,7 +377,7 @@ public partial class Network
         object[] returnedParams = DeserializeParameters(returnMessage.Parameters);
 
         int _clientID = (int)returnedParams[0];
-        string? ServerVersion = (string)returnedParams[1];
+        ServerVersion = (string)returnedParams[1];
 
         NetworkEvents? listener = NetworkEvents.eventsListener;
         listener?.ExecuteEvent(new OnHandShakeStartEvent(clientVersion, userName, 0), true);
@@ -449,7 +433,7 @@ public partial class Network
             isHandshake = true,
             Sender = Client.ID
         };
-        SendMessage(handshakeMessageSuccess, Client.GetStream());
+        SendMessage(handshakeMessageSuccess, Client.GetStream(),false);
 
         Client.HandshakeDone = true;
 

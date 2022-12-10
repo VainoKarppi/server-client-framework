@@ -41,7 +41,7 @@ public class Program {
         Console.WriteLine($"*EVENT* HANDSHAKE STARTED: version:{eventData.ClientVersion}, username:{eventData.UserName}");
     }
     public static void OnHandShakeEnd(object sender, OnHandShakeEndEvent eventData){
-        Console.WriteLine($"*EVENT* HANDSHAKE ENDED: Success:{eventData.ServerVersion}, Code:{eventData.ErrorCode}");
+        Console.WriteLine($"*EVENT* HANDSHAKE ENDED: version:{eventData.ClientVersion}, username:{eventData.UserName}");
     }
 
 
