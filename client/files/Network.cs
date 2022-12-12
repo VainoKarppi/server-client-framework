@@ -13,8 +13,9 @@ public partial class Network
 {
     /// <summary>Client object that is connected to server</summary>
     public static NetworkClient Client = new NetworkClient();
+    public static string ClientVersion { get; private set; } = "1.0.0.0";
 
-    
+
     /// <summary>Instance of other client info</summary>
     public class OtherClient
     {
@@ -63,20 +64,25 @@ public partial class Network
 
         Client = new NetworkClient();
 
+        //--- Connect to server
         Log("Trying to connect at: (" + ip + ":" + port.ToString() + "), with name: " + userName);
         Client.Connect(IPAddress.Parse(ip), port);
 
+        //--- Update version
+        string? version = Assembly.GetExecutingAssembly().GetName().Version?.ToString();
+        if (version != null) ClientVersion = version; 
 
+        //--- Get Network Objects
         Client.Stream = Client.GetStream();
         Client.Reader = new StreamReader(Client.Stream);
         Client.Writer = new StreamWriter(Client.Stream);
 
-        // Request client ID and do handshake
+        //--- Request client ID and do handshake
         int _id = Network.Handshake(userName);
         if (_id < 2) return;
         Log($"*DEBUG* HANDSHAKE DONE: ID={_id}");
 
-        // Continue in new thread
+        //--- Continue in new thread
         Thread thread = new Thread(ReceiveDataThread);
         thread.Start();
     }
@@ -89,18 +95,21 @@ public partial class Network
     /// <exception cref="Exception">Not connected to server!</exception>
     public static void Disconnect()
     {
+        //--- Clear client list
         ClientList.Clear();
         if (!IsConnected())
             throw new Exception("Not connected to server!");
 
+        //--- Remove Network Objects
         Log("Disconnected From the server!");
         Client.HandshakeDone = false;
         Client.Stream?.Close();
         Client.Writer?.Close();
         Client.Client.Close();
 
+        //--- Invoke OnClientDisconnectEvent event
         NetworkEvents? listener = NetworkEvents.Listener;
-        listener?.ExecuteEvent(new OnClientDisconnectEvent(Client.ID, Client.UserName, true));
+        listener?.ExecuteEvent(new OnClientDisconnectEvent(Client.ID, Client.UserName, ClientVersion, true));
     }
 
 
@@ -110,120 +119,116 @@ public partial class Network
         {
             while (Client.Connected)
             {
+                //--- Read message
                 byte[] bytes = ReadMessageBytes(Client.GetStream());
-                if (bytes.Count() == 0)
-                {
+
+                //--- Make sure data is valid, and no socket error
+                if (bytes.Count() == 0) {
                     if (Client.Available != 0) throw new EndOfStreamException("Server closed connection!");
                     Client.Stream?.Close();
                     Client.Close();
                     break;
                 }
                 
-                // Check if MSG is ACK
+                //--- Check if MSG is ACK
                 if (bytes.Count() == 1 && bytes[0] == 0x06) continue;      
 
+                //--- Deserialize to generic
                 var utf8Reader = new Utf8JsonReader(bytes);
                 dynamic messageTemp = JsonSerializer.Deserialize<dynamic>(ref utf8Reader)!;
                 string property = ((JsonElement)messageTemp).GetProperty("MessageType").ToString();
 
+                //--- Make sure message type exists
                 int type = -1;
                 if (!Int32.TryParse(property, out type)) continue;
                 if (type < 0) continue;
 
-                // HANDLE EVENT
+                //-- HANDLE EVENT
                 NetworkEvents? listener = NetworkEvents.Listener;
                 if (type == 10)
                 {
+                    //--- Check if connect or disconnect event
+                    // TODO make prettier
                     dynamic? eventClass = ((JsonElement)messageTemp).GetProperty("EventClass");
                     string? eventName = (eventClass is JsonElement) ? ((JsonElement)eventClass).GetProperty("EventName").GetString() : eventClass?.EventName;
-                    if (eventName?.ToLower() == "onclientconnectevent")
-                    {
+                    if (eventName?.ToLower() == "onclientconnectevent") {
                         int? id = ((JsonElement)eventClass).GetProperty("ClientID").GetInt32();
                         string? name = ((JsonElement)eventClass).GetProperty("UserName").GetString();
                         bool? success = ((JsonElement)eventClass).GetProperty("Success").GetBoolean();
                         if (id == null || name == null) continue;
 
-                        eventClass = new OnClientConnectEvent(id, name, success);
+                        eventClass = new OnClientConnectEvent(id, name, ClientVersion, success);
                         if (id != Client.ID) ClientList.Add(new OtherClient(id, name));
                     }
-                    if (eventName?.ToLower() == "onclientdisconnectevent")
-                    {
+                    if (eventName?.ToLower() == "onclientdisconnectevent") {
                         int? id = ((JsonElement)eventClass).GetProperty("ClientID").GetInt32();
                         string? name = ((JsonElement)eventClass).GetProperty("UserName").GetString();
                         bool? success = ((JsonElement)eventClass).GetProperty("Success").GetBoolean();
                         ClientList.RemoveAll(x => x.ID == id);
                         if (id == null || name == null) continue;
-                        eventClass = new OnClientDisconnectEvent(id, name, success);
+                        eventClass = new OnClientDisconnectEvent(id, name, ClientVersion, success);
                     }
                     listener?.ExecuteEvent(eventClass);
                     continue;
                 }
 
-                // HANDLE NETWORK MESSAGE
+
+                //--- HANDLE NETWORK MESSAGE
                 var msgBytes = new Utf8JsonReader(bytes);
                 NetworkMessage? message = JsonSerializer.Deserialize<NetworkMessage>(ref msgBytes)!;
-
                 DebugMessage(message, 2);
 
+                //--- Deserialize
                 message.Parameters = DeserializeParameters(message.Parameters, message.UseClass);
 
+                //--- Execute OnMessageReceivedEvent event once deserialized
                 listener?.ExecuteEvent(new OnMessageReceivedEvent(message));
 
-                // Dump result to array and continue
-                if (message.MessageType == 11)
-                {
+                //--- Dump result to array and continue (RequestData's RESPONSE)
+                if (message.MessageType == 11) {
                     Results.Add(message.Key, message.Parameters);
                     continue;
                 }
 
-                // GET METHOD INFO
+                //--- (Is either SendData or RequestData)
+                //--- GET METHOD INFO
                 int methodId;
                 MethodInfo? method;
                 bool isInt = int.TryParse(message.MethodName, out methodId);
-                if (isInt && (methodId < 0))
-                {
+                if (isInt && (methodId < 0)) {
                     string methodName = PrivateMethods[Math.Abs(methodId) - 1];
                     method = typeof(Network).GetMethod(methodName);
-                }
-                else
-                {
+                } else {
                     method = ClientMethods.FirstOrDefault(x => x.Name.ToLower() == message.MethodName?.ToLower());
                     if (method == default) throw new Exception($"Method {message.MethodName} was not found from Registered Methods!");
                 }
 
-                // GET PARAMETERS AND ADD CLIENT AS FIRST PARAMETER
+                //---- GET PARAMETERS AND ADD CLIENT AS FIRST PARAMETER
                 object[]? parameters = null;
                 ParameterInfo[]? parameterInfo = method?.GetParameters();
-                if (parameterInfo?.Count() > 0)
-                {
+                if (parameterInfo?.Count() > 0) {
                     List<object> paramList = new List<object>();
                     ParameterInfo first = parameterInfo[0];
                     if (first.ParameterType == typeof(NetworkMessage)) paramList.Add(message);
 
-                    if (message.Parameters != null)
-                    {
-                        if (message.Parameters is Array)
-                        {
-                            foreach (var item in message.Parameters)
-                            {
+                    if (message.Parameters != null){
+                        if (message.Parameters is Array){
+                            foreach (var item in message.Parameters){
                                 if (method?.GetParameters().Count() == paramList.Count()) break; // Not all parameters can fill in
                                 paramList.Add(item);
                             }
-                        }
-                        else
-                        {
+                        } else {
                             paramList.Add(message.Parameters);
                         }
                     }
                     parameters = paramList.ToArray();
                 }
 
-                switch (message.MessageType)
-                {
-                    // SEND A REQUEST FOR CLIENT/SERVER
-                    case (int)MessageTypes.RequestData:
-                        NetworkMessage responseMessage = new NetworkMessage
-                        {
+                switch (message.MessageType) {
+
+                    //--- SEND A REQUEST FOR CLIENT/SERVER
+                    case (int)MessageTypes.RequestData: {
+                        NetworkMessage responseMessage = new NetworkMessage {
                             MessageType = 11,
                             MethodName = message.MethodName,
                             TargetId = message.Sender,
@@ -233,13 +238,19 @@ public partial class Network
                         if (data != null) responseMessage.Parameters = data;
                         Network.SendData(responseMessage);
                         break;
+                    }
 
-                    // FIRE AND FORGET (Dont return method return data)
-                    case (int)MessageTypes.SendData:
+
+                    //--- FIRE AND FORGET (Dont return method return data)
+                    case (int)MessageTypes.SendData: {
                         method?.Invoke(null, parameters);
                         break;
-                    default:
+                    }
+
+
+                    default: {
                         throw new NotImplementedException();
+                    }
                 }
             }
         }
@@ -336,32 +347,34 @@ public partial class Network
     {
         Client.UserName = userName;
 
-        string? clientVersion = Assembly.GetExecutingAssembly().GetName().Version?.ToString();
-        if (clientVersion == null) clientVersion = "1.0.0.0";
+        Log($"Starting HANDSHAKE with server, with version: {ClientVersion}, with name: {userName}");
 
-        Log($"Starting HANDSHAKE with server, with version: {clientVersion}, with name: {userName}");
-
+        //--- Build array of client methods to be sent to 
         object[] methodsToSend = ClientMethods.Select(x => new object[] {
-                x.Name,
-                x.ReturnType.ToString(),
-                x.GetParameters().
-                    Where(y => y.ParameterType != typeof(NetworkMessage) && y.ParameterType != typeof(NetworkClient)).
-                    Select(z => z.ParameterType.ToString()).ToArray()
-            }).ToArray();
+            x.Name,
+            x.ReturnType.ToString(),
+            x.GetParameters().
+                Where(y => y.ParameterType != typeof(NetworkMessage) && y.ParameterType != typeof(NetworkClient)).
+                Select(z => z.ParameterType.ToString()).ToArray()
+        }).ToArray();
 
         NetworkMessage handshakeMessage = new NetworkMessage
         {
             MessageType = (int?)MessageTypes.RequestData,
             TargetId = 1,
             isHandshake = true,
-            Parameters = new object[] { clientVersion, userName, methodsToSend }
+            Parameters = new object[] { ClientVersion, userName, methodsToSend }
         };
 
         SendMessage(handshakeMessage, Client.GetStream(),false);
         DebugMessage(handshakeMessage);
 
-        // TODO Add timeout
+        
+        //--- Read and wait for response
         byte[] bytes = ReadMessageBytes(Client.GetStream());
+
+        // TODO Add timeout
+        //--- Check if Unhandled socket error
         if (bytes.Count() == 0)
         {
             Client.Writer?.Close();
@@ -371,17 +384,21 @@ public partial class Network
             throw new Exception("ERROR HANDSHAKE! UNKNOWN REASON (SERVER)");
         }
 
+        //--- Deserialize returned data
         var utf8Reader = new Utf8JsonReader(bytes);
         NetworkMessage? returnMessage = JsonSerializer.Deserialize<NetworkMessage>(ref utf8Reader)!;
-        DebugMessage(returnMessage);
         object[] returnedParams = DeserializeParameters(returnMessage.Parameters);
+        DebugMessage(returnMessage);
 
+        //--- Get temporary client ID and store servers version
         int _clientID = (int)returnedParams[0];
         ServerVersion = (string)returnedParams[1];
 
+        //--- Start handshake
         NetworkEvents? listener = NetworkEvents.Listener;
         listener?.ExecuteEvent(new OnHandShakeStartEvent(clientVersion, userName, 0), true);
 
+        //--- Handle if error code was returned
         if (_clientID < 0)
         {
             listener?.ExecuteEvent(new OnHandShakeEndEvent(clientVersion, userName, -1, false, _clientID * 1));
@@ -390,10 +407,12 @@ public partial class Network
             throw new Exception($"Handshake failed. Code:{_clientID}");
         }
 
-
+        //--- Store username and ID's
         Client.ID = _clientID;
+        ClientID = _clientID;
         Client.UserName = userName;
 
+        //--- Build server methods
         object[] methods = (object[])returnedParams[2];
         foreach (object[] method in methods)
         {
@@ -419,6 +438,7 @@ public partial class Network
         }
         Log($"*DEBUG* Added ({ServerMethods.Count()}) SERVER methods to list!");
 
+        //--- Build client list of other clients
         object[] clients = (object[])returnedParams[3];
         foreach (object[] clientData in clients)
         {
@@ -426,21 +446,20 @@ public partial class Network
         }
         Log($"*DEBUG* Added ({ClientList.Count()}) other clients to list!");
 
+        //--- Send message of successfull deserialization and initalization
         NetworkMessage handshakeMessageSuccess = new NetworkMessage
         {
             MessageType = (int?)MessageTypes.SendData,
             TargetId = 1,
-            isHandshake = true,
-            Sender = Client.ID
+            isHandshake = true
         };
         SendMessage(handshakeMessageSuccess, Client.GetStream(),false);
 
+        //--- End handshake
         Client.HandshakeDone = true;
-
         listener?.ExecuteEvent(new OnHandShakeEndEvent(clientVersion, userName, _clientID, true), true);
+        listener?.ExecuteEvent(new OnClientConnectEvent(_clientID, userName, ClientVersion, true), true);
         
-        ClientID = _clientID;
-
         return _clientID;
     }
 

@@ -281,11 +281,10 @@ public partial class Network
                     if (message.MessageType == (int)MessageTypes.SendData) {
                         if (message.Sender > 1) {
                             _client.HandshakeDone = true;
-                            Thread.Sleep(5);
 
                             NetworkEvent eventMessage = new NetworkEvent {
-                                Targets = new int[] { 0 },
-                                EventClass = new OnClientConnectEvent(_client.ID, _client.UserName, true)
+                                Targets = new int[] { _client.ID * -1 },
+                                EventClass = new OnClientConnectEvent(_client.ID, _client.UserName, _client.Version, true)
                             };
                             SendEvent(eventMessage);
 
@@ -384,7 +383,7 @@ public partial class Network
                 if (!_client.HandshakeDone) break;
                 Log($"Client {_client.ID} disconnected! (SUCCESS: {success})");
 
-                OnClientDisconnectEvent disconnectEvent = new OnClientDisconnectEvent(_client.ID, _client.UserName, success);
+                OnClientDisconnectEvent disconnectEvent = new OnClientDisconnectEvent(_client.ID, _client.UserName, _client.Version, success);
                 NetworkEvent eventTemp = new NetworkEvent(disconnectEvent);
                 eventTemp.EventClass = disconnectEvent;
                 SendEvent(eventTemp);
@@ -420,6 +419,7 @@ public partial class Network
         if (clientVersion == null || userName == null) throw new Exception($"Invalid client data! version:{clientVersion}, userName:{userName}");
 
         client.UserName = userName;
+        client.Version = clientVersion;
 
         NetworkEvents? listener = NetworkEvents.Listener;
         listener?.ExecuteEvent(new OnHandShakeStartEvent(clientVersion, userName, client.ID), true);
@@ -542,6 +542,7 @@ public partial class Network
         public int ID { get; internal set; }
         /// <summary>Username of the client</summary>
         public string UserName { get; internal set; } = "error (NoName)";
+        public string Version { get; set; } = "1.0.0.0";
         /// <summary>BOOL if the handshake has been completed.</summary>
         public bool HandshakeDone { get; internal set; } = false;
         internal NetworkClient(TcpListener listener)
