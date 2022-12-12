@@ -48,8 +48,10 @@ public class NetworkEvents {
         public string? UserName { get; set; }
         /// <summary>Check if the connection was success</summary>
         public bool? Success { get; set; } = true;
+        public string Version { get; set; }
         /// <summary></summary>
-        public OnClientConnectEvent (int? id, string? username, bool? success = false) {
+        public OnClientConnectEvent (int? id, string? username, string version, bool? success = false) {
+            this.Version = version;
             this.ClientID = id;
             this.UserName = username;
             this.Success = success;
@@ -58,7 +60,8 @@ public class NetworkEvents {
     /// <summary>Create new OnClientDisconnectEvent event</summary>
     public class OnClientDisconnectEvent : OnClientConnectEvent {
         /// <summary></summary>
-        public OnClientDisconnectEvent (int? id, string? username, bool? success = false) : base(id,username,success) {
+        public OnClientDisconnectEvent (int? id, string? username, string version, bool? success = false) : base(id,username,version,success) {
+            this.Version = version;
             this.ClientID = id;
             this.UserName = username;
             this.Success = success;
