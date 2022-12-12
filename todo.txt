@@ -37,3 +37,9 @@ hash not shown
 useclass = null to set false
 
 if client disconnect using X set success false
+
+Add timeout in events blocking methods
+
+Handle if server uses throw in method when requesting data
+
+Dont send OnClientConnectedEvent from server to client that connected

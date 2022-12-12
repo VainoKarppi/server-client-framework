@@ -66,8 +66,6 @@ public class Program {
         NetworkEvents.Listener.MessageReceived += OnMessageReceived;
         NetworkEvents.Listener.HandshakeStart += OnHandShakeStart;
         NetworkEvents.Listener.HandshakeEnd += OnHandShakeEnd;
-
-        Console.WriteLine("Type 'help' for commands!");
     
         Network.StartServer();
 

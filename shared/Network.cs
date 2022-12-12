@@ -111,8 +111,9 @@ public partial class Network {
 		public string? MethodName { get; set; }
 		///<summary>Parameters to be send into the method</summary>
 		public dynamic? Parameters { get; set; }
-		public bool UseClass { get; set; } = false;
-		// Array of parameters passed to method that is going to be executed
+		///<summary>Check if Parameters is a class object or object</summary>
+		public bool UseClass { get; set; }
+		///<summary>Random Key that is used to check for response for specific request</summary>
 		public int Key { get; set; } = new Random().Next(100,int.MaxValue);
 		///<summary>ID of the client who sent the message</summary>
 		public int? Sender { get; set; } = ClientID;
@@ -316,7 +317,7 @@ public partial class Network {
 	// TODO do async version!!!
     private static void SendMessage(dynamic message, NetworkStream Stream, bool waitResponse = true)
     {
-        if (message is NetworkMessage && (!message.isHandshake) && message.Sender != ClientID)
+        if (message is NetworkMessage && message.isHandshake != true && message.Sender != ClientID)
         {
             NetworkEvents? listener = NetworkEvents.Listener;
             listener?.ExecuteEvent(new OnMessageSentEvent(message));
@@ -328,7 +329,6 @@ public partial class Network {
             message.Parameters = SerializeParameters(message.OriginalParams, ref useClass);
             message.UseClass = useClass;
         }
-		
         // [0 = ack, 1-4 = JsonMsgLenght, 5-6 = ACK KEY, 7... actual JsonMsg]
         List<byte> bytes = new List<byte>();
 		bytes.AddRange(JsonSerializer.SerializeToUtf8Bytes(message));
@@ -431,9 +431,9 @@ public partial class Network {
 		}
 		return newParams.ToArray();
 	}
-	private static dynamic? DeserializeParameters(dynamic parameterData,bool isClass = false) {
+	private static dynamic? DeserializeParameters(dynamic parameterData, bool useClass = false) {
 		if(parameterData is null) return null;
-		if (isClass) return parameterData;
+		if (useClass) return parameterData;
 		List<object> parameters = JsonSerializer.Deserialize<List<object>>(parameterData);
 		bool odd = parameters.Count()%2 != 0;
 		if (odd && parameters.Count() > 2) {
@@ -476,7 +476,7 @@ public partial class Network {
 		Log($"MessageType:{message.MessageType}");
 		Log($"TargetId:{message.TargetId}");
 		Log($"MethodName:{message.MethodName}");
-		Log($"IsClass:{message.UseClass}");
+		Log($"ParamIsClass:{message.UseClass}");
 		Log($"Handshake:{message.isHandshake}");
 		Log();
 		Log(JsonSerializer.Serialize<object>(message.Parameters));
