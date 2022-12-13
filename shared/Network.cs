@@ -411,6 +411,54 @@ public partial class Network {
 		return returnMessage;
 	}
 
+	private static MethodInfo? GetMessageMethodInfo(string? methodName) {
+        int methodId;
+        MethodInfo? method;
+        bool isInt = int.TryParse(methodName, out methodId);
+        if (isInt && (methodId < 0)) {
+            string privateMethodName = PrivateMethods[Math.Abs(methodId) - 1];
+            method = typeof(Network).GetMethod(privateMethodName);
+        } else {
+
+		#if SERVER
+			method = ServerMethods.FirstOrDefault(x => x.Name.ToLower() == methodName?.ToLower());
+		#else
+            method = ClientMethods.FirstOrDefault(x => x.Name.ToLower() == methodName?.ToLower());
+		#endif
+		
+		    if (method == default) throw new Exception($"Method {methodName} was not found from Registered Methods!");
+        }
+        return method;
+    }
+
+	private static object[]? GetMessageParameters(MethodInfo? method, dynamic message, dynamic? client = null) {
+        ParameterInfo[]? parameterInfo = method?.GetParameters(); // Get parameters from the method to be invoked
+        if (parameterInfo?.Count() > 0) {
+            List<object> paramList = new List<object>();
+            ParameterInfo first = parameterInfo[0];
+
+		#if SERVER
+			if (first.ParameterType == typeof(NetworkClient)) paramList.Add(client);
+			if (parameterInfo.Count() > 1 && (parameterInfo[1].ParameterType == typeof(NetworkMessage))) paramList.Add(message);
+		#else
+            if (first.ParameterType == typeof(NetworkMessage)) paramList.Add(message);
+		#endif
+
+            if (message.Parameters != null) {
+                if (message.Parameters is Array){
+                    foreach (var item in message.Parameters){
+                        if (method?.GetParameters().Count() == paramList.Count()) break; // Not all parameters can fill in
+                        paramList.Add(item);
+                    }
+                } else {
+                    paramList.Add(message.Parameters);
+                }
+            }
+            return paramList.ToArray();
+        }
+        return null;
+    }
+
 	private static object[] SerializeParameters(dynamic parameters,ref bool useClass) {
 		try {
 			Type paramType = Type.GetType(parameters.ToString());
