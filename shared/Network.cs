@@ -344,11 +344,9 @@ public partial class Network {
         Stream.WriteAsync(bytes.ToArray(), 0, bytes.Count);
 
         if (waitResponse) {
-            new Thread(() =>
-            {
+            new Thread(() => {
                 int timer = 0;
-                while (timer < 100)
-                {
+                while (timer < 100) {
                     if (Results.ContainsKey((int)randomKey)) return; // ACK received!
                     Thread.Sleep(1); // TODO ASYNC
                     ++timer;
