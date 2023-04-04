@@ -52,7 +52,7 @@ Network.StartServer();
 
 // ("methodName", target, parameter(s))
 // target: 0 = everyone on server (icludes server), 1 = server, 2 = client with id: 2, -4 = everyone else expect client 4 
-NetworkMessage message = new NetworkMesssage("testclient",1,"this is a parameter");
+NetworkMessage message = new NetworkMessage("testclient",1,"this is a parameter");
 var returnedData = Network.RequestData(message); // "testclient" method returns string! (see client example)
 Console.WriteLine($"{returnedData} ({returnedData.GetType()})");
 
