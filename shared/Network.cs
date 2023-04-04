@@ -48,8 +48,10 @@ public partial class Network {
 
 	private static Dictionary<int,dynamic> Results = new Dictionary<int,dynamic>();
 	private static List<string> PrivateMethods = new List<string>() {};
-    private static bool MethodsInitialized = false;
 
+	#if SERVER
+    private static bool MethodsInitialized = false;
+	#endif
 
     /// <summary>Verion of the server. example: "1.0.0.0". Gets its value after successfull handshake</summary>
     public static string ServerVersion { get; private set; } = "1.0.0.0";

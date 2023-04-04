@@ -31,7 +31,7 @@ Once completed add reference to .dll in .csproj.
     </ItemGroup>
 </Project>
 ```
-Where X is the version.
+Where <b>x</b> is the version.
 
 Now the reference is done and we can proceed to create our application!
 

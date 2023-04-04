@@ -1,6 +1,7 @@
 .vscode
 .vs
 
+releases/
 test
 
 server/bin/**
