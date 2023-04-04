@@ -39,13 +39,26 @@ sed -i '/<PropertyGroup>/,/<\/PropertyGroup>/ s/<\/PropertyGroup>/    <DebugSymb
 sed -i '/<PropertyGroup>/,/<\/PropertyGroup>/ s/<\/PropertyGroup>/    <DebugType>None<\/DebugType>\n<\/PropertyGroup>/' $csProjFile
 sed -i '/<PropertyGroup>/,/<\/PropertyGroup>/ s/<\/PropertyGroup>/    <NoWarn>8622;1591<\/NoWarn>\n<\/PropertyGroup>/' $csProjFile
 
-dotnet publish -c Release -o ../
+
+echo ""; echo "Building shared libary.."; echo ""
+dotnet publish -p:PublishDir=..//shared//,Configuration=Release,AssemblyName=shared-framework.$version
+
+echo ""; echo "Building server only libary.."; echo ""
+rm -r bin
+rm -r client
+dotnet publish -p:PublishDir=..//server//,Configuration=Release,AssemblyName=server-framework.$version
+
+echo ""; echo "Building client only libary.."; echo ""
+rm -r bin
+rm -r server
+cp -R ..//..//..//shared client
+cp -R ..//..//..//client//files client
+dotnet publish -p:PublishDir=..//client//,Configuration=Release,AssemblyName=client-framework.$version
 
 cd ..
 rm -r "server-client-framework.$version"
 
 echo ""
-echo "BUILD SUCCESS!"
-echo finalDir:$startPath//$date//server-client-framework.$version.dll
+echo "BUILD(s) SUCCESS!"
 echo ""
-read -p "Press enter to continue"
+read -p "Press ENTER to exit"
