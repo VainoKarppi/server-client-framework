@@ -59,6 +59,7 @@ public partial class Network {
 
         //--- Create new main client object class
         Client = new NetworkClient();
+        ServerMethods.Clear();
 
         //--- Connect to server
         Log("Trying to connect at: (" + ip + ":" + port.ToString() + "), with name: " + userName);
