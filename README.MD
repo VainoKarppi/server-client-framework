@@ -52,7 +52,7 @@ Network.StartServer();
 
 // ("methodName", target, parameter(s))
 // target: 0 = everyone on server (icludes server), 1 = server, 2 = client with id: 2, -4 = everyone else expect client 4 
-NetworkMessage message = new NetworkMesssage("testclient",1,"this is a parameter");
+NetworkMessage message = new NetworkMessage("testclient",1,"this is a parameter");
 var returnedData = Network.RequestData(message); // "testclient" method returns string! (see client example)
 Console.WriteLine($"{returnedData} ({returnedData.GetType()})");
 
@@ -65,7 +65,7 @@ public class ServerMethods {
     // BOTH NetworkClient AND NetworkMessage are OPTIONAL!
     // NetworkClient is available only on server!
     public static int TestIntServer(NetworkClient client, NetworkMessage message, string testMessage) {
-        Console.WriteLine($"MSG:{testMessage} ID:{client.ID} MSG:{message.Hash}");
+        Console.WriteLine($"MSG:{testMessage} ID:{client.ID}");
         return 165;
     }
     // Get data using class
