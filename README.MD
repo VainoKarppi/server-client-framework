@@ -65,7 +65,7 @@ public class ServerMethods {
     // BOTH NetworkClient AND NetworkMessage are OPTIONAL!
     // NetworkClient is available only on server!
     public static int TestIntServer(NetworkClient client, NetworkMessage message, string testMessage) {
-        Console.WriteLine($"MSG:{testMessage} ID:{client.ID} MSG:{message.Hash}");
+        Console.WriteLine($"MSG:{testMessage} ID:{client.ID}");
         return 165;
     }
     // Get data using class
