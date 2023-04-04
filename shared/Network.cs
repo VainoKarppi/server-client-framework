@@ -81,7 +81,8 @@ public partial class Network {
 
 	/// <summary>Create new instance of a Network Event to be executed on client(s)</summary>
 	public class NetworkEvent {
-		public int MessageType { get; set; } = 10;
+		/// <summary>Type of the message. (Event is always: 10)</summary>
+		public int MessageType { get; } = 10;
 		/// <summary>Array of targets. Use negative int to remove from list. {0 = everyone} {-2 = everyone else expect client 2} {-5,-6,...}</summary>
 		public int[]? Targets { get; set; } = new int[] { 0 };
 		///<summary>Class instance of event to be sent. T:ServerFramework.NetworkEvents</summary>
@@ -119,7 +120,7 @@ public partial class Network {
 		public int Key { get; set; } = new Random().Next(100,int.MaxValue);
 		///<summary>ID of the client who sent the message</summary>
 		public int? Sender { get; set; } = ClientID;
-		// Id of the sender. Can be null in case handshake is not completed
+		/// <summary>Check if the message is handshake</summary>
 		public bool? isHandshake { get; set; }
 		// Used to detect for handshake. Else send error for not connected to server!
 		internal dynamic? OriginalParams { get; set; }

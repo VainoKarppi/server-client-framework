@@ -48,6 +48,7 @@ public class NetworkEvents {
         public string? UserName { get; set; }
         /// <summary>Check if the connection was success</summary>
         public bool? Success { get; set; } = true;
+        /// <summary>Version on the client</summary>
         public string Version { get; set; }
         /// <summary></summary>
         public OnClientConnectEvent (int? id, string? username, string version, bool? success = false) {

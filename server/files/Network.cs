@@ -477,6 +477,7 @@ public partial class Network {
         public int ID { get; internal set; }
         /// <summary>Username of the client</summary>
         public string UserName { get; internal set; } = "error (NoName)";
+        /// <summary>Version on the client</summary>
         public string Version { get; set; } = "1.0.0.0";
         /// <summary>BOOL if the handshake has been completed.</summary>
         public bool HandshakeDone { get; internal set; } = false;

@@ -51,8 +51,8 @@ dotnet publish -p:PublishDir=..//server//,Configuration=Release,AssemblyName=ser
 echo ""; echo "Building client only libary.."; echo ""
 rm -r bin
 rm -r server
-cp -R ..//..//..//shared client
 cp -R ..//..//..//client//files client
+cp -R ..//..//..//shared client
 dotnet publish -p:PublishDir=..//client//,Configuration=Release,AssemblyName=client-framework.$version
 
 cd ..
