@@ -8,15 +8,10 @@ using System.Reflection;
 using System.Text;
 using System.Threading;
 
+using ServerFramework;
 using static ServerFramework.NetworkEvents;
 
-namespace ServerFramework;
 
-public class Test {
-    public static void Aasd() {
-        
-    }
-}
 public class Program {
 
     public static void OnClientConnected(object sender, OnClientConnectEvent eventData){
@@ -55,6 +50,10 @@ public class Program {
         Logger.Debug = true;
         //Settings.AllowSameUsername = false;
 
+        Console.CancelKeyPress += delegate {
+            if (Network.ServerRunning) Network.StopServer();
+        };
+
         int methodsAdded = Network.RegisterMethod( typeof(ServerMethods) );
         Console.WriteLine($"{methodsAdded} Methods registered!");
 
@@ -72,6 +71,7 @@ public class Program {
         while (true) {
             Console.WriteLine();
             string? command = Console.ReadLine();
+            if (string.IsNullOrWhiteSpace(command)) continue;
             command = command?.ToLower();
         
             try {
@@ -90,6 +90,8 @@ public class Program {
                         break;
 
                     case "exit":
+                        Network.StopServer();
+                        Environment.Exit(0);
                         break;
 
                     case "start":

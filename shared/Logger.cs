@@ -29,12 +29,12 @@ namespace ClientFramework;
 
 
 
-/// <summary>Create new instance of Logger</summary>
+/// <summary></summary>
 public static class Logger {
-    /// <summary>Toggle writing to external .log file. (Creates a Logs folder in executing assembly path)</summary>
+    /// <summary>Toggle writing to external .log file. Creates a Logs folder in executing assembly path. (Default is True)</summary>
     public static bool Enabled = true;
-    /// <summary>Toggle writing to console</summary>
-    public static bool Debug = true;
+    /// <summary>Toggle writing to console. (Default is False)</summary>
+    public static bool Debug = false;
     private static Thread? writerThread;
     private static List<object?> Texts = new List<object?>();
     private static string? logFile;

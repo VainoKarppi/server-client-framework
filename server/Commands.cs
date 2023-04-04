@@ -26,8 +26,7 @@ namespace ServerFramework {
             Console.WriteLine("Exit         | Closes server");
         }
         public static void UserList() {
-            if (Network.ClientList.Count() == 0)
-                throw new Exception("No users connected!");
+            if (Network.ClientList.Count() == 0) throw new Exception("No users connected!");
 
             Console.WriteLine("Connected clients count: " + Network.ClientList.Count());
             foreach (Network.NetworkClient? client in Network.ClientList) {
@@ -37,11 +36,8 @@ namespace ServerFramework {
             }
         }
         public static void SendData() {
-            if (!Network.ServerRunning)
-                throw new Exception("Start the server first!");
-
-            if (Network.ClientList.Count() == 0)
-                throw new Exception("No clients online!");
+            if (!Network.ServerRunning) throw new Exception("Start the server first!");
+            if (Network.ClientList.Count() == 0) throw new Exception("No clients online!");
 
             Console.WriteLine();
             Console.WriteLine("method to be sent to client: ");
@@ -60,7 +56,7 @@ namespace ServerFramework {
             Network.SendData(message);
         }
         public static void GetClientMethods() {
-            if (Network.ClientMethods == null) throw new Exception("Client Methods not Initialized yet! (Gets populated when first client joins)");
+            if (Network.ClientMethods.Count() == 0) throw new Exception("Client Methods not Initialized yet! (Gets populated when first client joins)");
             Console.WriteLine();
             foreach (var item in Network.ClientMethods) Console.WriteLine($"{item.Name} ReturnType:({item.ReturnType})  ParamCount:({(item.Parameters)?.Count()})");
         }
@@ -73,11 +69,8 @@ namespace ServerFramework {
             Network.SendEvent(eventData);
         }
         public static void RequestData() {
-            if (!Network.ServerRunning)
-                throw new Exception("Start the server first!");
-
-            if (Network.ClientList.Count() == 0)
-                throw new Exception("No clients online!");
+            if (!Network.ServerRunning) throw new Exception("Start the server first!");
+            if (Network.ClientList.Count() == 0) throw new Exception("No clients online!");
 
             Console.WriteLine();
             Console.WriteLine("method to be sent to client: ");
@@ -100,11 +93,8 @@ namespace ServerFramework {
                 Console.WriteLine($"{a} ({a.GetType()})");
         }
         public static void RequestDataType() {
-            if (!Network.ServerRunning)
-                throw new Exception("Start the server first!");
-
-            if (Network.ClientList.Count() == 0)
-                throw new Exception("No clients online!");
+            if (!Network.ServerRunning) throw new Exception("Start the server first!");
+            if (Network.ClientList.Count() == 0) throw new Exception("No clients online!");
 
             Console.WriteLine("Target ID: (Blank or 0 for all clients)");
             string? target = Console.ReadLine();
