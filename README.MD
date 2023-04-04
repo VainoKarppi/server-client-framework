@@ -11,7 +11,7 @@ To get started create new folder project using:<br>
 
 <code>dotnet new console -n MyServerProject</code>
 
-Next recompile the project using ```buildDLL.sh``` or <b>DOWNLOAD</b> one from:<h3>[DOWNLOAD HERE](https://github.com/Razer223/server-client-framework/releases/tag/test)</h3>
+Next recompile the project using ```buildDLL.sh``` or <b>DOWNLOAD</b> one from:<h3>[DOWNLOAD HERE](https://github.com/VainoKarppi/server-client-framework/releases/latest)</h3>
 
 <br>
 Extract the .zip inside your project folder. The .DLL should be inside:<br>
