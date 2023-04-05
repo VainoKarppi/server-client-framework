@@ -51,7 +51,7 @@ namespace ClientFramework {
 
             Network.RegisterMethod(typeof(ClientMethods));
 
-            Console.Title = "CLIENT";
+            Console.Title = "CLIENT [DISCONNECTED]";
             Console.Clear();
             Console.WriteLine("Type 'help' for commands!");
 
@@ -92,10 +92,13 @@ namespace ClientFramework {
                                 Random rd = new Random();
                                 name = ("RANDOMUSER" + rd.Next(1,10).ToString());
                             }
-                            Network.Connect(ip,Int32.Parse(port),name);
+                            bool success = Network.Connect(ip,Int32.Parse(port),name);
+                            if (success) Console.Title = "CLIENT [CONNECTED]";
+                            
                             break;
                         case "disconnect":
                             Network.Disconnect();
+                            Console.Title = "CLIENT [DISCONNECTED]";
                             break;
                         case "users":
                             Commands.UserList();

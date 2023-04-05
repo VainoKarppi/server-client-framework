@@ -51,6 +51,7 @@ public class Program {
         //Settings.AllowSameUsername = false;
 
         Console.CancelKeyPress += delegate {
+            Console.Title = "SERVER [STOPPED]";
             if (Network.ServerRunning) Network.StopServer();
         };
 
@@ -67,6 +68,7 @@ public class Program {
         NetworkEvents.Listener.HandshakeEnd += OnHandShakeEnd!;
     
         Network.StartServer();
+        Console.Title = "SERVER [STARTED]";
 
         while (true) {
             Console.WriteLine();
@@ -96,14 +98,17 @@ public class Program {
 
                     case "start":
                         if (Network.ServerRunning) throw new Exception("Server already running!");
+                        Console.Title = "SERVER [STARTING]";
                         Console.WriteLine("Enter server port:");
                         string? portNew = Console.ReadLine();
                         if (String.IsNullOrEmpty(portNew)) portNew = "5001";
                         Network.StartServer(Int32.Parse(portNew));
+                        Console.Title = "SERVER [STARTED]";
                         break;
 
                     case "stop":
                         Network.StopServer();
+                        Console.Title = "SERVER [STOPPED]";
                         break;
 
                     case "users":

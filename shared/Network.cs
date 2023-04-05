@@ -349,6 +349,7 @@ public partial class Network {
 
         if (waitResponse) {
             new Thread(() => {
+				Thread.CurrentThread.IsBackground = true;
                 int timer = 0;
                 while (timer < 100) {
                     if (Results.ContainsKey((int)randomKey)) return; // ACK received!

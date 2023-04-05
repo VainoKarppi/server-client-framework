@@ -451,6 +451,7 @@ public partial class Network {
         SendMessage(handshakeMessage,client.Stream,false);
         
         new Thread(() => {
+            Thread.CurrentThread.IsBackground = true;
             int i = 0;
             while (i < 200) { // 2 second timer
                 Thread.Sleep(2);

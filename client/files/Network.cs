@@ -53,9 +53,8 @@ public partial class Network {
     /// <param name="port"></param>
     /// <param name="userName"></param>
     /// <exception cref="Exception"></exception>
-    public static void Connect(string ip = "127.0.0.1", int port = 5001, string userName = "unknown") {
-        if (IsConnected())
-            throw new Exception("Already connected to server!");
+    public static bool Connect(string ip = "127.0.0.1", int port = 5001, string userName = "unknown") {
+        if (IsConnected()) throw new Exception("Already connected to server!");
 
         //--- Create new main client object class
         Client = new NetworkClient();
@@ -76,12 +75,13 @@ public partial class Network {
 
         //--- Request client ID and do handshake
         int _id = Network.Handshake(userName);
-        if (_id < 2) return;
+        if (_id < 2) return false;
         Log($"*DEBUG* HANDSHAKE DONE: ID={_id}");
 
         //--- Continue in new thread
         Thread thread = new Thread(ReceiveDataThread);
         thread.Start();
+        return true;
     }
 
 

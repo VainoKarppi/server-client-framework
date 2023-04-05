@@ -11,13 +11,13 @@ using static ServerFramework.Network;
 public class ServerMethods
 {
     public static string TestServer(string testMessage) {
-        Console.WriteLine($"MSG:{testMessage}");
+        Console.WriteLine($"MSG FROM CLIENT:{testMessage}");
         return "Hello MSG RESPONSE From SERVER!";
     }
     // BOTH NetworkClient AND NetworkMessage are OPTIONAL!
     // NetworkClient is available only on server!
     public static int TestIntServer(NetworkClient client, NetworkMessage message, string testMessage) {
-        Console.WriteLine($"MSG:{testMessage} ID:{client.ID}");
+        Console.WriteLine($"MSG FROM CLIENT:{testMessage} ID:{client.ID}");
         return 165;
     }
     // Get data using class
