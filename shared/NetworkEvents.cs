@@ -213,9 +213,10 @@ public class NetworkEvents {
         if (useBlocked) {
             action.Invoke();
         } else {
-            new Thread(() => {
+            Task t = new Task(() => {
                 action.Invoke();
-            }).Start();
+            });
+            t.Start();
         }
     }
 

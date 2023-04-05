@@ -348,16 +348,16 @@ public partial class Network {
         stream.WriteAsync(bytes.ToArray(), 0, bytes.Count);
 
         if (waitResponse) {
-            new Thread(() => {
-				Thread.CurrentThread.IsBackground = true;
+			Task t = new Task( async () => {
                 int timer = 0;
                 while (timer < 100) {
                     if (Results.ContainsKey((int)randomKey)) return; // ACK received!
-                    Thread.Sleep(1); // TODO ASYNC
+                    await Task.Delay(1);
                     ++timer;
                 }
                 Log($"ERROR: ACK not received for: {message} (MSG timed out!)");
-            }).Start();
+            });
+			t.Start();
         }
     }
 

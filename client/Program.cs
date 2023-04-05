@@ -8,8 +8,9 @@ using static ClientFramework.NetworkEvents;
 namespace ClientFramework {
     public class Program {
         
-        public static void OnClientConnected(object sender, OnClientConnectEvent eventData){
+        public static void OnClientConnected(object sender, OnClientConnectEvent eventData) {
             if (eventData.ClientID == Network.Client.ID) {
+                Console.Title = "CLIENT [CONNECTED]";
                 Console.WriteLine($"*EVENT* YOU CONNECTED! ({eventData.UserName} ID:{eventData.ClientID} SUCCESS:{eventData.Success})");
                 return;
             }
@@ -23,6 +24,7 @@ namespace ClientFramework {
             Console.WriteLine($"*EVENT* CLIENT DISCONNECTED! ({eventData.UserName} ID:{eventData.ClientID} SUCCESS:{eventData.Success})");
         }
         public static void OnServerShutdown(object sender, OnServerShutdownEvent eventData){
+            Console.Title = "CLIENT [DISCONNECTED]";
             Console.WriteLine($"*EVENT* SERVER STOPPED! SUCCESS:{eventData.Success}");
         }
         public static void OnMessageSent(object sender, OnMessageSentEvent eventData){
@@ -92,9 +94,7 @@ namespace ClientFramework {
                                 Random rd = new Random();
                                 name = ("RANDOMUSER" + rd.Next(1,10).ToString());
                             }
-                            bool success = Network.Connect(ip,Int32.Parse(port),name);
-                            if (success) Console.Title = "CLIENT [CONNECTED]";
-                            
+                            Network.Connect(ip,Int32.Parse(port),name);
                             break;
                         case "disconnect":
                             Network.Disconnect();

@@ -450,11 +450,10 @@ public partial class Network {
 
         SendMessage(handshakeMessage,client.Stream,false);
         
-        new Thread(() => {
-            Thread.CurrentThread.IsBackground = true;
+        Task t = new Task( async () => {
             int i = 0;
             while (i < 200) { // 2 second timer
-                Thread.Sleep(2);
+                await Task.Delay(2);
                 if (client.HandshakeDone) {
                     listener?.ExecuteEvent(new OnHandShakeEndEvent(clientVersion, userName, client.ID, true, null), false);
                     return;
@@ -464,7 +463,8 @@ public partial class Network {
             listener?.ExecuteEvent(new OnHandShakeEndEvent(clientVersion, userName, client.ID, false, 0), true);
             Log($"Handshake time out for Client:{client.ID}");
             CloseClient(client);
-        }).Start();
+        });
+        t.Start();
     }
 
 
