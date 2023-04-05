@@ -517,7 +517,8 @@ public partial class Network {
 
 
 	private static void DebugMessage(NetworkMessage message,int mode = 0) {
-		Log("===============DEBUG MESSAGE===============");
+        Log();
+        Log("===============DEBUG MESSAGE===============");
 		string type = "UNKNOWN";
 		if (mode == 1) type = "OUTBOUND";
 		else if (mode == 2) type = "INBOUND";
