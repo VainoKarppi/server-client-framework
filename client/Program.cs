@@ -86,8 +86,6 @@ namespace ClientFramework {
                                 ip = ipandport[0];
                                 port = ipandport[1];
                             }
-                            Console.WriteLine(ip);
-                            Console.WriteLine(port);
                             Console.WriteLine("Username:");
                             string? name = Console.ReadLine();
                             if (string.IsNullOrEmpty(name)) {

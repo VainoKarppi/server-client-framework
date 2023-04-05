@@ -156,6 +156,14 @@ public class NetworkEvents {
                 string? eventName = (classData is JsonElement) ? ((JsonElement)classData).GetProperty("EventName").GetString() : classData?.EventName;
                 if (eventName == null) throw new Exception("INVALID EVENT. Not found!");
 
+                string success = "";
+                try {
+                    success = (classData is JsonElement) ? ((JsonElement)classData).GetProperty("Success").GetBoolean().ToString() : classData?.Success!.ToString()!; 
+                } catch {}
+                string msg = $"*DEBUG* EVENT: {eventName}";
+                if (success != "") msg += $", SUCCESS: {success.ToUpper()}";
+                Log(msg,false);
+
                 switch (eventName.ToLower()) {
                     case "onclientconnectevent":
                         if (classData is JsonElement) classData = ((JsonElement)classData).Deserialize<OnClientConnectEvent>();
