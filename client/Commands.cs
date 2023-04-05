@@ -61,7 +61,12 @@ namespace ClientFramework {
                 MethodName = method,
                 TargetId = Int32.Parse(target)
             };
-            Network.SendData(message);
+
+            DateTime then = DateTime.Now;
+            for (int i = 0; i < 1000; i++) {
+                Network.SendData(message);
+            }
+            Console.WriteLine(DateTime.Now - then);
         }
         public static void GetClientMethods() {
             Console.WriteLine();
