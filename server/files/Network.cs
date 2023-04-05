@@ -234,7 +234,7 @@ public partial class Network {
 
                 NetworkEvents? listener = NetworkEvents.Listener;
 
-                //-- HANDLE EVENT
+                //--- HANDLE EVENT
                 if (type == 10) {
                     var eventBytes = new Utf8JsonReader(bytes);
                     NetworkEvent? eventMessage = JsonSerializer.Deserialize<NetworkEvent>(ref eventBytes)!;
@@ -259,7 +259,7 @@ public partial class Network {
                 message.Parameters = DeserializeParameters(message.Parameters, message.UseClass);
 
                 //--- HANDLE HANDSHAKE
-                // todo move elsewhere
+                //Todo move elsewhere
                 if (message.isHandshake != null) {
                     // Return of successfull handshake
                     if (message.MessageType == (int)MessageTypes.SendData) {
@@ -267,7 +267,7 @@ public partial class Network {
                             _client.HandshakeDone = true;
 
                             NetworkEvent eventMessage = new NetworkEvent {
-                                Targets = new int[] { _client.ID * -1 },
+                                Targets = new int[] { _client.ID * -1 }, // Everyone excpect user (ex: -5 = everyone excpect client 5)
                                 EventClass = new OnClientConnectEvent(_client.ID, _client.UserName, _client.Version, true)
                             };
                             SendEvent(eventMessage);

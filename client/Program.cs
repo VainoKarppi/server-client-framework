@@ -41,13 +41,13 @@ namespace ClientFramework {
         public static void Main(string[] args) {
             Logger.Debug = true;
 
-            NetworkEvents.Listener.ClientConnected += OnClientConnected;
-            NetworkEvents.Listener.ClientDisconnect += OnClientDisconnected;
-            NetworkEvents.Listener.ServerShutdown += OnServerShutdown;
-            NetworkEvents.Listener.MessageSent += OnMessageSent;
-            NetworkEvents.Listener.MessageReceived += OnMessageReceived;
-            NetworkEvents.Listener.HandshakeStart += OnHandShakeStart;
-            NetworkEvents.Listener.HandshakeEnd += OnHandShakeEnd;
+            NetworkEvents.Listener.ClientConnected += OnClientConnected!;
+            NetworkEvents.Listener.ClientDisconnect += OnClientDisconnected!;
+            NetworkEvents.Listener.ServerShutdown += OnServerShutdown!;
+            NetworkEvents.Listener.MessageSent += OnMessageSent!;
+            NetworkEvents.Listener.MessageReceived += OnMessageReceived!;
+            NetworkEvents.Listener.HandshakeStart += OnHandShakeStart!;
+            NetworkEvents.Listener.HandshakeEnd += OnHandShakeEnd!;
 
             Network.RegisterMethod(typeof(ClientMethods));
 
@@ -79,10 +79,15 @@ namespace ClientFramework {
                         case "connect":
                             Console.WriteLine("Enter IP adress:");
                             string? ip = Console.ReadLine();
+                            string port = "5001";
                             if (string.IsNullOrEmpty(ip)) ip = "127.0.0.1";
-                            Console.WriteLine("Enter Port");
-                            string? port = Console.ReadLine();
-                            if (string.IsNullOrEmpty(port)) port = "5001";
+                            string[] ipandport = ip.Split(":");
+                            if (ipandport.Count() > 1) {
+                                ip = ipandport[0];
+                                port = ipandport[1];
+                            }
+                            Console.WriteLine(ip);
+                            Console.WriteLine(port);
                             Console.WriteLine("Username:");
                             string? name = Console.ReadLine();
                             if (string.IsNullOrEmpty(name)) {

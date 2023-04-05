@@ -333,6 +333,7 @@ public partial class Network {
             message.UseClass = useClass;
         }
         // [0 = ack, 1-4 = JsonMsgLenght, 5-6 = ACK KEY, 7... actual JsonMsg]
+		// TODO encrypt/decrypt
         List<byte> bytes = new List<byte>();
 		bytes.AddRange(JsonSerializer.SerializeToUtf8Bytes(message));
         bytes.InsertRange(0,BitConverter.GetBytes(bytes.Count)); // 4 bytes

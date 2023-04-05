@@ -57,14 +57,14 @@ public class Program {
         int methodsAdded = Network.RegisterMethod( typeof(ServerMethods) );
         Console.WriteLine($"{methodsAdded} Methods registered!");
 
-        NetworkEvents.Listener.ClientConnected += OnClientConnected;
-        NetworkEvents.Listener.ClientDisconnect += OnClientDisconnect;
-        NetworkEvents.Listener.ServerShutdown += OnServerShutdown;
-        NetworkEvents.Listener.ServerStart += OnServerStart;
-        NetworkEvents.Listener.MessageSent += OnMessageSent;
-        NetworkEvents.Listener.MessageReceived += OnMessageReceived;
-        NetworkEvents.Listener.HandshakeStart += OnHandShakeStart;
-        NetworkEvents.Listener.HandshakeEnd += OnHandShakeEnd;
+        NetworkEvents.Listener.ClientConnected += OnClientConnected!;
+        NetworkEvents.Listener.ClientDisconnect += OnClientDisconnect!;
+        NetworkEvents.Listener.ServerShutdown += OnServerShutdown!;
+        NetworkEvents.Listener.ServerStart += OnServerStart!;
+        NetworkEvents.Listener.MessageSent += OnMessageSent!;
+        NetworkEvents.Listener.MessageReceived += OnMessageReceived!;
+        NetworkEvents.Listener.HandshakeStart += OnHandShakeStart!;
+        NetworkEvents.Listener.HandshakeEnd += OnHandShakeEnd!;
     
         Network.StartServer();
 

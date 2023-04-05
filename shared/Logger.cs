@@ -39,31 +39,21 @@ public static class Logger {
     private static List<object?> Texts = new List<object?>();
     private static string? logFile;
     private static void WriterThread() {
-        try
-        {
+        try {
             string LogFolder = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + @"\Logs";
-            if (!Directory.Exists(LogFolder))
-                Directory.CreateDirectory(LogFolder);
-
-            if (logFile == null)
-                logFile = LogFolder + @"\Log_" + DateTime.Now.ToString("yyyy-MM-dd-H_mm_ss") + ".txt";
+            if (!Directory.Exists(LogFolder)) Directory.CreateDirectory(LogFolder);
+            if (logFile == null) logFile = LogFolder + @"\Log_" + DateTime.Now.ToString("yyyy-MM-dd-H_mm_ss") + ".txt";
 
             StreamWriter writer = new StreamWriter(logFile, true);
-            while (writerThread != null)
-            {
-                if (Texts.Count() > 0)
-                {
-                    try
-                    {
-                        foreach (object? text in Texts.ToList())
-                        {
+            while (writerThread != null) {
+                if (Texts.Count() > 0) {
+                    try {
+                        foreach (object? text in Texts.ToList()) {
                             writer.WriteLine(text?.ToString());
                             Texts.Remove(text);
                         }
                         writer.Flush();
-                    }
-                    catch (Exception ex)
-                    {
+                    } catch (Exception ex) {
                         Texts.Add(ex.Message);
                     }
                 }
@@ -74,7 +64,8 @@ public static class Logger {
         } catch {}
     }
 
-    private static void CloseWriter() {
+    /// <summary>Closes writer thread</summary>
+    public static void CloseWriter() {
         writerThread = null;
     }
 
