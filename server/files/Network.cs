@@ -213,10 +213,11 @@ public partial class Network {
             try {
                 //--- Read message
                 byte[] bytes = ReadMessageBytes(_client.GetStream());
+                if (bytes.Count() == 1 && bytes[0] == 0x04) throw new SocketException(); // END-OF-TRANSMISSION
 
                 //--- Make sure data is valid, and no socket error
                 if (bytes.Count() == 0) {
-                    throw new Exception($"ERROR BYTES IN CLIENT: {_client.ID} RECEIVE DATA THREAD!");
+                    throw new Exception($"*WARNING* ERROR BYTES IN CLIENT: {_client.ID} RECEIVE DATA THREAD!");
                 };
 
                 // Check if MSG is ACK

@@ -97,15 +97,19 @@ public partial class Network {
             throw new Exception("Not connected to server!");
 
         //--- Remove Network Objects
-        Log("Disconnected From the server!");
+        Log("Disconnecting from the server...");
         Client.HandshakeDone = false;
-        Client.Stream?.Close();
-        Client.Writer?.Close();
-        Client.Client.Close();
+        bool success = true;
+        try {
+            Client.GetStream().Write(new byte[] {0x04},0,1);
+            
+            Client.Close();
+        } catch { success = false; }
 
         //--- Invoke OnClientDisconnectEvent event
         NetworkEvents? listener = NetworkEvents.Listener;
-        listener?.ExecuteEvent(new OnClientDisconnectEvent(Client.ID, Client.UserName, ClientVersion, true));
+        listener?.ExecuteEvent(new OnClientDisconnectEvent(Client.ID, Client.UserName, ClientVersion, success));
+        Log("Disconnected from the server!");
     }
 
 

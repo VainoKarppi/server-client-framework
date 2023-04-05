@@ -318,7 +318,7 @@ public partial class Network {
 
 
 	// TODO do async version!!!
-    private static void SendMessage(dynamic message, NetworkStream Stream, bool waitResponse = true)
+    private static void SendMessage(dynamic message, NetworkStream stream, bool waitResponse = true)
     {
         if (message is NetworkMessage && message.isHandshake != true && message.Sender != ClientID)
         {
@@ -345,7 +345,7 @@ public partial class Network {
         bytes.InsertRange(5,BitConverter.GetBytes(randomKey));
 
         // Send data
-        Stream.WriteAsync(bytes.ToArray(), 0, bytes.Count);
+        stream.WriteAsync(bytes.ToArray(), 0, bytes.Count);
 
         if (waitResponse) {
             new Thread(() => {
@@ -378,11 +378,12 @@ public partial class Network {
         byte[] byteInfo = new byte[7];
 		Stream.Read(byteInfo,0,7);
 
-        byte ackByte = byteInfo[0];
+        byte firstByte = byteInfo[0];
+		if (firstByte == 0x04) return new byte[] { 0x04 }; // END-OF-TRANSMISSION
         int msgLenght = BitConverter.ToInt32(byteInfo,1);
 		ushort ackKey = BitConverter.ToUInt16(byteInfo,5);
 
-        if (ackByte == 0x06) {
+        if (firstByte == 0x06) {
             Results.Add((int)ackKey,true);
             return new byte[] { 0x06 }; // IS ACTUAL ACK RECEIVED
         }
@@ -391,7 +392,7 @@ public partial class Network {
 		Stream.Read(msgBytes,0,msgLenght);
         Stream.Flush();
 
-        if (ackByte == 0x01) { // Send ACK of msg Received
+        if (firstByte == 0x01) { // Send ACK of msg Received
             byte[] responseBytes = {0x06,0x00,0x00,0x00,0x00,(byte)(ackKey),(byte)(ackKey >> 8)};
             Stream.WriteAsync(responseBytes);
         }
