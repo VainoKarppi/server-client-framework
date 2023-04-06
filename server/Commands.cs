@@ -63,7 +63,7 @@ namespace ServerFramework {
 
             Network.NetworkClient client = Network.ClientList.FirstOrDefault(client => client.ID.ToString() == target)!;
             if (client == default) throw new Exception("ID not found from connected clients!");
-            var span = Network.CheckPing(client.Stream);
+            var span = Network.CheckPing(client);
             Console.WriteLine($"Ping is: {span.Milliseconds}.{span.Microseconds}ms");
         }
         public static void GetClientMethods() {

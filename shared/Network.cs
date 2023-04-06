@@ -324,8 +324,9 @@ public partial class Network {
     /// <exception cref="Exception"></exception>
     /// <exception cref="TimeoutException"></exception>
 	#if SERVER
-	public static TimeSpan CheckPing(NetworkStream stream) {
+	public static TimeSpan CheckPing(NetworkClient client) {
 		if (!ServerRunning) throw new InvalidOperationException("Server not running!");
+		NetworkStream stream = client.GetStream();
 	#else
 	public static TimeSpan CheckPing() {
 		if (!IsConnected()) throw new Exception("Not connected to server");
