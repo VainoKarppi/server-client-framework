@@ -317,6 +317,12 @@ public partial class Network {
 #endif
     }	
 
+	/// <summary>
+    /// Check ping
+    /// </summary>
+    /// <returns>[TimeSpan] Time spent on the round trip. (only one request)</returns>
+    /// <exception cref="Exception"></exception>
+    /// <exception cref="TimeoutException"></exception>
 	#if SERVER
 	public static TimeSpan CheckPing(NetworkStream stream) {
 		if (!ServerRunning) throw new InvalidOperationException("Server not running!");
@@ -403,6 +409,7 @@ public partial class Network {
     /// Request data from target by invoking its method using ASYNC
     /// </summary>
     /// <param name="message"></param>
+    /// <param name="requestAck"></param>
     /// <returns></returns>
     /// <exception cref="InvalidOperationException"></exception>
     /// <exception cref="Exception"></exception>

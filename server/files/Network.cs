@@ -139,6 +139,7 @@ public partial class Network {
     /// Invoke a method on receivers end. This uses fire and forget mode. (No data to be returned)
     /// </summary>
     /// <param name="message"></param>
+    /// <param name="requestAck"></param>
     /// <exception cref="InvalidOperationException"></exception>
     /// <exception cref="Exception"></exception>
     public static void SendData(NetworkMessage message, bool requestAck = false) {

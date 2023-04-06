@@ -256,6 +256,7 @@ public partial class Network {
     /// If using requestAck, there can be a timeout if multiple messages are sent quickly!
     /// </summary>
     /// <param name="message"></param>
+    /// <param name="requestAck"></param>
     /// <exception cref="InvalidOperationException"></exception>
     /// <exception cref="Exception"></exception>
     public static void SendData(NetworkMessage message, bool requestAck = false) {
