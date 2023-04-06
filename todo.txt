@@ -23,6 +23,7 @@ TODO make sure the socket is using serverframework
 TODO create shared folder of shared methods with SERVER defines
 
 
+Add simple encryption
 
 remove handshake false if not used
 remove original params from MSG
@@ -35,8 +36,7 @@ Add timeout in events blocking methods
 
 Handle if server uses throw in method when requesting data
 
-
-when requesting a message from client to client check that ACK works
+Add ACK check ability on request data
 
 When sending a request data wait for longer if ACK was returned before invoked method
 todo add a list of waiting for incoming packets of keys. If not in list the reposne was too late and timeout happened before
