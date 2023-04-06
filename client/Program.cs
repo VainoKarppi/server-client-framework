@@ -118,6 +118,9 @@ namespace ClientFramework {
                         case "requestdatatype":
                             Commands.RequestDataType();
                             break;
+                        case "ping":
+                            Commands.Ping();
+                            break;
                         case "status":
                             Console.WriteLine(Network.IsConnected() ? "Connected to server! ID:" + Network.Client.ID.ToString() : "NOT connected to server!");
                             break;

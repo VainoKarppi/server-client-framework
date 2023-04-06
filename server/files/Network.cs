@@ -141,7 +141,7 @@ public partial class Network {
     /// <param name="message"></param>
     /// <exception cref="InvalidOperationException"></exception>
     /// <exception cref="Exception"></exception>
-    public static void SendData(NetworkMessage message) {
+    public static void SendData(NetworkMessage message, bool requestAck = false) {
         if (!ServerRunning) throw new InvalidOperationException("Server not running!");
         if (message.TargetId == 1) throw new InvalidOperationException("Cannot send data to self (server)!");
         if (message.MessageType == null) message.MessageType = (int?)MessageTypes.SendData;
@@ -156,14 +156,14 @@ public partial class Network {
         if (message.TargetId > 0) {
             NetworkClient? client = ClientList.FirstOrDefault(c => c.ID == message.TargetId);
             if (client == null) throw new Exception("Invalid target!");
-            SendMessage(message, client.Stream);
+            SendMessage(message, client.Stream, requestAck);
             int mode = message.Sender == 1 ? 1 : 3;
             DebugMessage(message, mode);
         } else {
             int i = 0;
             foreach (NetworkClient client in ClientList) {
                 if (message.Sender == client.ID) continue;
-                SendMessage(message, client.Stream);
+                SendMessage(message, client.Stream, requestAck);
                 i++;
             }
             if (message.Sender == 1) Log($"DATA SENT TO {i} USERS(s)!");
@@ -214,6 +214,7 @@ public partial class Network {
                 //--- Read message
                 byte[] bytes = ReadMessageBytes(_client.GetStream());
                 if (bytes.Count() == 1 && bytes[0] == 0x04) throw new SocketException(); // END-OF-TRANSMISSION
+                if (bytes.Count() == 1 && bytes[0] == 0x07) continue; // BELL = Ping request
 
                 //--- Make sure data is valid, and no socket error
                 if (bytes.Count() == 0) {

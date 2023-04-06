@@ -19,6 +19,7 @@ namespace ServerFramework {
             Console.WriteLine("Start        | Start server");
             Console.WriteLine("Stop         | Stop server");
             Console.WriteLine("Status       | Check if server is running");
+            Console.WriteLine("Ping         | Ping specified client to check its response time");
             Console.WriteLine("SendData     | Sends a command to user(s)");
             Console.WriteLine("RequestData  | Requests data from user");
             Console.WriteLine("ClientMethods| Methods available on client");
@@ -54,6 +55,16 @@ namespace ServerFramework {
                 MethodName = method
             };
             Network.SendData(message);
+        }
+        public static void Ping() {
+            Console.WriteLine("Target ID to ping:");
+            string? target = Console.ReadLine();
+            if (string.IsNullOrEmpty(target)) throw new Exception("Invalid target");
+
+            Network.NetworkClient client = Network.ClientList.FirstOrDefault(client => client.ID.ToString() == target)!;
+            if (client == default) throw new Exception("ID not found from connected clients!");
+            var span = Network.CheckPing(client.Stream);
+            Console.WriteLine($"Ping is: {span.Milliseconds}.{span.Microseconds}ms");
         }
         public static void GetClientMethods() {
             if (Network.ClientMethods.Count() == 0) throw new Exception("Client Methods not Initialized yet! (Gets populated when first client joins)");

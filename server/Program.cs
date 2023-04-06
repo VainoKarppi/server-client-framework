@@ -56,7 +56,7 @@ public class Program {
         };
 
         int methodsAdded = Network.RegisterMethod( typeof(ServerMethods) );
-        Console.WriteLine($"{methodsAdded} Methods registered!");
+        Console.WriteLine($"{methodsAdded} Server Methods Registered!");
 
         NetworkEvents.Listener.ClientConnected += OnClientConnected!;
         NetworkEvents.Listener.ClientDisconnect += OnClientDisconnect!;
@@ -137,6 +137,10 @@ public class Program {
                     
                     case "sendevent":
                         Commands.SendEvent();
+                        break;
+                    
+                    case "ping":
+                        Commands.Ping();
                         break;
                     
                     case "status":

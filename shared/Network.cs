@@ -47,6 +47,8 @@ public partial class Network {
 	#endif
 
 	private static Dictionary<int,dynamic> Results = new Dictionary<int,dynamic>();
+	private static HashSet<int> AckResults = new HashSet<int>();
+
 	private static List<string> PrivateMethods = new List<string>() {};
 
 	#if SERVER
@@ -315,49 +317,82 @@ public partial class Network {
 #endif
     }	
 
+	#if SERVER
+	public static TimeSpan CheckPing(NetworkStream stream) {
+	#else
+	public static TimeSpan CheckPing() {
+		NetworkStream stream = Client.GetStream();
+	#endif
+		int intKey = new Random().Next();
+		byte[] keyBytes = BitConverter.GetBytes(intKey);
+		stream.Write(new byte[] {0x07}.Concat(keyBytes).Concat(new byte[] {0x00,0x00,0x00,0x00}).ToArray(),0,5); // bell + ackKey, 0x0 x4 = 9
 
+		DateTime start = DateTime.Now;
+		Task task = Task.Run(() => {
+            while (DateTime.Now > start.AddSeconds(2)) {
+				if (AckResults.Contains(intKey)) {
+					AckResults.Remove(intKey);
+					break;
+				}
+			}
+		});
+        TimeSpan timer = TimeSpan.FromMilliseconds(2000);
+		if (! task.Wait(timer)) throw new TimeoutException("Ping request timed out!");
+
+		return DateTime.Now - start;
+	}
 
 	// TODO do async version!!!
-    private static void SendMessage(dynamic message, NetworkStream stream, bool waitResponse = true)
+    private static void SendMessage(dynamic message, NetworkStream stream, bool requestAck = true)
     {
-        if (message is NetworkMessage && message.isHandshake != true && message.Sender != ClientID)
-        {
+        if (message is NetworkMessage && message.isHandshake != true && message.Sender != ClientID) {
             NetworkEvents? listener = NetworkEvents.Listener;
             listener?.ExecuteEvent(new OnMessageSentEvent(message));
         }
-        if (message is NetworkMessage && !(message.Parameters is null) && message.Sender == ClientID)
-        {
+        if (message is NetworkMessage && !(message.Parameters is null) && message.Sender == ClientID) {
             bool useClass = false;
             if (message.OriginalParams == null) message.OriginalParams = message.Parameters; // TODO find better way
             message.Parameters = SerializeParameters(message.OriginalParams, ref useClass);
             message.UseClass = useClass;
         }
-        // [0 = ack, 1-4 = JsonMsgLenght, 5-6 = ACK KEY, 7... actual JsonMsg]
+        // [0 = requestAck, 1-4 = AckKey, 5-8 = JsonMsgLenght, 9->... actual JsonMsg]
 		// TODO encrypt/decrypt
         List<byte> bytes = new List<byte>();
-		bytes.AddRange(JsonSerializer.SerializeToUtf8Bytes(message));
-        bytes.InsertRange(0,BitConverter.GetBytes(bytes.Count)); // 4 bytes
-        
-        // Always add extra random key (2 bytes)
-        bytes.Insert(0,Convert.ToByte(waitResponse)); // 0 = NACK : 1 = ACK
-        Random rand = new Random();
-        ushort randomKey = (ushort)rand.Next(65530);
-        bytes.InsertRange(5,BitConverter.GetBytes(randomKey));
+
+		bytes.Add(Convert.ToByte(requestAck)); // Request ACK response. 0 = no : 1 = yes
+		
+		// Add request random key
+		int randomKey = 0;
+		while (true) {
+			randomKey = new Random().Next(Int32.MaxValue); // 4 bytes
+			if (!AckResults.Contains(randomKey)) {
+				bytes = bytes.Concat(BitConverter.GetBytes(randomKey)).ToList();
+				break;
+			}
+		}
+
+		// Add msg lenght and msg
+		byte[] jsonMsg = JsonSerializer.SerializeToUtf8Bytes(message);
+		bytes = bytes.Concat(BitConverter.GetBytes(jsonMsg.Length)).ToList();
+		bytes = bytes.Concat(jsonMsg).ToList();
 
         // Send data
         stream.WriteAsync(bytes.ToArray(), 0, bytes.Count);
 
-        if (waitResponse) {
-			Task t = new Task( async () => {
+        if (requestAck) {
+			new Thread( () => {
                 int timer = 0;
-                while (timer < 100) {
-                    if (Results.ContainsKey((int)randomKey)) return; // ACK received!
-                    await Task.Delay(1);
+                while (timer < 50) {
+                    if (AckResults.Contains(randomKey)) {
+						AckResults.Remove(randomKey); // ACK received!
+						return;
+					}; 
+                    Thread.Sleep(50);
                     ++timer;
                 }
-                Log($"ERROR: ACK not received for: {message} (MSG timed out!)");
-            });
-			t.Start();
+				dynamic msg = message is NetworkMessage ? (message as NetworkMessage)?.MethodName?.ToString()! : message.GetType();
+                Log($"WARNING: ACK not received for msg: {msg} ({randomKey}) (MSG timed out!)",false);
+            }).Start();
         }
     }
 
@@ -369,33 +404,44 @@ public partial class Network {
     /// <returns></returns>
     /// <exception cref="InvalidOperationException"></exception>
     /// <exception cref="Exception"></exception>
-    public static async void SendDataAsync(NetworkMessage message) {
-		await Task.Run(() => { SendData(message); });
+    public static async void SendDataAsync(NetworkMessage message, bool requestAck = false) {
+		await Task.Run(() => { SendData(message, requestAck); });
 	}
 
 	private static byte[] ReadMessageBytes(NetworkStream Stream) {
         List<byte> bytes = new List<byte>();
 
-        byte[] byteInfo = new byte[7];
-		Stream.Read(byteInfo,0,7);
+		// [requestack,ackKey,jsonMsgLenght,jsonMsg] [1,4,4,9->]
+        byte[] byteInfo = new byte[9];
+		Stream.Read(byteInfo,0,9);
 
         byte firstByte = byteInfo[0];
 		if (firstByte == 0x04) return new byte[] { 0x04 }; // END-OF-TRANSMISSION
-        int msgLenght = BitConverter.ToInt32(byteInfo,1);
-		ushort ackKey = BitConverter.ToUInt16(byteInfo,5);
+        int ackKey = BitConverter.ToInt32(byteInfo,1);
 
-        if (firstByte == 0x06) {
-            Results.Add((int)ackKey,true);
+		if (firstByte == 0x07) { // Bell = Ping Request from this client
+            Stream.WriteAsync(((new byte[] {0x08}).Concat(BitConverter.GetBytes(ackKey).Concat(new byte[]{0x0,0x0,0x0,0x0})).ToArray()));
+			return new byte[] { 0x07 };
+		}
+
+		if (firstByte == 0x08) { // Bell = Ping Response to this client
+            AckResults.Add(ackKey);
+			return new byte[] { 0x07 };
+		}
+		
+        if (firstByte == 0x06) { // Response ack from request
+            AckResults.Add(ackKey);
             return new byte[] { 0x06 }; // IS ACTUAL ACK RECEIVED
         }
 
-		byte[] msgBytes = new byte[msgLenght];
-		Stream.Read(msgBytes,0,msgLenght);
-        Stream.Flush();
+		int jsonMsgLenght = BitConverter.ToInt32(byteInfo,5);
+		byte[] msgBytes = new byte[jsonMsgLenght];
+		Stream.Read(msgBytes,0,jsonMsgLenght);
 
         if (firstByte == 0x01) { // Send ACK of msg Received
-            byte[] responseBytes = {0x06,0x00,0x00,0x00,0x00,(byte)(ackKey),(byte)(ackKey >> 8)};
-            Stream.WriteAsync(responseBytes);
+			var responseBytes = (new byte[] {0x06}).Concat(BitConverter.GetBytes(ackKey));
+            Stream.WriteAsync(responseBytes.ToArray());
+			// Continue on receive thread
         }
 		return msgBytes;
 	}
@@ -518,22 +564,21 @@ public partial class Network {
 
 
 
-	private static void DebugMessage(NetworkMessage message,int mode = 0) {
+	private static void DebugMessage(NetworkMessage message, int mode = 0, bool requestAck = false) {
         Log();
         Log("===============DEBUG MESSAGE===============");
 		string type = "UNKNOWN";
 		if (mode == 1) type = "OUTBOUND";
 		else if (mode == 2) type = "INBOUND";
 		Log($"TYPE: {type}");
-		Log($"TIME: {DateTime.Now.Millisecond}");
+		Log($"TIME: {DateTime.Now.ToShortTimeString()}.{DateTime.Now.Millisecond}");
+		Log($"RequestAck: {requestAck}");
 		Log($"MessageType:{message.MessageType}");
 		Log($"TargetId:{message.TargetId}");
 		Log($"MethodName:{message.MethodName}");
 		Log($"ParamIsClass:{message.UseClass}");
-		Log($"Handshake:{message.isHandshake}");
-		Log();
+		Log($"Handshake:{message.isHandshake ?? message.isHandshake ?? false}");
 		Log(JsonSerializer.Serialize<object>(message.Parameters));
-		Log();
 		Log($"Key:{message.Key}");
 		Log($"Sender:{message.Sender}");
 		Log("===============DEBUG MESSAGE===============");

@@ -110,6 +110,7 @@ public partial class Network {
         NetworkEvents? listener = NetworkEvents.Listener;
         listener?.ExecuteEvent(new OnClientDisconnectEvent(Client.ID, Client.UserName, ClientVersion, success));
         Log("Disconnected from the server!");
+        Log(Environment.NewLine+Environment.NewLine,false);
     }
 
 
@@ -118,6 +119,8 @@ public partial class Network {
             while (Client.Connected) {
                 //--- Read message
                 byte[] bytes = ReadMessageBytes(Client.GetStream());
+                if (bytes.Count() == 1 && bytes[0] == 0x04) throw new SocketException(); // END-OF-TRANSMISSION
+                if (bytes.Count() == 1 && bytes[0] == 0x07) continue; // BELL = Ping request
 
                 //--- Make sure data is valid, and no socket error
                 if (bytes.Count() == 0) {
@@ -249,12 +252,13 @@ public partial class Network {
 
 
     /// <summary>
-    /// Invoke a method on receivers end. This uses fire and forget mode. (No data to be returned)
+    /// Invoke a method on receivers end. This uses fire and forget mode. (No data to be returned).
+    /// If using requestAck, there can be a timeout if multiple messages are sent quickly!
     /// </summary>
     /// <param name="message"></param>
     /// <exception cref="InvalidOperationException"></exception>
     /// <exception cref="Exception"></exception>
-    public static void SendData(NetworkMessage message) {
+    public static void SendData(NetworkMessage message, bool requestAck = false) {
         if (!IsConnected()) throw new Exception("Not connected to server");
         if (message.TargetId == Client.ID) throw new Exception("Cannot send data to self! (client)");
         if (message.MessageType == null) message.MessageType = (int?)MessageTypes.SendData;
@@ -271,8 +275,9 @@ public partial class Network {
             if (message.TargetId == 0) Log($"DATA SENT TO: ({ClientList.Count()}) CLIENT(s)!");
         }
 
-        SendMessage(message, Client.GetStream());
-        DebugMessage(message, 1);
+        message.Key = new Random().Next();
+        SendMessage(message, Client.GetStream(),requestAck);
+        DebugMessage(message, 1, requestAck);
     }
 
 

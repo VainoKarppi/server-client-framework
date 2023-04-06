@@ -18,6 +18,7 @@ namespace ClientFramework {
             Console.WriteLine("Connect          | Connect to server");
             Console.WriteLine("Disconnect       | Disconnect from server");
             Console.WriteLine("Status           | Check if connected to server");
+            Console.WriteLine("Ping             | Ping server to check response time");
             Console.WriteLine("SendData         | Sends a command to another client/server");
             Console.WriteLine("RequestData      | Gets a value from another client/server");
             Console.WriteLine("ClientMethods    | Methods available on client");
@@ -64,7 +65,7 @@ namespace ClientFramework {
 
             DateTime then = DateTime.Now;
             for (int i = 0; i < 1000; i++) {
-                Network.SendData(message);
+                Network.SendData(message,true);
             }
             Console.WriteLine(DateTime.Now - then);
         }
@@ -112,6 +113,10 @@ namespace ClientFramework {
                 }
             else 
                 Console.WriteLine($"{a} ({a.GetType()})");
+        }
+        public static void Ping() {
+            var span = Network.CheckPing();
+            Console.WriteLine($"Ping is: {span.Milliseconds}.{span.Microseconds}ms");
         }
         public static void RequestDataType() {
             if (!Network.IsConnected())
