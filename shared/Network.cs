@@ -319,8 +319,10 @@ public partial class Network {
 
 	#if SERVER
 	public static TimeSpan CheckPing(NetworkStream stream) {
+		if (!ServerRunning) throw new InvalidOperationException("Server not running!");
 	#else
 	public static TimeSpan CheckPing() {
+		if (!IsConnected()) throw new Exception("Not connected to server");
 		NetworkStream stream = Client.GetStream();
 	#endif
 		int intKey = new Random().Next();
